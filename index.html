@@ -35,7 +35,7 @@
         .nav-tab.active { background: var(--accent); color: white; }
         @media (max-width: 400px) { .nav-tab { font-size: 13px; padding: 8px 6px; } }
         .table-wrapper { overflow: auto; border-radius: 10px; border: 1px solid var(--table-border); max-height: 60vh; position: relative; background: white; }
-        table { border-collapse: collapse; font-size: 13px; background: white; width: auto; min-width: 100%; }
+        table { border-collapse: collapse; font-size: 13px; background: white; width: auto; min-width: 100%; table-layout: auto; }
         th { background: var(--table-header-bg); color: var(--table-header-text); font-weight: 600; padding: 6px 8px; text-align: center; border: 1px solid var(--table-border); white-space: nowrap; position: sticky; top: 0; z-index: 2; font-size: 13px; }
         td { padding: 6px 8px; text-align: center; border: 1px solid var(--table-border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
         tbody tr:nth-child(even) { background-color: var(--table-row-even); }
@@ -661,7 +661,7 @@
         window.addEventListener('mouseup', (e) => {
             if (isDraggingFloat) {
                 const dx = Math.abs(e.clientX - dragStartX); const dy = Math.abs(e.clientY - dragStartY);
-                if (dx < 5 && dy < 5) togglePopup(); // 单击打开
+                if (dx < 5 && dy < 5) togglePopup();
                 floatBtnLeft = parseInt(document.getElementById('floatBtn').style.left) || floatBtnLeft;
                 floatBtnTop = parseInt(document.getElementById('floatBtn').style.top) || floatBtnTop;
             }
@@ -670,7 +670,7 @@
         window.addEventListener('touchend', (e) => {
             if (isDraggingFloat) {
                 const touch = e.changedTouches[0]; const dx = Math.abs(touch.clientX - dragStartX); const dy = Math.abs(touch.clientY - dragStartY);
-                if (dx < 5 && dy < 5) togglePopup(); // 单击打开
+                if (dx < 5 && dy < 5) togglePopup();
                 floatBtnLeft = parseInt(document.getElementById('floatBtn').style.left) || floatBtnLeft;
                 floatBtnTop = parseInt(document.getElementById('floatBtn').style.top) || floatBtnTop;
             }
@@ -691,7 +691,25 @@
         function buildAllViews(){
             document.getElementById('view-classes').innerHTML=`<div class="card"><div class="card-title">📚 班级管理</div><div style="display:flex;gap:6px"><input class="input" id="newClassName" placeholder="新班级名称" style="flex:1"><button class="btn" onclick="addClass()">➕ 新建</button></div><div id="classListContainer"></div></div>`;
             document.getElementById('view-feedback').innerHTML=`<div class="card"><div class="card-title">📝 每日反馈</div><div class="feedback-actions"><span style="font-size:13px;">当前日期：</span><input class="input" id="dateLabelInput" style="width:70px; padding:4px 8px; font-size:12px;" placeholder="Week1"><button class="btn btn-sm" onclick="goToDate()">前往</button><button class="btn btn-sm btn-outline" onclick="renameCurrentDate()">✏️ 重命名</button><button class="btn btn-sm" onclick="undo()" style="background:#6b7280">↩️ 撤销</button></div><div id="dateSelector" style="display:flex;gap:4px;flex-wrap:wrap"></div><div style="display:flex;justify-content:space-between"><span id="saveStatus">✅ 已自动保存</span><button class="btn btn-outline btn-sm" onclick="switchToFullTable()">📊 完整表格</button></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">🎨 表格样式 ▼</button><div class="collapsible-content"><div class="style-row"><span>表头背景:</span><input type="color" id="styleHeaderBg" onchange="applyStyleColor('headerBg',this.value)"><span>表头文字:</span><input type="color" id="styleHeaderText" onchange="applyStyleColor('headerText',this.value)"><span>边框:</span><input type="color" id="styleBorder" onchange="applyStyleColor('border',this.value)"><span>斑马纹:</span><input type="color" id="styleRowEven" onchange="applyStyleColor('rowEven',this.value)"></div><div class="style-row"><span>行高:</span><input type="number" id="styleRowHeight" min="24" max="60" style="width:60px" onchange="applyRowHeight()"></div></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">📐 列设置 ▼</button><div class="collapsible-content"><div id="columnEditor" style="display:flex;gap:4px;flex-wrap:wrap"></div></div></div><div class="card" style="padding:6px"><div class="table-wrapper"><table id="feedbackTable"><thead id="feedbackTableHead"></thead><tbody id="feedbackTableBody"></tbody></table></div></div>`;
-            document.getElementById('view-fulltable').innerHTML=`<div class="card"><div class="card-title">📄 完整反馈表</div><div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="switchView('feedback')">↩️ 返回</button><button class="btn btn-sm" onclick="printTable()">🖨️ 打印</button><button class="btn btn-sm" style="background:#047857" onclick="exportStyledExcel()">📊 Excel</button><button class="btn btn-sm" style="background:#b45309" onclick="exportAsImage()">🖼️ 图片</button></div></div><div class="card" style="padding:6px"><div class="table-wrapper" id="fullTableWrapper"><div class="title-wrapper"><input id="fullTableTitleInput" style="font-size:1.2rem;font-weight:700;border:none;background:transparent;text-align:center;width:100%" placeholder="标题"></div><table id="fullTable"><thead id="fullTableHead"></thead><tbody id="fullTableBody"></tbody></table></div></div>`;
+            document.getElementById('view-fulltable').innerHTML=`<div class="card"><div class="card-title">📄 完整反馈表</div><div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="switchView('feedback')">↩️ 返回</button><button class="btn btn-sm" onclick="printTable()">🖨️ 打印</button><button class="btn btn-sm" style="background:#047857" onclick="exportStyledExcel()">📊 Excel</button><button class="btn btn-sm" style="background:#b45309" onclick="exportAsImage()">🖼️ 图片</button></div></div>
+            <div class="card" style="padding:6px"><div class="table-wrapper" id="fullTableWrapper"><div class="title-wrapper"><input id="fullTableTitleInput" style="font-size:1.2rem;font-weight:700;border:none;background:transparent;text-align:center;width:100%" placeholder="标题"></div><table id="fullTable"><thead id="fullTableHead"></thead><tbody id="fullTableBody"></tbody></table></div></div>
+            <div class="card" style="margin-top:12px">
+                <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+                    📊 统计表
+                    <div style="display:flex; gap:6px;">
+                        <button class="btn btn-sm btn-outline" onclick="exportStatExcel()">📊 Excel</button>
+                        <button class="btn btn-sm btn-outline" onclick="exportStatImage()">🖼️ 图片</button>
+                    </div>
+                </div>
+                <div style="display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+                    <select id="statType" class="input" onchange="switchStatType()">
+                        <option value="byColumn">按板块统计（多日期一览）</option>
+                        <option value="byStudent">按学生统计（多板块一览）</option>
+                    </select>
+                    <select id="statTarget" class="input" onchange="renderStatTable()"></select>
+                </div>
+                <div class="table-wrapper" id="statTableWrapper"></div>
+            </div>`;
             document.getElementById('view-analysis').innerHTML=`<div class="card"><div class="card-title">📈 汇总分析</div><div style="display:flex;gap:8px"><span>学生：</span><select id="analysisStudentSelect" class="input" style="padding:8px;border-radius:12px;flex:1" onchange="refreshAnalysis()"><option value="">-- 请选择 --</option></select></div><div class="check-group" id="analysisDateCheckGroup"></div><div class="check-group" id="analysisColumnCheckGroup"></div></div><div class="card" id="analysisChartsArea"><div id="analysisReportTitle" style="text-align:center;font-size:1.1rem;font-weight:700;margin-bottom:12px">学习分析报告</div><div id="lineChartsContainer"></div><div id="radarSection" style="margin-top:16px;"><div class="check-group"><span>雷达图课次：</span><select id="radarDateSelect" class="input" style="width:120px;padding:6px;border-radius:12px" onchange="refreshRadarColumns();saveRadarCols()"></select></div><div class="check-group" id="radarColumnCheckGroup" style="margin-bottom:8px"></div><div style="height:320px"><canvas id="radarChartCanvas" height="320"></canvas></div></div><div style="margin-top:16px"><input type="password" id="apiKeyInput" class="input" placeholder="DeepSeek API Key" style="width:100%;padding:8px;margin-bottom:8px"><textarea id="examDescTextarea" class="ai-textarea" placeholder="手动输入试卷描述或题型知识点（可选）" rows="3"></textarea><div style="display:flex; gap:6px; align-items: center; margin:8px 0;"><label class="btn btn-outline btn-sm" style="cursor:pointer;">📎 上传试卷文件<input type="file" id="examFileInput" accept=".txt,.docx,.pdf" style="display:none" onchange="document.getElementById('fileNameDisplay').textContent = this.files[0]?.name || ''"></label><span id="fileNameDisplay" style="font-size:12px; color:var(--text-light);"></span></div><button class="btn btn-sm" onclick="runAIAnalysis()">🤖 测试分析</button></div><div id="aiResult" style="margin-top:12px;padding:12px;background:var(--input-bg);border-radius:12px;font-size:14px;white-space:pre-wrap;"></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-sm" onclick="downloadPDFReport()">📥 下载PDF报告</button></div></div><div id="analysisTablesContainer"></div>`;
         }
 
@@ -705,7 +723,10 @@
             if(viewName!=='feedback')closePopup();
             if(viewName==='classes')renderClassList();
             else if(viewName==='feedback'){renderDateSelector();renderColumnEditor();renderFeedbackTable();refreshStylePanel();applyTableColors(getCurrentClass());}
-            else if(viewName==='fulltable')renderFullTable();
+            else if(viewName==='fulltable') { 
+                renderFullTable(); 
+                switchStatType();
+            }
             else if(viewName==='analysis')renderAnalysisOptions();
             updateCurrentClassDisplay(); document.querySelectorAll('.student-modal').forEach(m=>m.classList.remove('open'));activeStudentModal=null;
         }
@@ -716,6 +737,215 @@
         window.applyRowHeight=function(){const cls=getCurrentClass();if(!cls)return;const val=parseInt(document.getElementById('styleRowHeight').value);if(isNaN(val)||val<20)return;cls.rowHeight=val;updateClass(cls);renderFeedbackTable();renderFullTable();};
         function applyTableColors(cls){if(!cls||!cls.tableColors)return;const r=document.documentElement.style;r.setProperty('--table-header-bg',cls.tableColors.headerBg);r.setProperty('--table-header-text',cls.tableColors.headerText);r.setProperty('--table-border',cls.tableColors.border);r.setProperty('--table-row-even',cls.tableColors.rowEven);}
         function updateClass(cls){classes=classes.map(c=>c.id===cls.id?cls:c);dbSet('classes',classes);}
+
+        // ========== 统计表功能 (全部挂载到window) ==========
+        window.switchStatType = function() {
+            const type = document.getElementById('statType').value;
+            const targetSelect = document.getElementById('statTarget');
+            const cls = getCurrentClass();
+            if (!cls) return;
+
+            let optionsHTML = '';
+            if (type === 'byColumn') {
+                optionsHTML = cls.columns.map(col => {
+                    const pure = stripMaxScore(col);
+                    return `<option value="${escapeHtml(pure)}">${escapeHtml(pure)}</option>`;
+                }).join('');
+            } else {
+                optionsHTML = cls.students.map(s =>
+                    `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`
+                ).join('');
+            }
+
+            if (!optionsHTML) {
+                targetSelect.innerHTML = '';
+                document.getElementById('statTableWrapper').innerHTML = '<div class="empty-state">暂无数据</div>';
+                return;
+            }
+
+            targetSelect.innerHTML = optionsHTML;
+            targetSelect.selectedIndex = 0;
+            window.renderStatTable();
+        };
+
+        window.renderStatTable = function() {
+            const type = document.getElementById('statType').value;
+            const target = document.getElementById('statTarget').value;
+            if (!target) return;
+            if (type === 'byColumn') {
+                renderStatTableByColumn(target);
+            } else {
+                renderStatTableByStudent(target);
+            }
+        };
+
+        function getAutoBackground(val, maxScore) {
+            if (val === '' || val === null) return '';
+            const str = String(val).trim();
+            if (str === '未完成' || str === '❌' || str === '×' || /^0*(\.0+)?$/.test(str)) return '#f8d7da';
+            if (maxScore > 0 && /^\d+(\.\d+)?$/.test(str)) {
+                const num = parseFloat(str);
+                if (num === maxScore) return '#d4edda';
+            }
+            return null;
+        }
+
+        function renderStatTableByColumn(colKeyword) {
+            const cls = getCurrentClass();
+            if (!cls) return;
+            const dates = getDateList();
+            const students = cls.students;
+
+            let html = `<h3 style="text-align:center;margin-bottom:8px;">${escapeHtml(colKeyword)} 学情总结</h3>`;
+            html += '<table><thead>';
+            html += '<tr><th>学生</th>';
+            dates.forEach(d => html += `<th>${escapeHtml(d)}</th>`);
+            html += '</tr></thead><tbody>';
+
+            students.forEach(stu => {
+                html += `<tr><td>${escapeHtml(stu)}</td>`;
+                dates.forEach(d => {
+                    const entry = getEntry(cls.id, d);
+                    let val = '', bg = '', displayVal = '';
+                    if (entry) {
+                        const idx = entry.dateColumns.findIndex(c => columnContainsKeyword(c, colKeyword));
+                        if (idx !== -1) {
+                            const rec = entry.records.find(r => r.name === stu);
+                            if (rec) {
+                                val = rec.values[idx] || '';
+                                bg = (rec.colors && rec.colors[idx]) ? rec.colors[idx] : '';
+                            }
+                            const maxScore = extractMaxScore(entry.dateColumns[idx]);
+                            displayVal = val;  // 直接显示得分，不加满分
+                            const autoBg = getAutoBackground(val, maxScore);
+                            if (autoBg) bg = autoBg;
+                        }
+                    }
+                    html += `<td style="background:${bg}">${escapeHtml(displayVal)}</td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            document.getElementById('statTableWrapper').innerHTML = html;
+            const table = document.querySelector('#statTableWrapper table');
+            if (table) {
+                table.style.tableLayout = 'fixed';
+                table.style.width = '100%';
+                const firstColSelector = 'th:first-child, td:first-child';
+                table.querySelectorAll(firstColSelector).forEach(cell => {
+                    cell.style.whiteSpace = 'normal';
+                    cell.style.minWidth = 'auto';
+                    cell.style.width = 'auto';
+                });
+            }
+        }
+
+        function renderStatTableByStudent(studentName) {
+            const cls = getCurrentClass();
+            if (!cls) return;
+            const dates = getDateList();
+            
+            let columns = [];
+            const firstDate = dates[0];
+            if (firstDate) {
+                const firstEntry = getEntry(cls.id, firstDate);
+                if (firstEntry) {
+                    columns = [...firstEntry.dateColumns];
+                }
+            }
+            if (!columns.length) {
+                const allCols = new Set();
+                dates.forEach(d => {
+                    const entry = getEntry(cls.id, d);
+                    if (entry) entry.dateColumns.forEach(c => allCols.add(c));
+                });
+                columns = Array.from(allCols).sort(naturalSort);
+            }
+
+            let html = `<h3 style="text-align:center;margin-bottom:8px;">${escapeHtml(studentName)} 学情统计</h3>`;
+            html += '<table><thead><tr><th>日期</th>';
+            columns.forEach(col => html += `<th>${escapeHtml(stripMaxScore(col))}</th>`);   // 去括号
+            html += '</tr></thead><tbody>';
+
+            dates.forEach(d => {
+                html += `<tr><td>${escapeHtml(d)}</td>`;
+                const entry = getEntry(cls.id, d);
+                const rec = entry ? entry.records.find(r => r.name === studentName) : null;
+                columns.forEach(colRaw => {
+                    let val = '', bg = '';
+                    if (entry && rec) {
+                        const keyword = stripMaxScore(colRaw);
+                        const matchedCol = entry.dateColumns.find(c => columnContainsKeyword(c, keyword));  // 模糊匹配
+                        if (matchedCol) {
+                            const idx = entry.dateColumns.indexOf(matchedCol);
+                            if (idx !== -1) {
+                                val = rec.values[idx] || '';
+                                bg = (rec.colors && rec.colors[idx]) ? rec.colors[idx] : '';
+                            }
+                            const maxScore = extractMaxScore(matchedCol);
+                            let displayVal = val;   // 直接显示得分
+                            const autoBg = getAutoBackground(val, maxScore);
+                            if (autoBg) bg = autoBg;
+                            html += `<td style="background:${bg}">${escapeHtml(displayVal)}</td>`;
+                            return;
+                        }
+                    }
+                    html += `<td></td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            document.getElementById('statTableWrapper').innerHTML = html;
+            const table = document.querySelector('#statTableWrapper table');
+            if (table) {
+                table.style.tableLayout = 'fixed';
+                table.style.width = '100%';
+                const firstColSelector = 'th:first-child, td:first-child';
+                table.querySelectorAll(firstColSelector).forEach(cell => {
+                    cell.style.whiteSpace = 'normal';
+                    cell.style.minWidth = 'auto';
+                    cell.style.width = 'auto';
+                });
+            }
+        }
+
+        window.exportStatExcel = function() {
+            const target = document.getElementById('statTarget').value;
+            if (!target) return alert('请先选择统计目标');
+            const cls = getCurrentClass();
+            if (!cls) return;
+            const title = `统计表_${target}`;
+            const style = `@page { size: landscape; margin: 10mm; } body{font-family:Arial;text-align:center}h2{text-align:center}h3{text-align:center}table{border-collapse:collapse;margin:0 auto;table-layout:fixed;width:100%}th{background:${cls.tableColors.headerBg};color:${cls.tableColors.headerText};padding:10px;border:1px solid ${cls.tableColors.border};word-wrap:break-word}td{padding:8px;border:1px solid ${cls.tableColors.border};text-align:center;word-wrap:break-word}tr:nth-child(even) td{background:${cls.tableColors.rowEven}} th:first-child, td:first-child{white-space:normal}`;
+            const tableWrapper = document.getElementById('statTableWrapper');
+            const tableHtml = tableWrapper.innerHTML;
+            let html = `<html><head><meta charset="utf-8"><title>${title}</title><style>${style}</style></head><body>${tableHtml}</body></html>`;
+            const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${title}.xls`;
+            a.click();
+        };
+
+        window.exportStatImage = function() {
+            const wrapper = document.getElementById('statTableWrapper');
+            const origStyle = wrapper.getAttribute('style') || '';
+            wrapper.style.overflow = 'visible';
+            wrapper.style.maxHeight = 'none';
+            wrapper.style.width = '1100px';
+            wrapper.style.maxWidth = 'none';
+            wrapper.style.margin = '0 auto';
+            html2canvas(wrapper, { scale: 2, backgroundColor: '#ffffff' }).then(canvas => {
+                wrapper.setAttribute('style', origStyle);
+                canvas.toBlob(blob => {
+                    const target = document.getElementById('statTarget').value;
+                    const title = `统计表_${target || '未选择'}`;
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `${title}.png`;
+                    a.click();
+                });
+            });
+        };
 
         // 启动
         window.addEventListener('DOMContentLoaded', async () => {

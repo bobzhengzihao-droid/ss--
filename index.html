@@ -76,7 +76,7 @@
         .ai-textarea { width: 100%; padding: 8px; border-radius: 12px; border: 1px solid var(--border); resize: vertical; }
         .input { padding: 4px 8px; border-radius: 12px; border: 1px solid var(--border); font-size: 12px; }
 
-        /* 统计表专用：PC 端等宽，移动端可滚动 */
+        /* 统计表专用样式：PC 端等宽，移动端可滚动 */
         .stat-table {
             table-layout: fixed !important;
             width: 100% !important;
@@ -89,7 +89,6 @@
             max-width: none !important;
             white-space: nowrap;
         }
-        /* 移除首列固定宽度，让它参与等分 */
         .stat-table th:first-child,
         .stat-table td:first-child {
             width: auto !important;
@@ -104,7 +103,7 @@
             background-color: var(--table-header-bg);
         }
 
-        /* 移动端：改为自动宽度，允许横向滚动 */
+        /* 移动端 */
         @media (max-width: 600px) {
             .stat-table {
                 table-layout: auto !important;
@@ -430,20 +429,36 @@
             const blob=new Blob([html],{type:'application/vnd.ms-excel'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${title}.xls`;a.click();
         };
         window.printTable=function(){window.print();};
-        window.exportAsImage=function(){
-            const wrapper=document.getElementById('fullTableWrapper'); const table=document.getElementById('fullTable');
-            const origW=wrapper.getAttribute('style')||'',origT=table.getAttribute('style')||'';
-            wrapper.style.padding='20px';wrapper.style.overflow='visible';wrapper.style.maxHeight='none';wrapper.style.width='fit-content';wrapper.style.margin='0 auto';
-            table.style.minWidth='auto';table.style.width='auto';
-            table.querySelectorAll('th:first-child, td:first-child').forEach(cell=>cell.style.minWidth='32px');
-            table.querySelectorAll('th:nth-child(2), td:nth-child(2)').forEach(cell=>cell.style.minWidth='70px');
-            table.querySelectorAll('th:not(:first-child):not(:nth-child(2)), td:not(:first-child):not(:nth-child(2))').forEach(cell=>cell.style.minWidth='90px');
-            html2canvas(wrapper,{scale:2,backgroundColor:'#ffffff'}).then(canvas=>{
-                table.querySelectorAll('th,td').forEach(cell=>{cell.style.minWidth='';});
-                wrapper.setAttribute('style',origW);table.setAttribute('style',origT);
-                canvas.toBlob(blob=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(document.getElementById('fullTableTitleInput')?.value||'反馈表')+'.png';a.click();});
-            });
-        };
+        window.exportAsImage = function(){
+    const wrapper = document.getElementById('fullTableWrapper');
+    const table = document.getElementById('fullTable');
+    const origW = wrapper.getAttribute('style') || '';
+    const origT = table ? table.getAttribute('style') || '' : '';
+
+    // 临时解除尺寸限制，设置横屏宽度
+    wrapper.style.padding = '20px';
+    wrapper.style.overflow = 'visible';
+    wrapper.style.maxHeight = 'none';
+    wrapper.style.width = '1100px';      // 强制横屏宽度
+    wrapper.style.margin = '0 auto';
+    if (table) {
+        table.style.minWidth = 'auto';
+        table.style.width = '100%';      // 表格填满容器
+    }
+
+    html2canvas(wrapper, { scale: 2, backgroundColor: '#ffffff' }).then(canvas => {
+        // 恢复原始样式
+        wrapper.setAttribute('style', origW);
+        if (table) table.setAttribute('style', origT);
+
+        canvas.toBlob(blob => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = (document.getElementById('fullTableTitleInput')?.value || '反馈表') + '.png';
+            a.click();
+        });
+    });
+};
 
         // ========== 分析模块 ==========
         function findColumnIndexAndMax(entry, keyword) {
@@ -1007,22 +1022,27 @@
             wrapper.style.maxWidth = 'none';
             wrapper.style.margin = '0';
             if (table) {
-                table.style.setProperty('table-layout', 'auto', 'important');
-                table.style.setProperty('width', 'auto', 'important');
+                table.style.tableLayout = 'auto';
+                table.style.width = 'auto';
+                table.style.minWidth = 'auto';
             }
 
-            // 短暂延迟，确保样式生效
+            // 短暂延迟后测量精确尺寸
             setTimeout(() => {
-                const w = wrapper.scrollWidth + 4;
-                const h = wrapper.scrollHeight + 4;
+                let w = wrapper.scrollWidth;
+                let h = wrapper.scrollHeight;
+                // 确保容器宽度贴合表格，包含边框
+                wrapper.style.width = (w + 4) + 'px';
+                w = wrapper.scrollWidth;
+                h = wrapper.scrollHeight;
 
                 html2canvas(wrapper, {
                     scale: 2,
                     backgroundColor: '#ffffff',
-                    width: w,
-                    height: h,
-                    windowWidth: w,
-                    windowHeight: h
+                    width: w + 4,
+                    height: h + 4,
+                    windowWidth: w + 4,
+                    windowHeight: h + 4
                 }).then(canvas => {
                     // 恢复样式
                     wrapper.setAttribute('style', origStyle);

@@ -76,18 +76,20 @@
         .ai-textarea { width: 100%; padding: 8px; border-radius: 12px; border: 1px solid var(--border); resize: vertical; }
         .input { padding: 4px 8px; border-radius: 12px; border: 1px solid var(--border); font-size: 12px; }
 
-        /* 统计表专用：强制所有列等宽 */
+        /* 统计表专用：PC 端等宽，移动端可滚动 */
         .stat-table {
             table-layout: fixed !important;
             width: 100% !important;
-            min-width: auto !important;
+            min-width: 100% !important;
         }
         .stat-table th,
         .stat-table td {
             width: auto !important;
             min-width: auto !important;
             max-width: none !important;
+            white-space: nowrap;
         }
+        /* 移除首列固定宽度，让它参与等分 */
         .stat-table th:first-child,
         .stat-table td:first-child {
             width: auto !important;
@@ -102,22 +104,23 @@
             background-color: var(--table-header-bg);
         }
 
-        /* 移动端滚动优化 */
-       @media (max-width: 600px) {
-    .stat-table {
-        table-layout: auto !important;
-        width: auto !important;
-        font-size: 11px;
-    }
-    .stat-table th,
-    .stat-table td {
-        padding: 4px 4px;
-        white-space: nowrap;
-    }
-    .table-wrapper {
-        -webkit-overflow-scrolling: touch;
-    }
-}
+        /* 移动端：改为自动宽度，允许横向滚动 */
+        @media (max-width: 600px) {
+            .stat-table {
+                table-layout: auto !important;
+                width: auto !important;
+                min-width: 100% !important;
+                font-size: 11px;
+            }
+            .stat-table th,
+            .stat-table td {
+                padding: 4px 4px;
+                white-space: nowrap;
+            }
+            .table-wrapper {
+                -webkit-overflow-scrolling: touch;
+            }
+        }
     </style>
 </head>
 <body>
@@ -238,15 +241,15 @@
         // ========== 撤销/重做 ==========
         function pushUndo(){const cls=getCurrentClass();if(!cls)return;const key=feedbackKey(cls.id,currentDateLabel);const entry=feedback[key];if(!entry)return;undoStack.push({key,snapshot:JSON.parse(JSON.stringify(entry))});if(undoStack.length>MAX_UNDO)undoStack.shift();redoStack.length=0;}
         function undo(){if(!undoStack.length)return;const cls=getCurrentClass();if(!cls)return;const currentKey=feedbackKey(cls.id,currentDateLabel);const currentEntry=feedback[currentKey];if(!currentEntry)return;redoStack.push({key:currentKey,snapshot:JSON.parse(JSON.stringify(currentEntry))});const item=undoStack.pop();feedback[item.key]=item.snapshot;saveFeedbackDebounced();renderFeedbackTable();activeCell=null;}
-        function redo(){if(!redoStack.length)return;const cls=getCurrentClass();if(!cls)return;const currentKey=feedbackKey(cls.id,currentDateLabel);const currentEntry=feedback[currentKey];if(!currentEntry)return;undoStack.push({key:currentKey,snapshot:JSON.parse(JSON.stringify(currentEntry))});const item=redoStack.pop();feedback[item.key]=item.snapshot;saveFeedbackDebounced();renderFeedbackTable();activeCell=null;}window.undo = undo;
-window.redo = redo;
+        function redo(){if(!redoStack.length)return;const cls=getCurrentClass();if(!cls)return;const currentKey=feedbackKey(cls.id,currentDateLabel);const currentEntry=feedback[currentKey];if(!currentEntry)return;undoStack.push({key:currentKey,snapshot:JSON.parse(JSON.stringify(currentEntry))});const item=redoStack.pop();feedback[item.key]=item.snapshot;saveFeedbackDebounced();renderFeedbackTable();activeCell=null;}
+        window.undo = undo;
+        window.redo = redo;
 
         // ========== 反馈数据 ==========
         function initFeedbackEntry(date){
             const cls=getCurrentClass();if(!cls)return null;
             const key=feedbackKey(cls.id,date);
             if(!feedback[key]) {
-                // 新建课次：自动采用第一次课的列标题（如果存在）
                 let templateColumns = [...cls.columns];
                 const firstDate = getDateList()[0];
                 if(firstDate && firstDate !== date) {
@@ -705,27 +708,26 @@ window.redo = redo;
         };
 
         // ========== 拖拽（修复点击打开） ==========
-       window.startDragFloat = function(e) {
-    if (e.target.matches('button, span, input, textarea, select')) return;
-    isDraggingFloat = true; const btn = document.getElementById('floatBtn');
-    dragStartX = e.touches ? e.touches[0].clientX : e.clientX;
-    dragStartY = e.touches ? e.touches[0].clientY : e.clientY;
-    startLeft = parseInt(btn.style.left) || floatBtnLeft;
-    startTop = parseInt(btn.style.top) || floatBtnTop;
-    btn.style.transition = 'none';
-    e.preventDefault();
-};
-
-window.startDragPopup = function(e) {
-    if (e.target.matches('button, span, input, textarea, select')) return;
-    isDraggingPopup = true; const popup = document.getElementById('toolPopup');
-    dragStartX = e.touches ? e.touches[0].clientX : e.clientX;
-    dragStartY = e.touches ? e.touches[0].clientY : e.clientY;
-    popupStartLeft = parseInt(popup.style.left) || popup.getBoundingClientRect().left;
-    popupStartTop = parseInt(popup.style.top) || popup.getBoundingClientRect().top;
-    popup.style.transition = 'none';
-    e.preventDefault();
-};
+        window.startDragFloat = function(e) {
+            if (e.target.matches('button, span, input, textarea, select')) return;
+            isDraggingFloat = true; const btn = document.getElementById('floatBtn');
+            dragStartX = e.touches ? e.touches[0].clientX : e.clientX;
+            dragStartY = e.touches ? e.touches[0].clientY : e.clientY;
+            startLeft = parseInt(btn.style.left) || floatBtnLeft;
+            startTop = parseInt(btn.style.top) || floatBtnTop;
+            btn.style.transition = 'none';
+            e.preventDefault();
+        };
+        window.startDragPopup = function(e) {
+            if (e.target.matches('button, span, input, textarea, select')) return;
+            isDraggingPopup = true; const popup = document.getElementById('toolPopup');
+            dragStartX = e.touches ? e.touches[0].clientX : e.clientX;
+            dragStartY = e.touches ? e.touches[0].clientY : e.clientY;
+            popupStartLeft = parseInt(popup.style.left) || popup.getBoundingClientRect().left;
+            popupStartTop = parseInt(popup.style.top) || popup.getBoundingClientRect().top;
+            popup.style.transition = 'none';
+            e.preventDefault();
+        };
         window.addEventListener('mousemove', function(e) {
             if (isDraggingFloat) { const btn = document.getElementById('floatBtn'); btn.style.left = (startLeft + e.clientX - dragStartX) + 'px'; btn.style.top = (startTop + e.clientY - dragStartY) + 'px'; }
             if (isDraggingPopup) { const popup = document.getElementById('toolPopup'); popup.style.left = (popupStartLeft + e.clientX - dragStartX) + 'px'; popup.style.top = (popupStartTop + e.clientY - dragStartY) + 'px'; }
@@ -896,7 +898,6 @@ window.startDragPopup = function(e) {
                             }
                             const maxScore = extractMaxScore(entry.dateColumns[idx]);
                             displayVal = val;
-                            // 纯数字且满分>0时追加 /满分
                             if (val !== '' && maxScore > 0 && /^\d+(\.\d+)?$/.test(String(val).trim())) {
                                 displayVal = String(val).trim() + '/' + maxScore;
                             }
@@ -992,23 +993,52 @@ window.startDragPopup = function(e) {
 
         window.exportStatImage = function() {
             const wrapper = document.getElementById('statTableWrapper');
+            const table = wrapper.querySelector('.stat-table');
             const origStyle = wrapper.getAttribute('style') || '';
+            const origTblStyle = table ? table.getAttribute('style') || '' : '';
+            const origParentStyle = wrapper.parentNode.style.cssText;
+
+            // 解除所有限制，让表格完全展开
+            wrapper.parentNode.style.overflow = 'visible';
+            wrapper.parentNode.style.maxHeight = 'none';
             wrapper.style.overflow = 'visible';
             wrapper.style.maxHeight = 'none';
-            wrapper.style.width = '1100px';
+            wrapper.style.width = 'auto';
             wrapper.style.maxWidth = 'none';
-            wrapper.style.margin = '0 auto';
-            html2canvas(wrapper, { scale: 2, backgroundColor: '#ffffff' }).then(canvas => {
-                wrapper.setAttribute('style', origStyle);
-                canvas.toBlob(blob => {
-                    const target = document.getElementById('statTarget').value;
-                    const title = `统计表_${target || '未选择'}`;
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(blob);
-                    a.download = `${title}.png`;
-                    a.click();
+            wrapper.style.margin = '0';
+            if (table) {
+                table.style.setProperty('table-layout', 'auto', 'important');
+                table.style.setProperty('width', 'auto', 'important');
+            }
+
+            // 短暂延迟，确保样式生效
+            setTimeout(() => {
+                const w = wrapper.scrollWidth + 4;
+                const h = wrapper.scrollHeight + 4;
+
+                html2canvas(wrapper, {
+                    scale: 2,
+                    backgroundColor: '#ffffff',
+                    width: w,
+                    height: h,
+                    windowWidth: w,
+                    windowHeight: h
+                }).then(canvas => {
+                    // 恢复样式
+                    wrapper.setAttribute('style', origStyle);
+                    if (table) table.setAttribute('style', origTblStyle);
+                    wrapper.parentNode.style.cssText = origParentStyle;
+
+                    canvas.toBlob(blob => {
+                        const target = document.getElementById('statTarget').value;
+                        const title = `统计表_${target || '未选择'}`;
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = `${title}.png`;
+                        a.click();
+                    });
                 });
-            });
+            }, 50);
         };
 
         // 启动

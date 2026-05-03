@@ -236,7 +236,8 @@
         // ========== 撤销/重做 ==========
         function pushUndo(){const cls=getCurrentClass();if(!cls)return;const key=feedbackKey(cls.id,currentDateLabel);const entry=feedback[key];if(!entry)return;undoStack.push({key,snapshot:JSON.parse(JSON.stringify(entry))});if(undoStack.length>MAX_UNDO)undoStack.shift();redoStack.length=0;}
         function undo(){if(!undoStack.length)return;const cls=getCurrentClass();if(!cls)return;const currentKey=feedbackKey(cls.id,currentDateLabel);const currentEntry=feedback[currentKey];if(!currentEntry)return;redoStack.push({key:currentKey,snapshot:JSON.parse(JSON.stringify(currentEntry))});const item=undoStack.pop();feedback[item.key]=item.snapshot;saveFeedbackDebounced();renderFeedbackTable();activeCell=null;}
-        function redo(){if(!redoStack.length)return;const cls=getCurrentClass();if(!cls)return;const currentKey=feedbackKey(cls.id,currentDateLabel);const currentEntry=feedback[currentKey];if(!currentEntry)return;undoStack.push({key:currentKey,snapshot:JSON.parse(JSON.stringify(currentEntry))});const item=redoStack.pop();feedback[item.key]=item.snapshot;saveFeedbackDebounced();renderFeedbackTable();activeCell=null;}
+        function redo(){if(!redoStack.length)return;const cls=getCurrentClass();if(!cls)return;const currentKey=feedbackKey(cls.id,currentDateLabel);const currentEntry=feedback[currentKey];if(!currentEntry)return;undoStack.push({key:currentKey,snapshot:JSON.parse(JSON.stringify(currentEntry))});const item=redoStack.pop();feedback[item.key]=item.snapshot;saveFeedbackDebounced();renderFeedbackTable();activeCell=null;}window.undo = undo;
+window.redo = redo;
 
         // ========== 反馈数据 ==========
         function initFeedbackEntry(date){

@@ -429,37 +429,20 @@
             const blob=new Blob([html],{type:'application/vnd.ms-excel'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${title}.xls`;a.click();
         };
         window.printTable=function(){window.print();};
-        window.exportAsImage = function(){
-    const wrapper = document.getElementById('fullTableWrapper');
-    const table = document.getElementById('fullTable');
-    const origW = wrapper.getAttribute('style') || '';
-    const origT = table ? table.getAttribute('style') || '' : '';
-
-    // 临时解除尺寸限制，设置横屏宽度
-    wrapper.style.padding = '20px';
-    wrapper.style.overflow = 'visible';
-    wrapper.style.maxHeight = 'none';
-    wrapper.style.width = '1100px';      // 强制横屏宽度
-    wrapper.style.margin = '0 auto';
-    if (table) {
-        table.style.minWidth = 'auto';
-        table.style.width = '100%';      // 表格填满容器
-    }
-
-    html2canvas(wrapper, { scale: 2, backgroundColor: '#ffffff' }).then(canvas => {
-        // 恢复原始样式
-        wrapper.setAttribute('style', origW);
-        if (table) table.setAttribute('style', origT);
-
-        canvas.toBlob(blob => {
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = (document.getElementById('fullTableTitleInput')?.value || '反馈表') + '.png';
-            a.click();
-        });
-    });
-};
-
+         window.exportAsImage=function(){
+            const wrapper=document.getElementById('fullTableWrapper'); const table=document.getElementById('fullTable');
+            const origW=wrapper.getAttribute('style')||'',origT=table.getAttribute('style')||'';
+            wrapper.style.padding='20px';wrapper.style.overflow='visible';wrapper.style.maxHeight='none';wrapper.style.width='fit-content';wrapper.style.margin='0 auto';
+            table.style.minWidth='auto';table.style.width='auto';
+            table.querySelectorAll('th:first-child, td:first-child').forEach(cell=>cell.style.minWidth='32px');
+            table.querySelectorAll('th:nth-child(2), td:nth-child(2)').forEach(cell=>cell.style.minWidth='70px');
+            table.querySelectorAll('th:not(:first-child):not(:nth-child(2)), td:not(:first-child):not(:nth-child(2))').forEach(cell=>cell.style.minWidth='90px');
+            html2canvas(wrapper,{scale:2,backgroundColor:'#ffffff'}).then(canvas=>{
+                table.querySelectorAll('th,td').forEach(cell=>{cell.style.minWidth='';});
+                wrapper.setAttribute('style',origW);table.setAttribute('style',origT);
+                canvas.toBlob(blob=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(document.getElementById('fullTableTitleInput')?.value||'反馈表')+'.png';a.click();});
+            });
+        };
         // ========== 分析模块 ==========
         function findColumnIndexAndMax(entry, keyword) {
             if (!entry || !entry.dateColumns) return { idx: -1, maxScore: 0 };

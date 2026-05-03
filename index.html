@@ -103,19 +103,21 @@
         }
 
         /* 移动端滚动优化 */
-        @media (max-width: 600px) {
-            .stat-table {
-                font-size: 11px;
-            }
-            .stat-table th,
-            .stat-table td {
-                padding: 4px 4px;
-                white-space: nowrap;
-            }
-            .table-wrapper {
-                -webkit-overflow-scrolling: touch;
-            }
-        }
+       @media (max-width: 600px) {
+    .stat-table {
+        table-layout: auto !important;
+        width: auto !important;
+        font-size: 11px;
+    }
+    .stat-table th,
+    .stat-table td {
+        padding: 4px 4px;
+        white-space: nowrap;
+    }
+    .table-wrapper {
+        -webkit-overflow-scrolling: touch;
+    }
+}
     </style>
 </head>
 <body>

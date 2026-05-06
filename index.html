@@ -62,31 +62,31 @@
         .header {
             background: var(--card-bg);
             border-radius: var(--radius);
-            padding: 14px 20px;
+            padding: 8px 12px;
             box-shadow: var(--shadow-md);
             display: flex;
             align-items: center;
             justify-content: space-between;
             border: none;
-            flex-wrap: wrap;
-            gap: 10px;
+            gap: 6px;
         }
-        .class-selector { display: flex; align-items: center; gap: 10px; }
-        .class-selector > span:first-child { font-size: 1.3rem; }
+        .class-selector { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; }
+        .class-selector > span:first-child { font-size: 1rem; }
         .class-name-display {
             font-weight: 600;
             font-size: 12px;
             color: var(--accent);
             cursor: pointer;
-            padding: 6px 12px;
+            padding: 5px 10px;
             border-radius: var(--btn-radius);
             background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-            max-width: 160px;
+            max-width: 120px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             transition: var(--transition);
             border: 1px solid var(--table-border);
+            line-height: 1.4;
         }
         .class-name-display:hover { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); }
 
@@ -165,8 +165,8 @@
             display: flex;
             gap: 4px;
             background: var(--card-bg);
-            border-radius: var(--radius);
-            padding: 6px;
+            border-radius: 9999px;
+            padding: 5px;
             box-shadow: var(--shadow-lg);
             border: none;
             position: fixed;
@@ -214,7 +214,6 @@
             .input { padding: 7px 10px; font-size: 12px; }
             .date-select { padding: 7px 10px; font-size: 12px; }
             .date-action-btn { width: 28px; height: 28px; font-size: 12px; }
-            .class-name-display { padding: 6px 12px; font-size: 0.85rem; }
         }
         /* ===== TABLE ===== */
         .table-wrapper {
@@ -251,9 +250,9 @@
         }
         tbody tr:nth-child(even) { background-color: var(--table-row-even); }
         tbody tr:hover { background-color: #eff6ff; }
-        th:first-child, td:first-child { position: sticky; left: 0; z-index: 3; width: 60px; min-width: 60px; background-color: inherit; }
+        th:first-child, td:first-child { position: sticky; left: 0; z-index: 3; width: 45px; min-width: 45px; padding: 6px 6px; background-color: inherit; }
         th:first-child { z-index: 5; background-color: var(--table-header-bg); }
-        th:nth-child(2), td:nth-child(2) { position: sticky; left: 60px; z-index: 3; width: 80px; min-width: 80px; background-color: inherit; }
+        th:nth-child(2), td:nth-child(2) { position: sticky; left: 45px; z-index: 3; width: 80px; min-width: 80px; background-color: inherit; }
         th:nth-child(2) { z-index: 5; background-color: var(--table-header-bg); }
         .cell-input {
             border: 1.5px solid transparent;
@@ -457,12 +456,17 @@
             cursor: pointer;
             box-shadow: var(--shadow);
             transition: var(--transition);
+            -webkit-tap-highlight-color: transparent;
         }
         .class-card:hover {
             background: #eff6ff;
             transform: translateX(3px);
             box-shadow: var(--shadow-md);
         }
+        .class-card-wrapper { transition: transform 0.25s ease; }
+        .class-card-wrapper.dragging { opacity: 0.3; z-index: 999; transition: none; }
+        .class-card-wrapper.drag-shift-down { transform: translateY(calc(100% + 8px)); }
+        .class-card-wrapper.drag-shift-up { transform: translateY(calc(-100% - 8px)); }
         .class-card-name { font-weight: 600; color: var(--primary); font-size: 14px; }
         .student-modal {
             background: var(--card-bg);
@@ -476,8 +480,14 @@
             gap: 12px;
             max-width: 100%;
             overflow-x: auto;
+            -webkit-tap-highlight-color: transparent;
         }
-        .student-modal.open { display: flex; }
+        .student-modal.open { display: flex; animation: modalFadeIn 0.2s ease-out; }
+        .class-card, .class-card * { -webkit-tap-highlight-color: transparent; }
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
         .student-list-item {
             display: flex;
             justify-content: space-between;
@@ -584,8 +594,10 @@
         /* ===== FULL TABLE WRAP ===== */
         #fullTable tbody td { white-space: normal; word-break: break-word; max-width: 180px; min-width: 100px; }
         #fullTable th { white-space: nowrap; min-width: 100px; }
-        #fullTable td:first-child { position: static; min-width: 60px; width: 60px; white-space: nowrap; }
-        #fullTable td:nth-child(2) { position: static; min-width: 80px; width: 80px; white-space: nowrap; }
+        #fullTable th:first-child { min-width: 45px; width: 45px; padding: 6px 6px; z-index: 5; }
+        #fullTable th:nth-child(2) { min-width: 80px; width: 80px; z-index: 5; }
+        #fullTable td:first-child { position: sticky; left: 0; min-width: 45px; width: 45px; white-space: nowrap; z-index: 3; background-color: inherit; }
+        #fullTable td:nth-child(2) { position: sticky; left: 45px; min-width: 80px; width: 80px; white-space: nowrap; z-index: 3; background-color: inherit; }
 
         /* ===== ANIMATIONS ===== */
         .view { animation: fadeIn 0.25s ease-out; }
@@ -598,8 +610,8 @@
 <body>
     <div class="container" id="app">
         <div class="header">
-            <div class="class-selector"><span>🏫</span><span class="class-name-display" id="currentClassName" onclick="switchView('classes')">未选择</span><button class="btn btn-xs" onclick="switchView('classes')">切换</button></div>
-            <div><button class="btn btn-sm btn-outline" onclick="exportAllData()">💾 备份</button><button class="btn btn-sm btn-outline" onclick="importAllDataPrompt()">📥 恢复</button></div>
+            <div class="class-selector"><span>🏫</span><span class="class-name-display" id="currentClassName" onclick="switchView('classes')">未选择</span></div>
+            <div style="display:flex;gap:6px;flex-shrink:0;"><button class="btn btn-xs btn-outline" onclick="exportAllData()">💾 备份</button><button class="btn btn-xs btn-outline" onclick="importAllDataPrompt()">📥 恢复</button></div>
         </div>
         <div id="view-classes" class="view"></div>
         <div id="view-feedback" class="view" style="display:none;"></div>
@@ -864,8 +876,8 @@
 
         // ========== 班级管理 ==========
         function renderClassList(){
-            document.getElementById('classListContainer').innerHTML=classes.length?classes.map(c=>`
-                <div><div class="class-card" onclick="enterFeedbackForClass('${c.id}')">
+            document.getElementById('classListContainer').innerHTML=classes.length?classes.map((c,i)=>`
+                <div class="class-card-wrapper" data-index="${i}"><div class="class-card" onclick="enterFeedbackForClass('${c.id}')">
                     <span class="class-card-name">${escapeHtml(c.name)}</span>
                     <div onclick="event.stopPropagation()" style="display:flex; gap:4px; flex-wrap:wrap;">
                         <button class="btn btn-xs" onclick="toggleStudentModal('${c.id}')">👥 名单</button>
@@ -873,8 +885,111 @@
                         <button class="btn btn-xs" style="color:var(--danger);" onclick="deleteClass('${c.id}')">🗑️</button>
                     </div>
                 </div><div class="student-modal" id="studentModal-${c.id}"></div></div>`).join(''):'<div class="empty-state">暂无班级</div>';
+            document.querySelectorAll('.class-card-wrapper').forEach(el => {
+                el.addEventListener('mousedown', startClassDrag);
+                el.addEventListener('touchstart', startClassDrag, { passive: false });
+            });
         }
-        window.enterFeedbackForClass=function(classId){currentClassId=classId;const dates=getDateList();currentDateLabel=dates.length?dates[0]:'Day1';switchView('feedback');};
+        let classDragData = null;
+        let dragLongPressTimer = null;
+        let dragSuppressClick = false;
+
+        function startClassDrag(e){
+            if(e.target.closest('button')||e.target.closest('.student-modal'))return;
+            const w = e.currentTarget;
+            // 长按300ms启动拖拽
+            dragLongPressTimer = setTimeout(() => {
+                const rects = Array.from(document.querySelectorAll('.class-card-wrapper')).map(el => ({ el, idx: parseInt(el.dataset.index), h: el.offsetHeight }));
+                classDragData = {
+                    el: w, idx: parseInt(w.dataset.index), rects,
+                    startY: e.clientY !== undefined ? e.clientY : e.touches[0].clientY,
+                    currentTargetIdx: parseInt(w.dataset.index), moved: false
+                };
+                w.classList.add('dragging');
+                w.style.transform = '';
+                document.addEventListener('mousemove', onClassDragMove);
+                document.addEventListener('mouseup', onClassDragEnd);
+                document.addEventListener('touchmove', onClassDragMove, { passive: false });
+                document.addEventListener('touchend', onClassDragEnd);
+            }, 100);
+            // 移动/释放时取消长按
+            const clearTimer = () => { if(dragLongPressTimer){ clearTimeout(dragLongPressTimer); dragLongPressTimer = null; } };
+            document.addEventListener('mousemove', clearTimer, { once: true });
+            document.addEventListener('mouseup', () => clearTimer(), { once: true });
+            document.addEventListener('touchmove', clearTimer, { once: true });
+            document.addEventListener('touchend', () => clearTimer(), { once: true });
+        }
+
+        function animateShift(idx, targetIdx, rects){
+            rects.forEach(r => {
+                if(r.idx === classDragData.idx)return;
+                let shiftY = 0;
+                if(classDragData.idx < targetIdx) { // 向下拖
+                    if(r.idx > classDragData.idx && r.idx <= targetIdx) shiftY = -rects[classDragData.idx].h - 8;
+                } else if(classDragData.idx > targetIdx) { // 向上拖
+                    if(r.idx < classDragData.idx && r.idx >= targetIdx) shiftY = rects[classDragData.idx].h + 8;
+                }
+                if(r.el !== classDragData.el) r.el.style.transform = shiftY ? `translateY(${shiftY}px)` : '';
+            });
+        }
+
+        function onClassDragMove(e){
+            if(!classDragData)return;
+            e.preventDefault();
+            const cy = e.clientY !== undefined ? e.clientY : e.touches[0].clientY;
+            const dy = Math.abs(cy - classDragData.startY);
+            if(!classDragData.moved && dy < 5)return;
+            classDragData.moved = true;
+            // 计算手指应该插入的位置（排除拖拽中的卡片，用中点判断）
+            const allWrappers = document.querySelectorAll('.class-card-wrapper');
+            let targetIdx = allWrappers.length - 1;
+            for(let i = 0; i < allWrappers.length; i++) {
+                if(allWrappers[i] === classDragData.el) continue;
+                const r = allWrappers[i].getBoundingClientRect();
+                if(cy < r.top + r.height / 2) { targetIdx = i; break; }
+            }
+            if(targetIdx !== classDragData.currentTargetIdx){
+                classDragData.currentTargetIdx = targetIdx;
+                // 让其他卡片让位
+                const srcH = classDragData.rects[classDragData.idx].h + 8;
+                allWrappers.forEach((el, i) => {
+                    if(i === classDragData.idx)return;
+                    let shiftY = 0;
+                    if(classDragData.idx < targetIdx && i > classDragData.idx && i <= targetIdx) shiftY = -srcH;
+                    if(classDragData.idx > targetIdx && i < classDragData.idx && i >= targetIdx) shiftY = srcH;
+                    el.style.transform = shiftY ? `translateY(${shiftY}px)` : '';
+                });
+            }
+            // 拖拽中的卡片跟随手指
+            const offsetY = cy - classDragData.startY;
+            classDragData.el.style.transform = `translateY(${offsetY}px)`;
+            classDragData.el.style.zIndex = '999';
+        }
+
+        function onClassDragEnd(e){
+            if(!classDragData)return;
+            document.removeEventListener('mousemove', onClassDragMove);
+            document.removeEventListener('mouseup', onClassDragEnd);
+            document.removeEventListener('touchmove', onClassDragMove);
+            document.removeEventListener('touchend', onClassDragEnd);
+            classDragData.el.classList.remove('dragging');
+            const toIdx = classDragData.currentTargetIdx;
+            const fromIdx = classDragData.idx;
+            // 清除所有transform
+            document.querySelectorAll('.class-card-wrapper').forEach(w => w.style.transform = '');
+            document.querySelectorAll('.class-card-wrapper').forEach(w => w.style.zIndex = '');
+            if(classDragData.moved){
+                dragSuppressClick = true;
+                if(fromIdx !== toIdx){
+                    const item = classes.splice(fromIdx, 1)[0];
+                    classes.splice(toIdx, 0, item);
+                    dbSet('classes', classes);
+                    renderClassList();
+                }
+            }
+            classDragData = null;
+        }
+        window.enterFeedbackForClass=function(classId){if(dragSuppressClick){dragSuppressClick=false;return;}currentClassId=classId;const dates=getDateList();currentDateLabel=dates.length?dates[0]:'Day1';switchView('feedback');};
         window.toggleStudentModal=function(classId){const modal=document.getElementById(`studentModal-${classId}`);if(!modal)return;if(activeStudentModal===classId){modal.classList.remove('open');activeStudentModal=null;}else{document.querySelectorAll('.student-modal').forEach(m=>m.classList.remove('open'));modal.classList.add('open');activeStudentModal=classId;renderStudentListInModal(classId);}};
         function renderStudentListInModal(classId){const cls=classes.find(c=>c.id===classId);if(!cls)return;const students=cls.students||[];document.getElementById(`studentModal-${classId}`).innerHTML=`
             <div style="display:flex;flex-wrap:wrap;gap:6px">
@@ -1252,7 +1367,7 @@
         // ========== 页面构建 ==========
         function buildAllViews(){
             document.getElementById('view-classes').innerHTML=`<div class="card"><div class="card-title">📚 班级管理</div><div style="display:flex;gap:6px"><input class="input" id="newClassName" placeholder="新班级名称" style="flex:1"><button class="btn" onclick="addClass()">➕ 新建</button></div><div id="classListContainer"></div></div>`;
-            document.getElementById('view-feedback').innerHTML=`<div class="card"><div class="card-title">📝 每日反馈</div><div class="feedback-actions"><span style="font-size:13px;">新建课次：</span><input class="input" id="dateLabelInput" style="width:100px; padding:6px 10px; font-size:13px;" placeholder="Day1"><button class="btn btn-sm" onclick="goToDate()">+ 新建</button><button class="btn btn-sm" onclick="undo()" style="background:#2563eb">↩️ 撤销</button></div><div id="dateSelector" class="date-selector-row" style="margin-top:8px;"></div><div style="display:flex;justify-content:space-between;margin-top:10px;"><span id="saveStatus" class="save-indicator">✅ 已自动保存</span><button class="btn btn-outline btn-sm" onclick="switchToFullTable()">📊 完整表格</button></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">🎨 表格样式 ▼</button><div class="collapsible-content"><div class="style-row"><span>表头背景:</span><input type="color" id="styleHeaderBg" onchange="applyStyleColor('headerBg',this.value)"><span>表头文字:</span><input type="color" id="styleHeaderText" onchange="applyStyleColor('headerText',this.value)"><span>边框:</span><input type="color" id="styleBorder" onchange="applyStyleColor('border',this.value)"><span>斑马纹:</span><input type="color" id="styleRowEven" onchange="applyStyleColor('rowEven',this.value)"></div><div class="style-row"><span>行高:</span><input type="number" id="styleRowHeight" min="24" max="60" style="width:60px" onchange="applyRowHeight()"></div></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">📐 列设置 ▼</button><div class="collapsible-content"><div id="columnEditor" style="display:flex;gap:4px;flex-wrap:wrap"></div></div></div><div class="card" style="padding:6px"><div class="table-wrapper"><table id="feedbackTable"><thead id="feedbackTableHead"></thead><tbody id="feedbackTableBody"></tbody></table></div></div>`;
+            document.getElementById('view-feedback').innerHTML=`<div class="card"><div class="card-title">📝 每日反馈</div><div class="feedback-actions"><span style="font-size:13px;">新建课次：</span><input class="input" id="dateLabelInput" style="width:120px;" placeholder="Day1"><button class="btn btn-sm" onclick="goToDate()">+ 新建</button><button class="btn btn-sm" onclick="undo()" style="background:#2563eb">↩️ 撤销</button></div><div id="dateSelector" class="date-selector-row" style="margin-top:8px;"></div><div style="display:flex;justify-content:space-between;margin-top:10px;"><span id="saveStatus" class="save-indicator">✅ 已自动保存</span><button class="btn btn-outline btn-sm" onclick="switchToFullTable()">📊 完整表格</button></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">🎨 表格样式 ▼</button><div class="collapsible-content"><div class="style-row"><span>表头背景:</span><input type="color" id="styleHeaderBg" onchange="applyStyleColor('headerBg',this.value)"><span>表头文字:</span><input type="color" id="styleHeaderText" onchange="applyStyleColor('headerText',this.value)"><span>边框:</span><input type="color" id="styleBorder" onchange="applyStyleColor('border',this.value)"><span>斑马纹:</span><input type="color" id="styleRowEven" onchange="applyStyleColor('rowEven',this.value)"></div><div class="style-row"><span>行高:</span><input type="number" id="styleRowHeight" min="24" max="60" style="width:60px" onchange="applyRowHeight()"></div></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">📐 列设置 ▼</button><div class="collapsible-content"><div id="columnEditor" style="display:flex;gap:4px;flex-wrap:wrap"></div></div></div><div class="card" style="padding:6px"><div class="table-wrapper"><table id="feedbackTable"><thead id="feedbackTableHead"></thead><tbody id="feedbackTableBody"></tbody></table></div></div>`;
             document.getElementById('view-fulltable').innerHTML=`<div class="card"><div class="card-title">📄 完整反馈表</div><div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="switchView('feedback')">↩️ 返回</button><button class="btn btn-sm" onclick="printTable()">🖨️ 打印</button><button class="btn btn-sm" onclick="exportStyledExcel()">📊 Excel</button><button class="btn btn-sm" onclick="exportAsImage()">🖼️ 图片</button></div></div>
             <div class="card" style="padding:6px"><div class="table-wrapper" id="fullTableWrapper"><div class="title-wrapper"><input id="fullTableTitleInput" style="font-size:1.2rem;font-weight:700;border:none;background:transparent;text-align:center;width:100%" placeholder="标题"></div><table id="fullTable"><thead id="fullTableHead"></thead><tbody id="fullTableBody"></tbody></table></div></div>
             <div class="card" style="margin-top:12px">

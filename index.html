@@ -41,7 +41,7 @@
             --table-header-text: #1e40af;
             --table-border: #bfdbfe;
             --table-row-even: #f8fafc;
-            --nav-height: 48px;
+            --nav-height: 52px;
             --transition: 0.2s ease;
         }
         * { margin:0; padding:0; box-sizing:border-box; }
@@ -206,7 +206,7 @@
             color: white;
             box-shadow: 0 2px 8px rgba(37,99,235,0.3);
         }
-        @media (max-width: 400px) { .nav-tab { font-size: 11px; padding: 6px 4px; } .nav-tabs { padding: 4px; } }
+        @media (max-width: 400px) { .nav-tab { font-size: 11px; padding: 10px 6px; } .nav-tabs { padding: 5px; } }
         @media (max-width: 480px) {
             .btn { padding: 7px 14px; font-size: 12px; }
             .btn-sm { padding: 5px 10px; font-size: 11px; }
@@ -465,9 +465,15 @@
         }
         .class-card-wrapper { transition: transform 0.25s ease; }
         .class-card-wrapper.dragging { opacity: 0.3; z-index: 999; transition: none; }
+        .drag-handle {
+            cursor: grab; touch-action: none; user-select: none;
+            font-size: 20px; color: var(--text-muted); flex-shrink: 0;
+            line-height: 1; margin-right: 4px;
+        }
+        .drag-handle:active { cursor: grabbing; }
         .class-card-wrapper.drag-shift-down { transform: translateY(calc(100% + 8px)); }
         .class-card-wrapper.drag-shift-up { transform: translateY(calc(-100% - 8px)); }
-        .class-card-name { font-weight: 600; color: var(--primary); font-size: 14px; }
+        .class-card-name { font-weight: 600; color: var(--primary); font-size: 14px; text-align: left; }
         .student-modal {
             background: var(--card-bg);
             border-radius: var(--radius);
@@ -878,62 +884,41 @@
         function renderClassList(){
             document.getElementById('classListContainer').innerHTML=classes.length?classes.map((c,i)=>`
                 <div class="class-card-wrapper" data-index="${i}"><div class="class-card" onclick="enterFeedbackForClass('${c.id}')">
-                    <span class="class-card-name">${escapeHtml(c.name)}</span>
+                    <span style="display:flex;align-items:center;gap:2px;min-width:0;"><span class="drag-handle">⠿</span><span class="class-card-name">${escapeHtml(c.name)}</span></span>
                     <div onclick="event.stopPropagation()" style="display:flex; gap:4px; flex-wrap:wrap;">
                         <button class="btn btn-xs" onclick="toggleStudentModal('${c.id}')">👥 名单</button>
                         <button class="btn btn-xs" onclick="editClassName('${c.id}')">✏️</button>
                         <button class="btn btn-xs" style="color:var(--danger);" onclick="deleteClass('${c.id}')">🗑️</button>
                     </div>
                 </div><div class="student-modal" id="studentModal-${c.id}"></div></div>`).join(''):'<div class="empty-state">暂无班级</div>';
-            document.querySelectorAll('.class-card-wrapper').forEach(el => {
+            document.querySelectorAll('.drag-handle').forEach(el => {
                 el.addEventListener('mousedown', startClassDrag);
                 el.addEventListener('touchstart', startClassDrag, { passive: false });
+                el.addEventListener('click', e => e.stopPropagation());
             });
         }
         let classDragData = null;
-        let dragLongPressTimer = null;
         let dragSuppressClick = false;
 
         function startClassDrag(e){
-            if(e.target.closest('button')||e.target.closest('.student-modal'))return;
-            const w = e.currentTarget;
-            // 长按300ms启动拖拽
-            dragLongPressTimer = setTimeout(() => {
-                const rects = Array.from(document.querySelectorAll('.class-card-wrapper')).map(el => ({ el, idx: parseInt(el.dataset.index), h: el.offsetHeight }));
-                classDragData = {
-                    el: w, idx: parseInt(w.dataset.index), rects,
-                    startY: e.clientY !== undefined ? e.clientY : e.touches[0].clientY,
-                    currentTargetIdx: parseInt(w.dataset.index), moved: false
-                };
-                w.classList.add('dragging');
-                w.style.transform = '';
-                document.addEventListener('mousemove', onClassDragMove);
-                document.addEventListener('mouseup', onClassDragEnd);
-                document.addEventListener('touchmove', onClassDragMove, { passive: false });
-                document.addEventListener('touchend', onClassDragEnd);
-            }, 100);
-            // 移动/释放时取消长按
-            const clearTimer = () => { if(dragLongPressTimer){ clearTimeout(dragLongPressTimer); dragLongPressTimer = null; } };
-            document.addEventListener('mousemove', clearTimer, { once: true });
-            document.addEventListener('mouseup', () => clearTimer(), { once: true });
-            document.addEventListener('touchmove', clearTimer, { once: true });
-            document.addEventListener('touchend', () => clearTimer(), { once: true });
+            e.preventDefault();
+            e.stopPropagation();
+            const w = e.currentTarget.closest('.class-card-wrapper');
+            if(!w)return;
+            const rects = Array.from(document.querySelectorAll('.class-card-wrapper')).map(el => ({ el, idx: parseInt(el.dataset.index), h: el.offsetHeight }));
+            classDragData = {
+                el: w, idx: parseInt(w.dataset.index), rects,
+                startY: e.clientY !== undefined ? e.clientY : e.touches[0].clientY,
+                currentTargetIdx: parseInt(w.dataset.index), moved: false
+            };
+            w.classList.add('dragging');
+            document.addEventListener('mousemove', onClassDragMove);
+            document.addEventListener('mouseup', onClassDragEnd);
+            document.addEventListener('touchmove', onClassDragMove, { passive: false });
+            document.addEventListener('touchend', onClassDragEnd);
         }
 
-        function animateShift(idx, targetIdx, rects){
-            rects.forEach(r => {
-                if(r.idx === classDragData.idx)return;
-                let shiftY = 0;
-                if(classDragData.idx < targetIdx) { // 向下拖
-                    if(r.idx > classDragData.idx && r.idx <= targetIdx) shiftY = -rects[classDragData.idx].h - 8;
-                } else if(classDragData.idx > targetIdx) { // 向上拖
-                    if(r.idx < classDragData.idx && r.idx >= targetIdx) shiftY = rects[classDragData.idx].h + 8;
-                }
-                if(r.el !== classDragData.el) r.el.style.transform = shiftY ? `translateY(${shiftY}px)` : '';
-            });
-        }
-
-        function onClassDragMove(e){
+	        function onClassDragMove(e){
             if(!classDragData)return;
             e.preventDefault();
             const cy = e.clientY !== undefined ? e.clientY : e.touches[0].clientY;
@@ -1367,7 +1352,7 @@
         // ========== 页面构建 ==========
         function buildAllViews(){
             document.getElementById('view-classes').innerHTML=`<div class="card"><div class="card-title">📚 班级管理</div><div style="display:flex;gap:6px"><input class="input" id="newClassName" placeholder="新班级名称" style="flex:1"><button class="btn" onclick="addClass()">➕ 新建</button></div><div id="classListContainer"></div></div>`;
-            document.getElementById('view-feedback').innerHTML=`<div class="card"><div class="card-title">📝 每日反馈</div><div class="feedback-actions"><span style="font-size:13px;">新建课次：</span><input class="input" id="dateLabelInput" style="width:120px;" placeholder="Day1"><button class="btn btn-sm" onclick="goToDate()">+ 新建</button><button class="btn btn-sm" onclick="undo()" style="background:#2563eb">↩️ 撤销</button></div><div id="dateSelector" class="date-selector-row" style="margin-top:8px;"></div><div style="display:flex;justify-content:space-between;margin-top:10px;"><span id="saveStatus" class="save-indicator">✅ 已自动保存</span><button class="btn btn-outline btn-sm" onclick="switchToFullTable()">📊 完整表格</button></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">🎨 表格样式 ▼</button><div class="collapsible-content"><div class="style-row"><span>表头背景:</span><input type="color" id="styleHeaderBg" onchange="applyStyleColor('headerBg',this.value)"><span>表头文字:</span><input type="color" id="styleHeaderText" onchange="applyStyleColor('headerText',this.value)"><span>边框:</span><input type="color" id="styleBorder" onchange="applyStyleColor('border',this.value)"><span>斑马纹:</span><input type="color" id="styleRowEven" onchange="applyStyleColor('rowEven',this.value)"></div><div class="style-row"><span>行高:</span><input type="number" id="styleRowHeight" min="24" max="60" style="width:60px" onchange="applyRowHeight()"></div></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">📐 列设置 ▼</button><div class="collapsible-content"><div id="columnEditor" style="display:flex;gap:4px;flex-wrap:wrap"></div></div></div><div class="card" style="padding:6px"><div class="table-wrapper"><table id="feedbackTable"><thead id="feedbackTableHead"></thead><tbody id="feedbackTableBody"></tbody></table></div></div>`;
+            document.getElementById('view-feedback').innerHTML=`<div class="card" style="padding:10px 12px;"><div class="card-title">📝 每日反馈</div><div class="feedback-actions"><span style="font-size:12px;">新建课次：</span><input class="input" id="dateLabelInput" style="width:72px;" placeholder="Day1"><button class="btn btn-xs" onclick="goToDate()">+ 新建</button><button class="btn btn-xs" onclick="undo()" style="background:#2563eb">↩️ 撤销</button></div><div id="dateSelector" class="date-selector-row" style="margin-top:6px;"></div><div style="display:flex;justify-content:space-between;margin-top:6px;"><span id="saveStatus" class="save-indicator">✅ 已自动保存</span><button class="btn btn-outline btn-xs" onclick="switchToFullTable()">📊 完整表格</button></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">🎨 表格样式 ▼</button><div class="collapsible-content"><div class="style-row"><span>表头背景:</span><input type="color" id="styleHeaderBg" onchange="applyStyleColor('headerBg',this.value)"><span>表头文字:</span><input type="color" id="styleHeaderText" onchange="applyStyleColor('headerText',this.value)"><span>边框:</span><input type="color" id="styleBorder" onchange="applyStyleColor('border',this.value)"><span>斑马纹:</span><input type="color" id="styleRowEven" onchange="applyStyleColor('rowEven',this.value)"></div><div class="style-row"><span>行高:</span><input type="number" id="styleRowHeight" min="24" max="60" style="width:60px" onchange="applyRowHeight()"></div></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">📐 列设置 ▼</button><div class="collapsible-content"><div id="columnEditor" style="display:flex;gap:4px;flex-wrap:wrap"></div></div></div><div class="card" style="padding:6px"><div class="table-wrapper"><table id="feedbackTable"><thead id="feedbackTableHead"></thead><tbody id="feedbackTableBody"></tbody></table></div></div>`;
             document.getElementById('view-fulltable').innerHTML=`<div class="card"><div class="card-title">📄 完整反馈表</div><div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="switchView('feedback')">↩️ 返回</button><button class="btn btn-sm" onclick="printTable()">🖨️ 打印</button><button class="btn btn-sm" onclick="exportStyledExcel()">📊 Excel</button><button class="btn btn-sm" onclick="exportAsImage()">🖼️ 图片</button></div></div>
             <div class="card" style="padding:6px"><div class="table-wrapper" id="fullTableWrapper"><div class="title-wrapper"><input id="fullTableTitleInput" style="font-size:1.2rem;font-weight:700;border:none;background:transparent;text-align:center;width:100%" placeholder="标题"></div><table id="fullTable"><thead id="fullTableHead"></thead><tbody id="fullTableBody"></tbody></table></div></div>
             <div class="card" style="margin-top:12px">

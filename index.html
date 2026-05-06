@@ -12,71 +12,527 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         :root {
-            --primary: #2c3e50; --accent: #4A6FA5; --bg: #f0f3f7; --card-bg: #ffffff; --text: #1e293b; --text-light: #475569;
-            --border: #cbd5e1; --shadow: 0 4px 12px rgba(0,0,0,0.05); --radius: 16px; --input-bg: #f8fafc; --danger: #b91c1c;
-            --success: #047857; --table-header-bg: #d9f0e1; --table-header-text: #1e4620; --table-border: #b8d4be;
-            --table-row-even: #f8fafc; --nav-height: 70px;
+            /* 蓝白配色风格 */
+            --primary: #1e293b;
+            --primary-light: #1e3a5f;
+            --accent: #2563eb;
+            --accent-light: #93c5fd;
+            --accent-gradient: linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%);
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --text-muted: #94a3b8;
+            --border: #e2e8f0;
+            --border-light: #f1f5f9;
+            --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.06), 0 4px 6px -2px rgba(0,0,0,0.03);
+            --radius: 16px;
+            --radius-sm: 12px;
+            --radius-xs: 8px;
+            --btn-radius: 9999px;
+            --input-radius: 9999px;
+            --input-bg: #f8fafc;
+            --danger: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --table-header-bg: #eff6ff;
+            --table-header-text: #1e40af;
+            --table-border: #bfdbfe;
+            --table-row-even: #f8fafc;
+            --nav-height: 70px;
+            --transition: 0.2s ease;
         }
         * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding-bottom: calc(var(--nav-height) + 2px); }
-        .container { width: 100%; max-width: 960px; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
-        .header { background: var(--card-bg); border-radius: var(--radius); padding: 10px 14px; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--border); flex-wrap: wrap; gap: 6px; }
-        .class-selector { display: flex; align-items: center; gap: 6px; }
-        .class-name-display { font-weight: 700; font-size: 1rem; color: var(--primary); cursor: pointer; padding: 4px 8px; border-radius: 8px; background: #f1f5f9; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .btn { background: var(--accent); color: white; border: none; padding: 6px 12px; border-radius: 30px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: 0.2s; box-shadow: 0 2px 8px rgba(74,111,165,0.3); white-space: nowrap; }
-        .btn:active { transform: scale(0.96); }
-        .btn-outline { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); box-shadow: none; }
-        .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 20px; }
-        .btn-xs { padding: 3px 8px; font-size: 11px; background: #e2e8f0; color: var(--text); box-shadow: none; border-radius: 16px; }
-        .card { background: var(--card-bg); border-radius: var(--radius); padding: 12px; box-shadow: var(--shadow); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
-        .card-title { font-size: 1.1rem; font-weight: 700; color: var(--primary); text-align: center; }
-        .nav-tabs { display: flex; flex-wrap: wrap; gap: 6px; background: rgba(255,255,255,0.95); border-radius: 40px; padding: 8px 10px; box-shadow: var(--shadow); border: 1px solid var(--border); position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); width: calc(100% - 32px); max-width: 500px; z-index: 20; justify-content: center; }
-        .nav-tab { flex: 1 1 auto; text-align: center; padding: 10px 8px; border-radius: 30px; font-weight: 600; font-size: 15px; color: var(--text-light); cursor: pointer; background: transparent; border: none; display: flex; flex-direction: column; align-items: center; gap: 2px; white-space: nowrap; min-width: 0; -webkit-tap-highlight-color: transparent; outline: none; user-select: none;}
-        .nav-tab.active { background: var(--accent); color: white; }
-        @media (max-width: 400px) { .nav-tab { font-size: 13px; padding: 8px 6px; } }
-        .table-wrapper { overflow: auto; border-radius: 10px; border: 1px solid var(--table-border); max-height: 60vh; position: relative; background: white; }
-        table { border-collapse: collapse; font-size: 13px; background: white; width: auto; min-width: 100%; table-layout: auto; }
-        th { background: var(--table-header-bg); color: var(--table-header-text); font-weight: 600; padding: 6px 8px; text-align: center; border: 1px solid var(--table-border); white-space: nowrap; position: sticky; top: 0; z-index: 2; font-size: 13px; }
-        td { padding: 6px 8px; text-align: center; border: 1px solid var(--table-border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
-        tbody tr:nth-child(even) { background-color: var(--table-row-even); }
-        th:first-child, td:first-child { position: sticky; left: 0; z-index: 3; width: 36px; min-width: 36px; background-color: inherit; }
-        th:first-child { z-index: 5; background-color: var(--table-header-bg); }
-        th:nth-child(2), td:nth-child(2) { position: sticky; left: 36px; z-index: 3; width: 80px; min-width: 80px; background-color: inherit; }
-        th:nth-child(2) { z-index: 5; background-color: var(--table-header-bg); }
-        .cell-input { border: 1px solid transparent; background: transparent; padding: 4px 6px; font-size: 13px; text-align: center; border-radius: 4px; outline: none; width: 100%; box-sizing: border-box; }
-        .cell-input:focus { border-color: var(--accent); background: #fff; box-shadow: 0 0 0 2px rgba(74,111,165,0.2); }
-        .save-indicator { font-size: 11px; color: var(--success); font-weight: 600; }
-        .empty-state { text-align: center; padding: 20px; color: var(--text-light); font-size: 13px; }
-        .th-input { width: 100%; border: none; background: transparent; font-weight: 500; text-align: center; color: inherit; font-size: inherit; outline: none; padding: 2px; }
-        .th-input:focus { background: rgba(255,255,255,0.6); border-radius: 4px; }
-        .date-chip { background: var(--input-bg); padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 12px; border: 1.5px solid var(--border); cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
-        .date-chip.active { background: var(--accent); color: white; border-color: var(--accent); }
-        .date-chip .delete-date { cursor: pointer; font-weight: bold; margin-left: 4px; color: inherit; opacity: 0.7; }
-        .style-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; font-size: 12px; }
-        .capsule-btn { background: #f1f5f9; border: 1px solid var(--border); border-radius: 30px; padding: 8px 16px; font-weight: 600; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; width: 100%; transition: background 0.2s; color: var(--text); }
-        .collapsible { margin-bottom: 6px; }
-        .collapsible-content { padding: 10px; background: var(--card-bg); border-radius: 0 0 var(--radius) var(--radius); box-shadow: none; margin-top: 0; border-top: none; border: 1px solid var(--border); display: none; }
-        .float-btn { position: fixed; z-index: 9999; width: 44px; height: 44px; border-radius: 50%; background: var(--accent); color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: none; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; touch-action: none; user-select: none; }
-        .tool-popup { position: fixed; z-index: 9998; background: white; border-radius: 16px; box-shadow: 0 6px 20px rgba(0,0,0,0.2); padding: 12px; display: none; flex-direction: column; gap: 8px; max-width: 320px; width: 90%; touch-action: none; user-select: none; }
-        .tool-popup.open { display: flex; }
-        .popup-header { display: flex; justify-content: space-between; align-items: center; cursor: move; }
-        .close-popup { background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-light); }
-        .quick-tag { padding: 5px 10px; border-radius: 16px; font-size: 12px; font-weight: 600; cursor: pointer; background: #e2e8f0; color: var(--text); white-space: nowrap; }
-        .color-dot { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
-        .tool-edit-panel { display: none; flex-direction: column; gap: 6px; }
-        .class-card { display: flex; justify-content: space-between; align-items: center; background: var(--input-bg); border-radius: 12px; padding: 8px 12px; border-left: 5px solid var(--accent); margin-bottom: 6px; cursor: pointer; }
-        .class-card:hover { background: #e9eef3; }
-        .student-modal { background: var(--card-bg); border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); margin-top: 8px; padding: 12px; border: 1px solid var(--border); display: none; flex-direction: column; gap: 10px; max-width: 100%; overflow-x: auto; }
-        .student-modal.open { display: flex; }
-        .student-list-item { display: flex; justify-content: space-between; align-items: center; background: var(--input-bg); border-radius: 10px; padding: 8px 12px; margin-bottom: 4px; border: 1px solid var(--border); }
-        .check-group { display: flex; flex-wrap: wrap; gap: 8px; }
-        .check-group label { display: flex; align-items: center; gap: 4px; font-size: 13px; }
-        .chart-desc { font-size: 12px; color: var(--text-light); margin-top: 4px; text-align: center; }
-        .feedback-actions { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
-        .ai-textarea { width: 100%; padding: 8px; border-radius: 12px; border: 1px solid var(--border); resize: vertical; }
-        .input { padding: 4px 8px; border-radius: 12px; border: 1px solid var(--border); font-size: 12px; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding-bottom: calc(var(--nav-height) + 16px);
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { width: 100%; max-width: 1100px; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
 
-        /* 统计表专用样式：PC 端等宽，移动端可滚动 */
+        /* ===== HEADER ===== */
+        .header {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 14px 20px;
+            box-shadow: var(--shadow-md);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: none;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .class-selector { display: flex; align-items: center; gap: 10px; }
+        .class-selector > span:first-child { font-size: 1.3rem; }
+        .class-name-display {
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--accent);
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: var(--btn-radius);
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            max-width: 160px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: var(--transition);
+            border: 1px solid var(--table-border);
+        }
+        .class-name-display:hover { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            background: var(--accent-gradient);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: var(--btn-radius);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            transition: all var(--transition);
+            box-shadow: 0 2px 8px rgba(37,99,235,0.25);
+            white-space: nowrap;
+        }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(37,99,235,0.35); }
+        .btn:active { transform: scale(0.97); }
+        .btn-outline {
+            background: transparent;
+            color: var(--accent);
+            border: 1.5px solid var(--accent);
+            box-shadow: none;
+        }
+        .btn-outline:hover { background: #eff6ff; box-shadow: 0 2px 8px rgba(37,99,235,0.12); }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .btn-xs {
+            padding: 5px 10px;
+            font-size: 11px;
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            color: var(--text);
+            box-shadow: none;
+            border-radius: var(--btn-radius);
+            font-weight: 500;
+        }
+        .btn-xs:hover { background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%); }
+
+        /* ===== CARDS ===== */
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 14px;
+            box-shadow: var(--shadow-md);
+            border: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 12px;
+            transition: box-shadow var(--transition);
+        }
+        .card:hover { box-shadow: var(--shadow-lg); }
+        .card-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card-title::before {
+            content: '';
+            width: 4px;
+            height: 18px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        /* ===== BOTTOM NAV ===== */
+        .nav-tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 6px;
+            box-shadow: var(--shadow-lg);
+            border: none;
+            position: fixed;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 32px);
+            max-width: 400px;
+            z-index: 20;
+            justify-content: center;
+        }
+        .nav-tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px 6px;
+            border-radius: var(--btn-radius);
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-light);
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            white-space: nowrap;
+            min-width: 0;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+            user-select: none;
+            transition: all var(--transition);
+        }
+        .nav-tab:hover { color: var(--accent); background: #eff6ff; }
+        .nav-tab.active {
+            background: var(--accent-gradient);
+            color: white;
+            box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+        }
+        @media (max-width: 400px) { .nav-tab { font-size: 11px; padding: 8px 4px; } }
+        @media (max-width: 480px) {
+            .btn { padding: 7px 14px; font-size: 12px; }
+            .btn-sm { padding: 5px 10px; font-size: 11px; }
+            .btn-xs { padding: 4px 8px; font-size: 10px; }
+            .input { padding: 7px 10px; font-size: 12px; }
+            .date-select { padding: 7px 10px; font-size: 12px; }
+            .date-action-btn { width: 28px; height: 28px; font-size: 12px; }
+            .class-name-display { padding: 6px 12px; font-size: 0.85rem; }
+        }
+        /* ===== TABLE ===== */
+        .table-wrapper {
+            overflow: auto;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--table-border);
+            max-height: 60vh;
+            position: relative;
+            background: white;
+        }
+        .table-wrapper::-webkit-scrollbar { height: 6px; width: 6px; }
+        .table-wrapper::-webkit-scrollbar-thumb { background: #93c5fd; border-radius: 3px; }
+        .table-wrapper::-webkit-scrollbar-track { background: #eff6ff; }
+        table { border-collapse: collapse; font-size: 13px; background: white; width: auto; min-width: 100%; table-layout: auto; }
+        th {
+            background: var(--table-header-bg);
+            color: var(--table-header-text);
+            font-weight: 600;
+            padding: 10px 12px;
+            text-align: center;
+            border: 1px solid var(--table-border);
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            font-size: 13px;
+        }
+        td {
+            padding: 8px 10px;
+            text-align: center;
+            border: 1px solid var(--table-border);
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+        tbody tr:nth-child(even) { background-color: var(--table-row-even); }
+        tbody tr:hover { background-color: #eff6ff; }
+        th:first-child, td:first-child { position: sticky; left: 0; z-index: 3; width: 60px; min-width: 60px; background-color: inherit; }
+        th:first-child { z-index: 5; background-color: var(--table-header-bg); }
+        th:nth-child(2), td:nth-child(2) { position: sticky; left: 60px; z-index: 3; width: 80px; min-width: 80px; background-color: inherit; }
+        th:nth-child(2) { z-index: 5; background-color: var(--table-header-bg); }
+        .cell-input {
+            border: 1.5px solid transparent;
+            background: transparent;
+            padding: 6px 10px;
+            font-size: 13px;
+            text-align: center;
+            border-radius: var(--btn-radius);
+            outline: none;
+            min-width: 80px;
+            box-sizing: border-box;
+            transition: var(--transition);
+        }
+        .cell-input:focus {
+            border-color: var(--accent);
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+        }
+        .active-cell-highlight {
+            border-color: var(--accent) !important;
+            background: #fff !important;
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.15) !important;
+        }
+        .save-indicator { font-size: 11px; color: var(--success); font-weight: 600; }
+        .empty-state { text-align: center; padding: 30px; color: var(--text-muted); font-size: 13px; }
+        .th-input { width: 100%; border: none; background: transparent; font-weight: 600; text-align: center; color: inherit; font-size: inherit; outline: none; padding: 2px; }
+        .th-input:focus { background: rgba(255,255,255,0.9); border-radius: 6px; outline: 2px solid var(--accent-light); }
+
+        /* ===== DATE SELECTOR ===== */
+        .date-selector-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .date-select {
+            padding: 8px 14px;
+            border-radius: var(--btn-radius);
+            border: 1.5px solid var(--border);
+            font-size: 13px;
+            font-weight: 600;
+            background: var(--input-bg);
+            color: var(--text);
+            cursor: pointer;
+            min-width: 120px;
+            transition: var(--transition);
+            outline: none;
+        }
+        .date-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        .date-select:hover { border-color: var(--accent-light); }
+        .date-action-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 1.5px solid var(--border);
+            background: var(--input-bg);
+            color: var(--text-light);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            transition: var(--transition);
+        }
+        .date-action-btn:hover { border-color: var(--accent); color: var(--accent); background: #eff6ff; }
+        .date-action-btn.danger:hover { border-color: var(--danger); color: var(--danger); background: #fef2f2; }
+
+        /* ===== DATE CHIPS (保留用于其他地方) ===== */
+        .date-chip {
+            background: var(--input-bg);
+            padding: 8px 16px;
+            border-radius: var(--btn-radius);
+            font-weight: 600;
+            font-size: 12px;
+            border: 1.5px solid var(--border);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: var(--transition);
+        }
+        .date-chip:hover { border-color: var(--accent); background: #eff6ff; }
+        .date-chip.active {
+            background: var(--accent-gradient);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 2px 8px rgba(37,99,235,0.25);
+        }
+        .date-chip .delete-date { cursor: pointer; font-weight: bold; margin-left: 4px; color: inherit; opacity: 0.7; }
+        .date-chip .delete-date:hover { opacity: 1; }
+
+        /* ===== COLLAPSIBLE ===== */
+        .style-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; font-size: 12px; }
+        .capsule-btn {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            padding: 10px 16px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            transition: var(--transition);
+            color: var(--text);
+        }
+        .capsule-btn:hover { background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); box-shadow: var(--shadow); }
+        .capsule-btn[aria-expanded="true"] { border-radius: var(--radius) var(--radius) 0 0; border-bottom-color: transparent; }
+        .collapsible { margin-bottom: 12px; }
+        .collapsible:last-child { margin-bottom: 0; }
+        .collapsible-content {
+            padding: 12px;
+            background: var(--card-bg);
+            border-radius: 0 0 var(--radius) var(--radius);
+            margin-top: 0;
+            border: 1.5px solid var(--border);
+            border-top: none;
+            display: none;
+        }
+
+        /* ===== FLOAT BUTTON & POPUP ===== */
+        .float-btn {
+            position: fixed;
+            z-index: 9999;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--accent-gradient);
+            color: white;
+            box-shadow: 0 4px 15px rgba(37,99,235,0.4);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 20px;
+            touch-action: none;
+            user-select: none;
+            transition: var(--transition);
+        }
+        .float-btn:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(37,99,235,0.5); }
+        .tool-popup {
+            position: fixed;
+            z-index: 9998;
+            background: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+            padding: 16px;
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 340px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            touch-action: none;
+            user-select: none;
+            border: 1px solid var(--border-light);
+        }
+        .tool-popup.open { display: flex; }
+        .popup-header { display: flex; justify-content: space-between; align-items: center; cursor: move; font-weight: 600; color: var(--primary); }
+        .close-popup { background: #f1f5f9; border: none; font-size: 16px; cursor: pointer; color: var(--text-light); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: var(--transition); }
+        .close-popup:hover { background: #e5e7eb; color: var(--text); }
+        .quick-tag {
+            padding: 8px 16px;
+            border-radius: var(--btn-radius);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: var(--transition);
+        }
+        .quick-tag:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .color-dot {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2.5px solid var(--border);
+            transition: var(--transition);
+        }
+        .color-dot:hover { transform: scale(1.15); border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+        .tool-edit-panel { display: none; flex-direction: column; gap: 6px; }
+        .tool-edit-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; background: var(--input-bg); padding: 6px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-light); }
+        .tool-edit-row input[type="text"] { flex: 1; min-width: 50px; padding: 3px 6px; font-size: 11px; border: 1px solid var(--border); border-radius: var(--input-radius); outline: none; background: var(--card-bg); }
+        .tool-edit-row input[type="text"]:focus { border-color: var(--accent); }
+        .tool-edit-row input[type="color"] { width: 28px; height: 24px; border: 1px solid var(--border); border-radius: 4px; padding: 0; cursor: pointer; background: none; }
+        .tool-edit-row .btn.btn-xs { padding: 3px 6px; font-size: 10px; }
+
+        /* ===== CLASS LIST ===== */
+        .class-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--card-bg);
+            border-radius: var(--btn-radius);
+            padding: 12px 16px;
+            border-left: 3px solid var(--accent);
+            margin-bottom: 8px;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+        .class-card:hover {
+            background: #eff6ff;
+            transform: translateX(3px);
+            box-shadow: var(--shadow-md);
+        }
+        .class-card-name { font-weight: 600; color: var(--primary); font-size: 14px; }
+        .student-modal {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            margin-top: 10px;
+            padding: 16px;
+            border: 1px solid var(--border-light);
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        .student-modal.open { display: flex; }
+        .student-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--card-bg);
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+        .student-list-item:hover { box-shadow: var(--shadow-md); border-color: var(--accent-light); }
+
+        /* ===== FORMS ===== */
+        .check-group { display: flex; flex-wrap: wrap; gap: 10px; }
+        .check-group label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 13px;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: var(--btn-radius);
+            border: 1px solid transparent;
+            transition: var(--transition);
+        }
+        .check-group label:hover { background: #eff6ff; }
+        .check-group input[type="checkbox"] { accent-color: var(--accent); }
+        .chart-desc { font-size: 12px; color: var(--text-light); margin-top: 6px; text-align: center; }
+        .feedback-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+        .ai-textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            border: 1.5px solid var(--border);
+            resize: vertical;
+            font-family: inherit;
+            font-size: 13px;
+            transition: var(--transition);
+            outline: none;
+        }
+        .ai-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        .input {
+            padding: 8px 14px;
+            border-radius: var(--btn-radius);
+            border: 1.5px solid var(--border);
+            font-size: 13px;
+            transition: var(--transition);
+            outline: none;
+            background: var(--input-bg);
+        }
+        .input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); background: #fff; }
+
+        /* ===== STAT TABLE ===== */
         .stat-table {
             table-layout: fixed !important;
             width: 100% !important;
@@ -87,12 +543,14 @@
             width: auto !important;
             min-width: auto !important;
             max-width: none !important;
-            white-space: nowrap;
         }
+        .stat-table th { white-space: nowrap; }
+        .stat-table td { white-space: normal; word-break: break-word; }
         .stat-table th:first-child,
         .stat-table td:first-child {
             width: auto !important;
             min-width: auto !important;
+            white-space: nowrap;
             position: sticky;
             left: 0;
             background-color: inherit;
@@ -113,13 +571,28 @@
             }
             .stat-table th,
             .stat-table td {
-                padding: 4px 4px;
-                white-space: nowrap;
+                padding: 6px 6px;
             }
+            .stat-table th { white-space: nowrap; }
+            .stat-table td { white-space: normal; word-break: break-word; }
             .table-wrapper {
                 -webkit-overflow-scrolling: touch;
             }
+            .tool-popup { max-width: 95%; padding: 12px; }
         }
+
+        /* ===== FULL TABLE WRAP ===== */
+        #fullTable tbody td { white-space: normal; word-break: break-word; max-width: 180px; min-width: 100px; }
+        #fullTable th { white-space: nowrap; min-width: 100px; }
+        #fullTable td:first-child { position: static; min-width: 60px; width: 60px; }
+        #fullTable td:nth-child(2) { position: static; min-width: 80px; width: 80px; }
+
+        /* ===== ANIMATIONS ===== */
+        .view { animation: fadeIn 0.25s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ===== SELECTION ===== */
+        ::selection { background: #bfdbfe; color: var(--primary); }
     </style>
 </head>
 <body>
@@ -191,17 +664,17 @@
 
         // ========== 默认数据 ==========
         const DEFAULT_TOOLS = [
-            { type:'text', label:'A+', style:'background:#d1fae5;color:#065f46;' },
-            { type:'text', label:'A', style:'background:#dbeafe;color:#1e40af;' },
-            { type:'text', label:'需完整拼读', style:'background:#fee2e2;color:#991b1b;' },
-            { type:'text', label:'已完成', style:'background:#e0e7ff;color:#3730a3;' },
-            { type:'text', label:'未完成', style:'background:#fef3c7;color:#92400e;' },
-            { type:'text', label:'清空', style:'background:#f1f5f9;color:#1e293b;' },
-            { type:'color', color:'#fca5a5', label:'红' }, { type:'color', color:'#86efac', label:'绿' },
-            { type:'color', color:'#fde047', label:'黄' }, { type:'color', color:'#93c5fd', label:'蓝' },
+            { type:'text', label:'A+', style:'background:linear-gradient(135deg,#93c5fd,#60a5fa);color:#1e3a5f;font-weight:600;' },
+            { type:'text', label:'A', style:'background:linear-gradient(135deg,#bfdbfe,#93c5fd);color:#1e40af;font-weight:600;' },
+            { type:'text', label:'需完整拼读', style:'background:linear-gradient(135deg,#fecaca,#fca5a5);color:#991b1b;' },
+            { type:'text', label:'已完成', style:'background:linear-gradient(135deg,#bbf7d0,#86efac);color:#166534;' },
+            { type:'text', label:'未完成', style:'background:linear-gradient(135deg,#fef08a,#fde047);color:#854d0e;' },
+            { type:'text', label:'清空', style:'background:#f3f4f6;color:#374151;' },
+            { type:'color', color:'#f9a8d4', label:'粉' }, { type:'color', color:'#93c5fd', label:'蓝' },
+            { type:'color', color:'#93c5fd', label:'蓝' }, { type:'color', color:'#86efac', label:'绿' },
             { type:'color', color:'', label:'清除' }
         ];
-        function defaultClasses() { return [{ id:'c1', name:'一年级1班', students:['容俊岳','史贝晨','唐禄恒','唐瑞航','汪栎宸','胥瑾年','依依','黄梓乔','梅舒雯','张昱天','嘟嘟','龙钰栗','凌梓心','牟家锐','王沛霖','江成蹊','姚煜昕','小妤'], columns:['听写(满分12)','小测(满分10)','自学资料','笔记','语音作业','小书童(满分100)','备注'], rowHeight:32, tableColors:{ headerBg:'#d9f0e1',headerText:'#1e4620',border:'#b8d4be',rowEven:'#f8fafc' } }]; }
+        function defaultClasses() { return [{ id:'c1', name:'一年级1班', students:['容俊岳','史贝晨','唐禄恒','唐瑞航','汪栎宸','胥瑾年','依依','黄梓乔','梅舒雯','张昱天','嘟嘟','龙钰栗','凌梓心','牟家锐','王沛霖','江成蹊','姚煜昕','小妤'], columns:['听写(满分12)','小测(满分10)','自学资料','笔记','语音作业','小书童(满分100)','备注'], rowHeight:36, tableColors:{ headerBg:'#eff6ff',headerText:'#1e40af',border:'#bfdbfe',rowEven:'#f8fafc' } }]; }
 
         let classes = defaultClasses(), feedback = {}, tools = [...DEFAULT_TOOLS], analysisSel = {};
         let currentClassId = null, currentDateLabel = 'Day1', saveTimer, activeCell = null;
@@ -320,6 +793,7 @@
             tb.innerHTML=records.map((r,idx)=>`<tr style="height:${cls.rowHeight}px;"><td>${idx+1}</td><td>${escapeHtml(r.name)}</td>${r.values.map((v,i)=>`<td style="background-color:${(r.colors&&r.colors[i])||''};"><input class="cell-input" data-row="${idx}" data-col="${i}" value="${escapeHtml(v)}" onfocus="selectCell(this)" oninput="autoResizeInput(this)" onkeydown="handleKeyDown(event)"></td>`).join('')}</tr>`).join('');
             tb.querySelectorAll('.cell-input').forEach(inp => {
                 inp.addEventListener('input',()=>{clearTimeout(saveTimer);saveTimer=setTimeout(()=>{pushUndo();saveCurrentDay();updateSaveStatus('✅ 已自动保存');},600);});
+                autoResizeInput(inp);
             });
             updateSaveStatus('✅ 已自动保存');
             if(activeCell){const nr=tb.querySelector(`.cell-input[data-row="${activeCell.dataset.row}"][data-col="${activeCell.dataset.col}"]`);if(nr){nr.classList.add('active-cell-highlight');activeCell=nr;}}
@@ -342,7 +816,7 @@
             }
         };
         function updateSaveStatus(t){document.getElementById('saveStatus').textContent=t;}
-        function autoResizeInput(inp){if(!inp)return;const span=document.createElement('span');span.style.visibility='hidden';span.style.position='absolute';span.style.fontSize=getComputedStyle(inp).fontSize;span.textContent=inp.value||' ';document.body.appendChild(span);const w=Math.min(Math.max(span.offsetWidth+10,80),120);document.body.removeChild(span);inp.style.width=w+'px';}
+        function autoResizeInput(inp){if(!inp)return;const span=document.createElement('span');span.style.visibility='hidden';span.style.position='absolute';span.style.fontSize=getComputedStyle(inp).fontSize;span.style.fontWeight=getComputedStyle(inp).fontWeight;span.textContent=inp.value||' ';document.body.appendChild(span);const w=Math.min(Math.max(span.offsetWidth+16,80),400);document.body.removeChild(span);inp.style.width=w+'px';}window.autoResizeInput=autoResizeInput;
 
         function renderFullTable(){
             const cls=getCurrentClass();if(!cls)return;
@@ -358,19 +832,30 @@
         function getDateList(){const prefix=currentClassId+'|';return Object.keys(feedback).filter(k=>k.startsWith(prefix)).map(k=>k.split('|')[1]).sort(naturalSort);}
         function renderDateSelector(){
             const dates=getDateList();
-            document.getElementById('dateSelector').innerHTML=dates.map(d=>`<span class="date-chip ${d===currentDateLabel?'active':''}"><span onclick="selectDate('${d}')">${escapeHtml(d)}</span><span class="delete-date" onclick="event.stopPropagation();deleteDate('${d}')">×</span></span>`).join('');
-            document.getElementById('dateLabelInput').value=currentDateLabel;
+            const container = document.getElementById('dateSelector');
+            if (dates.length === 0) {
+                container.innerHTML = `<span style="color:var(--text-muted);font-size:13px;">暂无课次，请在上方新建</span>`;
+                return;
+            }
+            container.innerHTML = `
+                <span style="font-size:13px;color:var(--text-light);">当前课次：</span>
+                <select class="date-select" id="dateSelectDropdown" onchange="selectDate(this.value)">
+                    ${dates.map(d => `<option value="${escapeHtml(d)}" ${d === currentDateLabel ? 'selected' : ''}>${escapeHtml(d)}</option>`).join('')}
+                </select>
+                <button class="date-action-btn" onclick="renameCurrentDate()" title="重命名">✏️</button>
+                <button class="date-action-btn danger" onclick="deleteCurrentDate()" title="删除当前课次">🗑️</button>
+            `;
         }
         window.selectDate=function(d){pushUndo();saveCurrentDay();currentDateLabel=d;renderDateSelector();renderFeedbackTable();renderColumnEditor();activeCell=null;};
         window.deleteDate=function(d){if(!confirm(`删除日期"${d}"？`))return;delete feedback[feedbackKey(currentClassId,d)];saveFeedbackDebounced();const dates=getDateList();currentDateLabel=dates.length?dates.includes(currentDateLabel)?currentDateLabel:dates[0]:'Day1';if(!dates.length)initFeedbackEntry('Day1');renderDateSelector();renderFeedbackTable();renderColumnEditor();};
         window.deleteCurrentDate=()=>window.deleteDate(currentDateLabel);
         window.renameCurrentDate=function(){const old=currentDateLabel;const n=prompt('新标签',old);if(!n||!n.trim()||n.trim()===old)return;const t=n.trim();const ok=feedbackKey(currentClassId,old),nk=feedbackKey(currentClassId,t);if(feedback[nk]&&!confirm('覆盖？'))return;feedback[nk]=feedback[ok];delete feedback[ok];saveFeedbackDebounced();currentDateLabel=t;renderDateSelector();renderFeedbackTable();};
-        window.goToDate=function(){const v=document.getElementById('dateLabelInput').value.trim();if(!v)return alert('请输入日期标签');if(currentDateLabel&&getEntry(currentClassId,currentDateLabel)){pushUndo();saveCurrentDay();}currentDateLabel=v;initFeedbackEntry(currentDateLabel);renderDateSelector();renderFeedbackTable();renderColumnEditor();activeCell=null;};
+        window.goToDate=function(){const v=document.getElementById('dateLabelInput').value.trim();if(!v)return alert('请输入课次名称');if(getDateList().includes(v))return alert('该课次已存在，请直接从下拉框选择');if(currentDateLabel&&getEntry(currentClassId,currentDateLabel)){pushUndo();saveCurrentDay();}currentDateLabel=v;initFeedbackEntry(currentDateLabel);document.getElementById('dateLabelInput').value='';renderDateSelector();renderFeedbackTable();renderColumnEditor();activeCell=null;};
 
         function renderColumnEditor(){
             const cls=getCurrentClass();if(!cls)return;
             const entry=initFeedbackEntry(currentDateLabel);
-            document.getElementById('columnEditor').innerHTML=entry.dateColumns.map((c,i)=>`<div style="display:flex;align-items:center;gap:3px;background:#f1f5f9;border-radius:16px;padding:3px 6px;"><input class="th-input" style="min-width:80px;" value="${escapeHtml(c)}" onchange="updateColumnName(${i},this.value)"><button class="btn btn-xs" style="color:var(--danger);" onclick="deleteColumn(${i})">×</button></div>`).join('')+'<button class="btn btn-xs" onclick="addColumn()">+ 添加列</button>';
+            document.getElementById('columnEditor').innerHTML=entry.dateColumns.map((c,i)=>`<div style="display:flex;align-items:center;gap:3px;background:#eff6ff;border-radius:12px;padding:4px 8px;border:1px solid #bfdbfe;"><input class="th-input" style="min-width:80px;" value="${escapeHtml(c)}" onchange="updateColumnName(${i},this.value)"><button class="btn btn-xs" style="color:var(--danger);" onclick="deleteColumn(${i})">×</button></div>`).join('')+'<button class="btn btn-xs" onclick="addColumn()">+ 添加列</button>';
         }
         window.updateColumnName=function(i,n){if(!n.trim())return alert('列名不能为空');pushUndo();const entry=initFeedbackEntry(currentDateLabel);entry.dateColumns[i]=n.trim();entry.maxScores[i]=extractMaxScore(n.trim());saveFeedbackDebounced();renderColumnEditor();renderFeedbackTable();};
         window.addColumn=function(){const n=prompt('新列名称','新项目');if(!n||!n.trim())return;pushUndo();const entry=initFeedbackEntry(currentDateLabel);entry.dateColumns.push(n.trim());entry.maxScores.push(extractMaxScore(n.trim()));entry.records.forEach(r=>{r.values.push('');r.colors.push('');});saveFeedbackDebounced();renderColumnEditor();renderFeedbackTable();};
@@ -411,7 +896,7 @@
         function updateClassStudents(cls){classes=classes.map(c=>c.id===cls.id?cls:c);dbSet('classes',classes);}
         function syncStudentDeletion(classId,name){const prefix=classId+'|';for(const k in feedback)if(k.startsWith(prefix)){const entry=feedback[k];const recs=Array.isArray(entry)?entry:entry.records;const filtered=recs.filter(r=>r.name!==name);if(Array.isArray(entry))feedback[k]=filtered;else{entry.records=filtered;if(!entry.records.length)delete feedback[k];}}saveFeedbackDebounced();}
         function renameInFeedback(classId,old,newName){const prefix=classId+'|';for(const k in feedback)if(k.startsWith(prefix)){const recs=Array.isArray(feedback[k])?feedback[k]:feedback[k].records;recs.forEach(r=>{if(r.name===old)r.name=newName;});}saveFeedbackDebounced();}
-        window.addClass=function(){const n=document.getElementById('newClassName').value.trim();if(!n)return alert('请输入班级名称');const nc={id:'c'+Date.now(),name:n,students:[],columns:['听写(满分12)','小测(满分10)','自学资料','笔记','语音作业','小书童(满分100)','备注'],rowHeight:32,tableColors:{headerBg:'#d9f0e1',headerText:'#1e4620',border:'#b8d4be',rowEven:'#f8fafc'}};classes.push(nc);dbSet('classes',classes);document.getElementById('newClassName').value='';currentClassId=nc.id;renderClassList();setTimeout(()=>window.toggleStudentModal(nc.id),80);};
+        window.addClass=function(){const n=document.getElementById('newClassName').value.trim();if(!n)return alert('请输入班级名称');const nc={id:'c'+Date.now(),name:n,students:[],columns:['听写(满分12)','小测(满分10)','自学资料','笔记','语音作业','小书童(满分100)','备注'],rowHeight:36,tableColors:{headerBg:'#eff6ff',headerText:'#1e40af',border:'#bfdbfe',rowEven:'#f8fafc'}};classes.push(nc);dbSet('classes',classes);document.getElementById('newClassName').value='';currentClassId=nc.id;renderClassList();setTimeout(()=>window.toggleStudentModal(nc.id),80);};
         window.editClassName=function(id){const c=classes.find(x=>x.id===id);if(!c)return;const n=prompt('新班级名称',c.name);if(n&&n.trim()){c.name=n.trim();dbSet('classes',classes);renderClassList();updateCurrentClassDisplay();}};
         window.deleteClass=async function(id){if(!confirm('删除班级及反馈？'))return;classes=classes.filter(x=>x.id!==id);await dbSet('classes',classes);const prefix=id+'|';for(const k in feedback)if(k.startsWith(prefix))delete feedback[k];await dbSet('feedback',feedback);currentClassId=classes.length?classes[0].id:null;renderClassList();if(currentClassId)switchView('classes');};
 
@@ -419,16 +904,17 @@
         window.exportAllData=async function(){const blob=new Blob([JSON.stringify({classes,feedback,tools,analysisSel})],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='全部数据备份.json';a.click();};
         window.importAllDataPrompt=function(){const inp=document.createElement('input');inp.type='file';inp.accept='.json';inp.onchange=async e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=async ev=>{try{const data=JSON.parse(ev.target.result);if(data.classes&&data.feedback){classes=data.classes;feedback=data.feedback;tools=data.tools||DEFAULT_TOOLS;analysisSel=data.analysisSel||{};await saveAllDataNow();alert('导入成功');location.reload();}}catch(ex){alert('文件格式错误');}};reader.readAsText(file);};inp.click();};
         window.exportStyledExcel=function(){
-            const cls=getCurrentClass();if(!cls)return;
-            const records=getCurrentDayData(); const entry=initFeedbackEntry(currentDateLabel);
-            const title=document.getElementById('fullTableTitleInput')?.value||`${currentDateLabel} 学情反馈`;
-            const style=`body{font-family:Arial;text-align:center}h2{text-align:center}table{border-collapse:collapse;margin:0 auto}th{background:${cls.tableColors.headerBg};color:${cls.tableColors.headerText};padding:10px;border:1px solid ${cls.tableColors.border}}td{padding:8px;border:1px solid ${cls.tableColors.border};text-align:center;mso-number-format:\\@;}tr:nth-child(even) td{background:${cls.tableColors.rowEven}}`;
-            let html=`<html><head><meta charset="utf-8"><title>${title}</title><style>${style}</style></head><body><h2>${title}</h2><table><thead><tr><th>序号</th><th>姓名</th>${entry.dateColumns.map(c=>`<th>${escapeHtml(c)}</th>`).join('')}</tr></thead><tbody>`;
-            records.forEach((r,i)=>{html+=`<tr><td>${i+1}</td><td>${escapeHtml(r.name)}</td>`;r.values.forEach((v,j)=>{const bg=(r.colors&&r.colors[j])?`background-color:${r.colors[j]};`:'';html+=`<td style="${bg}">${escapeHtml(v)}</td>`;});html+='</tr>';});
-            html+='</tbody></table></body></html>';
-            const blob=new Blob([html],{type:'application/vnd.ms-excel'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${title}.xls`;a.click();
-        };
-        window.printTable=function(){window.print();};
+            const title=document.getElementById("fullTableTitleInput")?.value||"反馈表";
+            const table=document.getElementById("fullTable");
+            if(!table)return;
+            const clone=table.cloneNode(true);
+            clone.querySelectorAll("th:first-child,td:first-child,th:nth-child(2),td:nth-child(2)").forEach(function(c){c.style.position="";c.style.left="";c.style.zIndex="";});
+            clone.querySelectorAll("input").forEach(function(inp){var td=inp.closest("td");if(td)td.textContent=inp.value;});
+            var styleEl=document.createElement("style");
+            styleEl.textContent="body{font-family:Arial;text-align:center}h2{text-align:center;margin:16px 0}table{border-collapse:collapse;margin:0 auto;table-layout:auto;width:auto}th{padding:10px 12px;border:1px solid #bfdbfe;text-align:center;background:#eff6ff;color:#1e40af;white-space:normal;word-break:break-word;mso-number-format:\\@;}td{padding:8px 10px;border:1px solid #bfdbfe;text-align:center;white-space:normal;word-break:break-word;mso-number-format:\\@;}tr:nth-child(even) td{background:#f8fafc}";
+            var finalHtml='<html><head><meta charset="utf-8"><title>'+escapeHtml(title)+'</title>'+styleEl.outerHTML+'</head><body><h2>'+escapeHtml(title)+'</h2>'+clone.outerHTML+'</body></html>';
+            var blob=new Blob([finalHtml],{type:"application/vnd.ms-excel"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=title+".xls";a.click();
+        };        window.printTable=function(){window.print();};
          window.exportAsImage=function(){
             const wrapper=document.getElementById('fullTableWrapper'); const table=document.getElementById('fullTable');
             const origW=wrapper.getAttribute('style')||'',origT=table.getAttribute('style')||'';
@@ -460,7 +946,7 @@
             if(str==='✅'||str==='已完成') return maxScore || 100;
             const num = parseInt(str,10); return isNaN(num) ? 0 : num;
         }
-        const COLORS=['#4A6FA5','#e74c3c','#27ae60','#f39c12','#8e44ad','#2980b9','#c0392b'];
+        const COLORS=['#2563eb','#3b82f6','#60a5fa','#818cf8','#6366f1','#93c5fd','#a5b4fc'];
 
         function renderAnalysisOptions(){
             const cls=getCurrentClass();if(!cls)return;
@@ -577,7 +1063,7 @@
             const canvas=document.getElementById('radarChartCanvas');
             if(radarChartInstance)radarChartInstance.destroy();
             radarChartInstance=new Chart(canvas,{
-                type:'radar',data:{labels,datasets:[{label:'满分',data:fullMarks,borderColor:'#4A6FA5',backgroundColor:'rgba(74,111,165,0.05)',borderWidth:2,borderDash:[5,5],pointRadius:0},{label:'班级平均',data:avgScores,borderColor:'#f39c12',backgroundColor:'rgba(243,156,18,0.1)',borderWidth:2,pointRadius:3},{label:studentName,data:studentScores,borderColor:'#e74c3c',backgroundColor:'rgba(231,76,60,0.1)',borderWidth:3,pointRadius:4}]},
+                type:'radar',data:{labels,datasets:[{label:'满分',data:fullMarks,borderColor:'#93c5fd',backgroundColor:'rgba(147,197,253,0.06)',borderWidth:2,borderDash:[5,5],pointRadius:0},{label:'班级平均',data:avgScores,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,0.08)',borderWidth:2,pointRadius:3},{label:studentName,data:studentScores,borderColor:'#f87171',backgroundColor:'rgba(248,113,113,0.12)',borderWidth:3,pointRadius:4}]},
                 options:{responsive:true,maintainAspectRatio:false,scales:{r:{beginAtZero:true,max:maxFull,ticks:{stepSize:Math.ceil(maxFull/5)}}},plugins:{legend:{position:'bottom'}}}
             });
         }
@@ -766,8 +1252,8 @@
         // ========== 页面构建 ==========
         function buildAllViews(){
             document.getElementById('view-classes').innerHTML=`<div class="card"><div class="card-title">📚 班级管理</div><div style="display:flex;gap:6px"><input class="input" id="newClassName" placeholder="新班级名称" style="flex:1"><button class="btn" onclick="addClass()">➕ 新建</button></div><div id="classListContainer"></div></div>`;
-            document.getElementById('view-feedback').innerHTML=`<div class="card"><div class="card-title">📝 每日反馈</div><div class="feedback-actions"><span style="font-size:13px;">当前日期：</span><input class="input" id="dateLabelInput" style="width:70px; padding:4px 8px; font-size:12px;" placeholder="Week1"><button class="btn btn-sm" onclick="goToDate()">前往</button><button class="btn btn-sm btn-outline" onclick="renameCurrentDate()">✏️ 重命名</button><button class="btn btn-sm" onclick="undo()" style="background:#6b7280">↩️ 撤销</button></div><div id="dateSelector" style="display:flex;gap:4px;flex-wrap:wrap"></div><div style="display:flex;justify-content:space-between"><span id="saveStatus">✅ 已自动保存</span><button class="btn btn-outline btn-sm" onclick="switchToFullTable()">📊 完整表格</button></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">🎨 表格样式 ▼</button><div class="collapsible-content"><div class="style-row"><span>表头背景:</span><input type="color" id="styleHeaderBg" onchange="applyStyleColor('headerBg',this.value)"><span>表头文字:</span><input type="color" id="styleHeaderText" onchange="applyStyleColor('headerText',this.value)"><span>边框:</span><input type="color" id="styleBorder" onchange="applyStyleColor('border',this.value)"><span>斑马纹:</span><input type="color" id="styleRowEven" onchange="applyStyleColor('rowEven',this.value)"></div><div class="style-row"><span>行高:</span><input type="number" id="styleRowHeight" min="24" max="60" style="width:60px" onchange="applyRowHeight()"></div></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">📐 列设置 ▼</button><div class="collapsible-content"><div id="columnEditor" style="display:flex;gap:4px;flex-wrap:wrap"></div></div></div><div class="card" style="padding:6px"><div class="table-wrapper"><table id="feedbackTable"><thead id="feedbackTableHead"></thead><tbody id="feedbackTableBody"></tbody></table></div></div>`;
-            document.getElementById('view-fulltable').innerHTML=`<div class="card"><div class="card-title">📄 完整反馈表</div><div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="switchView('feedback')">↩️ 返回</button><button class="btn btn-sm" onclick="printTable()">🖨️ 打印</button><button class="btn btn-sm" style="background:#047857" onclick="exportStyledExcel()">📊 Excel</button><button class="btn btn-sm" style="background:#b45309" onclick="exportAsImage()">🖼️ 图片</button></div></div>
+            document.getElementById('view-feedback').innerHTML=`<div class="card"><div class="card-title">📝 每日反馈</div><div class="feedback-actions"><span style="font-size:13px;">新建课次：</span><input class="input" id="dateLabelInput" style="width:100px; padding:6px 10px; font-size:13px;" placeholder="Day1"><button class="btn btn-sm" onclick="goToDate()">+ 新建</button><button class="btn btn-sm" onclick="undo()" style="background:#2563eb">↩️ 撤销</button></div><div id="dateSelector" class="date-selector-row" style="margin-top:8px;"></div><div style="display:flex;justify-content:space-between;margin-top:10px;"><span id="saveStatus" class="save-indicator">✅ 已自动保存</span><button class="btn btn-outline btn-sm" onclick="switchToFullTable()">📊 完整表格</button></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">🎨 表格样式 ▼</button><div class="collapsible-content"><div class="style-row"><span>表头背景:</span><input type="color" id="styleHeaderBg" onchange="applyStyleColor('headerBg',this.value)"><span>表头文字:</span><input type="color" id="styleHeaderText" onchange="applyStyleColor('headerText',this.value)"><span>边框:</span><input type="color" id="styleBorder" onchange="applyStyleColor('border',this.value)"><span>斑马纹:</span><input type="color" id="styleRowEven" onchange="applyStyleColor('rowEven',this.value)"></div><div class="style-row"><span>行高:</span><input type="number" id="styleRowHeight" min="24" max="60" style="width:60px" onchange="applyRowHeight()"></div></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">📐 列设置 ▼</button><div class="collapsible-content"><div id="columnEditor" style="display:flex;gap:4px;flex-wrap:wrap"></div></div></div><div class="card" style="padding:6px"><div class="table-wrapper"><table id="feedbackTable"><thead id="feedbackTableHead"></thead><tbody id="feedbackTableBody"></tbody></table></div></div>`;
+            document.getElementById('view-fulltable').innerHTML=`<div class="card"><div class="card-title">📄 完整反馈表</div><div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="switchView('feedback')">↩️ 返回</button><button class="btn btn-sm" onclick="printTable()">🖨️ 打印</button><button class="btn btn-sm" onclick="exportStyledExcel()">📊 Excel</button><button class="btn btn-sm" onclick="exportAsImage()">🖼️ 图片</button></div></div>
             <div class="card" style="padding:6px"><div class="table-wrapper" id="fullTableWrapper"><div class="title-wrapper"><input id="fullTableTitleInput" style="font-size:1.2rem;font-weight:700;border:none;background:transparent;text-align:center;width:100%" placeholder="标题"></div><table id="fullTable"><thead id="fullTableHead"></thead><tbody id="fullTableBody"></tbody></table></div></div>
             <div class="card" style="margin-top:12px">
                 <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
@@ -786,7 +1272,7 @@
                 </div>
                 <div class="table-wrapper" id="statTableWrapper"></div>
             </div>`;
-            document.getElementById('view-analysis').innerHTML=`<div class="card"><div class="card-title">📈 汇总分析</div><div style="display:flex;gap:8px"><span>学生：</span><select id="analysisStudentSelect" class="input" style="padding:8px;border-radius:12px;flex:1" onchange="refreshAnalysis()"><option value="">-- 请选择 --</option></select></div><div class="check-group" id="analysisDateCheckGroup"></div><div class="check-group" id="analysisColumnCheckGroup"></div></div><div class="card" id="analysisChartsArea"><div id="analysisReportTitle" style="text-align:center;font-size:1.1rem;font-weight:700;margin-bottom:12px">学习分析报告</div><div id="lineChartsContainer"></div><div id="radarSection" style="margin-top:16px;"><div class="check-group"><span>雷达图课次：</span><select id="radarDateSelect" class="input" style="width:120px;padding:6px;border-radius:12px" onchange="refreshRadarColumns();saveRadarCols()"></select></div><div class="check-group" id="radarColumnCheckGroup" style="margin-bottom:8px"></div><div style="height:320px"><canvas id="radarChartCanvas" height="320"></canvas></div></div><div style="margin-top:16px"><input type="password" id="apiKeyInput" class="input" placeholder="DeepSeek API Key" style="width:100%;padding:8px;margin-bottom:8px"><textarea id="examDescTextarea" class="ai-textarea" placeholder="手动输入试卷描述或题型知识点（可选）" rows="3"></textarea><div style="display:flex; gap:6px; align-items: center; margin:8px 0;"><label class="btn btn-outline btn-sm" style="cursor:pointer;">📎 上传试卷文件<input type="file" id="examFileInput" accept=".txt,.docx,.pdf" style="display:none" onchange="document.getElementById('fileNameDisplay').textContent = this.files[0]?.name || ''"></label><span id="fileNameDisplay" style="font-size:12px; color:var(--text-light);"></span></div><button class="btn btn-sm" onclick="runAIAnalysis()">🤖 测试分析</button></div><div id="aiResult" style="margin-top:12px;padding:12px;background:var(--input-bg);border-radius:12px;font-size:14px;white-space:pre-wrap;"></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-sm" onclick="downloadPDFReport()">📥 下载PDF报告</button></div></div><div id="analysisTablesContainer"></div>`;
+            document.getElementById('view-analysis').innerHTML=`<div class="card"><div class="card-title">📈 汇总分析</div><div style="display:flex;gap:8px"><span>学生：</span><select id="analysisStudentSelect" class="input" style="padding:8px;border-radius:12px;flex:1" onchange="refreshAnalysis()"><option value="">-- 请选择 --</option></select></div><div class="check-group" id="analysisDateCheckGroup"></div><div class="check-group" id="analysisColumnCheckGroup"></div></div><div class="card" id="analysisChartsArea"><div id="analysisReportTitle" style="text-align:center;font-size:1.1rem;font-weight:700;margin-bottom:12px">学习分析报告</div><div id="lineChartsContainer"></div><div id="radarSection" style="margin-top:16px;"><div class="check-group" style="margin-bottom:8px"><span>雷达图课次：</span><select id="radarDateSelect" class="input" style="width:120px;padding:6px;border-radius:12px" onchange="refreshRadarColumns();saveRadarCols()"></select></div><div class="check-group" id="radarColumnCheckGroup" style="margin:8px 0"></div><div style="height:320px"><canvas id="radarChartCanvas" height="320"></canvas></div></div><div style="margin-top:16px"><input type="password" id="apiKeyInput" class="input" placeholder="DeepSeek API Key" style="width:100%;padding:8px;margin-bottom:8px"><textarea id="examDescTextarea" class="ai-textarea" placeholder="手动输入试卷描述或题型知识点（可选）" rows="3"></textarea><div style="display:flex; gap:6px; align-items: center; margin:8px 0;"><label class="btn btn-outline btn-sm" style="cursor:pointer;">📎 上传试卷文件<input type="file" id="examFileInput" accept=".txt,.docx,.pdf" style="display:none" onchange="document.getElementById('fileNameDisplay').textContent = this.files[0]?.name || ''"></label><span id="fileNameDisplay" style="font-size:12px; color:var(--text-light);"></span></div><button class="btn btn-sm" onclick="runAIAnalysis()">🤖 测试分析</button></div><div id="aiResult" style="margin-top:12px;padding:12px;background:var(--input-bg);border-radius:12px;font-size:14px;white-space:pre-wrap;"></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-sm" onclick="downloadPDFReport()">📥 下载PDF报告</button></div></div><div id="analysisTablesContainer"></div>`;
         }
 
         function switchView(viewName){
@@ -975,17 +1461,19 @@
         window.exportStatExcel = function() {
             const target = document.getElementById('statTarget').value;
             if (!target) return alert('请先选择统计目标');
-            const cls = getCurrentClass();
-            if (!cls) return;
-            const title = `统计表_${target}`;
-            const style = `@page { size: landscape; margin: 10mm; } body{font-family:Arial;text-align:center}h2{text-align:center}h3{text-align:center}table{border-collapse:collapse;margin:0 auto;table-layout:fixed;width:100%}th{background:${cls.tableColors.headerBg};color:${cls.tableColors.headerText};padding:10px;border:1px solid ${cls.tableColors.border};word-wrap:break-word}td{padding:8px;border:1px solid ${cls.tableColors.border};text-align:center;word-wrap:break-word;mso-number-format:\\@;}tr:nth-child(even) td{background:${cls.tableColors.rowEven}} th:first-child, td:first-child{white-space:normal}`;
-            const tableWrapper = document.getElementById('statTableWrapper');
-            const tableHtml = tableWrapper.innerHTML;
-            let html = `<html><head><meta charset="utf-8"><title>${title}</title><style>${style}</style></head><body>${tableHtml}</body></html>`;
-            const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+            const title = '统计表_' + target;
+            const wrapper = document.getElementById('statTableWrapper');
+            const table = wrapper.querySelector('.stat-table');
+            if (!table) return;
+            const clone = table.cloneNode(true);
+            clone.querySelectorAll('th,td').forEach(function(c){c.style.position='';c.style.left='';c.style.zIndex='';});
+            var styleEl=document.createElement('style');
+            styleEl.textContent='@page { size: landscape; margin: 10mm; } body{font-family:Arial;text-align:center}h3{text-align:center;margin:16px 0}table{border-collapse:collapse;margin:0 auto;table-layout:auto;width:auto}th{padding:10px 12px;border:1px solid #bfdbfe;text-align:center;background:#eff6ff;color:#1e40af;white-space:normal;word-break:break-word;mso-number-format:\\@;}td{padding:8px 10px;border:1px solid #bfdbfe;text-align:center;white-space:normal;word-break:break-word;mso-number-format:\\@;}tr:nth-child(even) td{background:#f8fafc}';
+            var finalHtml='<html><head><meta charset="utf-8"><title>'+escapeHtml(title)+'</title>'+styleEl.outerHTML+'</head><body>'+clone.outerHTML+'</body></html>';
+            const blob = new Blob([finalHtml], { type: 'application/vnd.ms-excel' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = `${title}.xls`;
+            a.download = title + '.xls';
             a.click();
         };
 
@@ -1053,6 +1541,23 @@
             currentDateLabel = getDateList()[0] || 'Day1';
             buildAllViews(); applyTableColors(getCurrentClass()); switchView('classes');
             const floatBtn = document.getElementById('floatBtn'); floatBtn.style.left = floatBtnLeft + 'px'; floatBtn.style.top = floatBtnTop + 'px';
+            let floatSavedTop = floatBtnTop;
+            document.addEventListener('focusin', e => {
+                const tag = e.target.tagName;
+                if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target.closest('.cell-input')) {
+                    if (floatBtn) { floatSavedTop = parseInt(floatBtn.style.top) || floatBtnTop; floatBtn.style.top = '10px'; floatBtn.style.bottom = 'auto'; }
+                }
+            });
+            document.addEventListener('focusout', e => {
+                const related = e.relatedTarget;
+                if (!related || (related.tagName !== 'INPUT' && related.tagName !== 'TEXTAREA' && !related.closest('.cell-input'))) {
+                    setTimeout(() => {
+                        if (floatBtn && !document.activeElement || (document.activeElement && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA')) {
+                            floatBtn.style.top = floatSavedTop + 'px'; floatBtn.style.bottom = 'auto';
+                        }
+                    }, 200);
+                }
+            });
         });
         window.addEventListener('keydown', e => {
             if ((e.ctrlKey||e.metaKey)&&e.key==='z') { e.preventDefault(); undo(); }

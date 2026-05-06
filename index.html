@@ -243,7 +243,7 @@
             font-size: 13px;
         }
         td {
-            padding: 8px 10px;
+            padding: 6px 8px;
             text-align: center;
             border: 1px solid var(--table-border);
             white-space: nowrap;
@@ -258,7 +258,7 @@
         .cell-input {
             border: 1.5px solid transparent;
             background: transparent;
-            padding: 6px 10px;
+            padding: 4px 8px;
             font-size: 13px;
             text-align: center;
             border-radius: var(--btn-radius);
@@ -400,15 +400,15 @@
             position: fixed;
             z-index: 9998;
             background: var(--card-bg);
-            border-radius: 20px;
+            border-radius: 16px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.12);
-            padding: 16px;
+            padding: 10px;
             display: none;
             flex-direction: column;
-            gap: 12px;
-            max-width: 340px;
-            width: 90%;
-            max-height: 80vh;
+            gap: 8px;
+            max-width: 300px;
+            width: 85%;
+            max-height: 70vh;
             overflow-y: auto;
             touch-action: none;
             user-select: none;
@@ -437,7 +437,7 @@
             transition: var(--transition);
         }
         .color-dot:hover { transform: scale(1.15); border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
-        .tool-edit-panel { display: none; flex-direction: column; gap: 6px; }
+        .tool-edit-panel { display: none; flex-direction: column; gap: 6px; max-height: 40vh; overflow-y: auto; }
         .tool-edit-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; background: var(--input-bg); padding: 6px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-light); }
         .tool-edit-row input[type="text"] { flex: 1; min-width: 50px; padding: 3px 6px; font-size: 11px; border: 1px solid var(--border); border-radius: var(--input-radius); outline: none; background: var(--card-bg); }
         .tool-edit-row input[type="text"]:focus { border-color: var(--accent); }
@@ -578,14 +578,14 @@
             .table-wrapper {
                 -webkit-overflow-scrolling: touch;
             }
-            .tool-popup { max-width: 95%; padding: 12px; }
+            .tool-popup { max-width: 96%; padding: 8px; }
         }
 
         /* ===== FULL TABLE WRAP ===== */
         #fullTable tbody td { white-space: normal; word-break: break-word; max-width: 180px; min-width: 100px; }
         #fullTable th { white-space: nowrap; min-width: 100px; }
-        #fullTable td:first-child { position: static; min-width: 60px; width: 60px; }
-        #fullTable td:nth-child(2) { position: static; min-width: 80px; width: 80px; }
+        #fullTable td:first-child { position: static; min-width: 60px; width: 60px; white-space: nowrap; }
+        #fullTable td:nth-child(2) { position: static; min-width: 80px; width: 80px; white-space: nowrap; }
 
         /* ===== ANIMATIONS ===== */
         .view { animation: fadeIn 0.25s ease-out; }

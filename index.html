@@ -897,14 +897,14 @@
             document.querySelectorAll('.drag-handle').forEach(el => {
                 el.addEventListener('mousedown', startClassDrag);
                 el.addEventListener('touchstart', startClassDrag, { passive: false });
-                el.addEventListener('click', e => e.stopPropagation());
             });
         }
         let classDragData = null;
         let dragSuppressClick = false;
 
         function startClassDrag(e){
-            e.preventDefault();
+            // touch-action:none CSS already handles scroll prevention; only preventDefault for mouse to avoid text selection
+            if (e.type === 'mousedown') e.preventDefault();
             e.stopPropagation();
             const w = e.currentTarget.closest('.class-card-wrapper');
             if(!w)return;

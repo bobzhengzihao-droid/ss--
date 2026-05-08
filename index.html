@@ -497,6 +497,24 @@
             from { opacity: 0; transform: translateY(-8px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        /* 自定义对话框（替代原生prompt/confirm，兼容夸克等移动浏览器） */
+        .custom-dialog-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15,23,42,0.4); display: flex; align-items: center;
+            justify-content: center; z-index: 99999; animation: modalFadeIn 0.15s ease-out;
+            -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+        }
+        .custom-dialog {
+            background: #fff; border-radius: 20px; padding: 20px 24px;
+            min-width: 280px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+        .custom-dialog-msg { font-size: 15px; font-weight: 600; color: #1e293b; text-align: center; margin-bottom: 12px; word-break: break-all; }
+        .custom-dialog-input { width: 100%; padding: 8px 12px; font-size: 15px; border: 2px solid #e2e8f0; border-radius: 12px; outline: none; text-align: center; margin-bottom: 12px; box-sizing: border-box; }
+        .custom-dialog-input:focus { border-color: #2563eb; }
+        .custom-dialog-btns { display: flex; gap: 8px; justify-content: center; }
+        .custom-dialog-btns button { min-width: 80px; padding: 8px 18px; border-radius: 9999px; font-size: 14px; font-weight: 600; border: none; cursor: pointer; }
+        .custom-dialog-btn-cancel { background: #f1f5f9; color: #64748b; }
+        .custom-dialog-btn-ok { background: #2563eb; color: #fff; }
         .student-list-item {
             display: flex;
             justify-content: space-between;
@@ -707,6 +725,9 @@
 
         // ========== 工具函数 ==========
         function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+        // 自定义对话框（替代原生prompt/confirm，避免夸克等移动浏览器拦截）
+        function showConfirm(msg) { return new Promise(resolve => { const overlay = document.createElement('div'); overlay.className = 'custom-dialog-overlay'; overlay.innerHTML = `<div class="custom-dialog"><div class="custom-dialog-msg">${msg}</div><div class="custom-dialog-btns"><button class="custom-dialog-btn-cancel">取消</button><button class="custom-dialog-btn-ok">确定</button></div></div>`; const ok = () => { overlay.remove(); resolve(true); }; const cancel = () => { overlay.remove(); resolve(false); }; overlay.querySelector('.custom-dialog-btn-ok').onclick = ok; overlay.querySelector('.custom-dialog-btn-cancel').onclick = cancel; overlay.addEventListener('click', e => { if (e.target === overlay) cancel(); }); document.body.appendChild(overlay); }); }
+        function showPrompt(msg, defaultVal) { return new Promise(resolve => { const overlay = document.createElement('div'); overlay.className = 'custom-dialog-overlay'; overlay.innerHTML = `<div class="custom-dialog"><div class="custom-dialog-msg">${escapeHtml(msg)}</div><input class="custom-dialog-input" value="${escapeHtml(defaultVal||'')}"><div class="custom-dialog-btns"><button class="custom-dialog-btn-cancel">取消</button><button class="custom-dialog-btn-ok">确定</button></div></div>`; const input = overlay.querySelector('.custom-dialog-input'); const ok = () => { overlay.remove(); resolve(input.value); }; const cancel = () => { overlay.remove(); resolve(null); }; overlay.querySelector('.custom-dialog-btn-ok').onclick = ok; overlay.querySelector('.custom-dialog-btn-cancel').onclick = cancel; overlay.addEventListener('click', e => { if (e.target === overlay) cancel(); }); input.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); if (e.key === 'Escape') cancel(); }); document.body.appendChild(overlay); setTimeout(() => { input.focus(); input.select(); }, 80); }); }
         function naturalSort(a,b) { const re=/(\d+)/g, aP=a.split(re).filter(Boolean), bP=b.split(re).filter(Boolean); for(let i=0;i<Math.max(aP.length,bP.length);i++){const av=aP[i]||'',bv=bP[i]||'',an=parseInt(av,10),bn=parseInt(bv,10); if(!isNaN(an)&&!isNaN(bn)){if(an!==bn)return an-bn;} else if(av!==bv)return av.localeCompare(bv);} return 0; }
         function stripMaxScore(c) {
             c = c.replace(/（/g, '(').replace(/）/g, ')');
@@ -728,8 +749,8 @@
         function getEntry(cid,date){return feedback[feedbackKey(cid,date)];}
         function setEntry(cid,date,entry){feedback[feedbackKey(cid,date)]=entry; saveFeedbackDebounced();}
         let saveFeedbackTimeout;
-        function saveFeedbackDebounced(){clearTimeout(saveFeedbackTimeout);saveFeedbackTimeout=setTimeout(()=>{dbSet('feedback',feedback);},300);}
-        async function saveAllDataNow(){await dbSet('classes',classes);await dbSet('feedback',feedback);await dbSet('tools',tools);await dbSet('analysisSel',analysisSel);}
+        function saveFeedbackDebounced(){clearTimeout(saveFeedbackTimeout);saveFeedbackTimeout=setTimeout(()=>{dbSet('feedback',feedback);try{localStorage.setItem('_bk_feedback',JSON.stringify(feedback));}catch(e){}},300);}
+        async function saveAllDataNow(){await dbSet('classes',classes);await dbSet('feedback',feedback);await dbSet('tools',tools);await dbSet('analysisSel',analysisSel);try{localStorage.setItem('_fullBackup',JSON.stringify({classes,feedback,tools,analysisSel,time:Date.now()}));}catch(e){}}
 
         // ========== 撤销/重做 ==========
         function pushUndo(){const cls=getCurrentClass();if(!cls)return;const key=feedbackKey(cls.id,currentDateLabel);const entry=feedback[key];if(!entry)return;undoStack.push({key,snapshot:JSON.parse(JSON.stringify(entry))});if(undoStack.length>MAX_UNDO)undoStack.shift();redoStack.length=0;}
@@ -868,9 +889,9 @@
             `;
         }
         window.selectDate=function(d){pushUndo();saveCurrentDay();currentDateLabel=d;renderDateSelector();renderFeedbackTable();renderColumnEditor();activeCell=null;};
-        window.deleteDate=function(d){if(!confirm(`删除日期"${d}"？`))return;delete feedback[feedbackKey(currentClassId,d)];saveFeedbackDebounced();const dates=getDateList();currentDateLabel=dates.length?dates.includes(currentDateLabel)?currentDateLabel:dates[0]:'Day1';if(!dates.length)initFeedbackEntry('Day1');renderDateSelector();renderFeedbackTable();renderColumnEditor();};
+        window.deleteDate=async function(d){if(!await showConfirm(`删除日期"${d}"？`))return;delete feedback[feedbackKey(currentClassId,d)];saveFeedbackDebounced();const dates=getDateList();currentDateLabel=dates.length?dates.includes(currentDateLabel)?currentDateLabel:dates[0]:'Day1';if(!dates.length)initFeedbackEntry('Day1');renderDateSelector();renderFeedbackTable();renderColumnEditor();};
         window.deleteCurrentDate=()=>window.deleteDate(currentDateLabel);
-        window.renameCurrentDate=function(){const old=currentDateLabel;const n=prompt('新标签',old);if(!n||!n.trim()||n.trim()===old)return;const t=n.trim();const ok=feedbackKey(currentClassId,old),nk=feedbackKey(currentClassId,t);if(feedback[nk]&&!confirm('覆盖？'))return;feedback[nk]=feedback[ok];delete feedback[ok];saveFeedbackDebounced();currentDateLabel=t;renderDateSelector();renderFeedbackTable();};
+        window.renameCurrentDate=async function(){const old=currentDateLabel;const n=await showPrompt('新标签',old);if(!n||!n.trim()||n.trim()===old)return;const t=n.trim();const ok=feedbackKey(currentClassId,old),nk=feedbackKey(currentClassId,t);if(feedback[nk]&&!await showConfirm('覆盖？'))return;feedback[nk]=feedback[ok];delete feedback[ok];saveFeedbackDebounced();currentDateLabel=t;renderDateSelector();renderFeedbackTable();};
         window.goToDate=function(){const v=document.getElementById('dateLabelInput').value.trim();if(!v)return alert('请输入课次名称');if(getDateList().includes(v))return alert('该课次已存在，请直接从下拉框选择');if(currentDateLabel&&getEntry(currentClassId,currentDateLabel)){pushUndo();saveCurrentDay();}currentDateLabel=v;initFeedbackEntry(currentDateLabel);document.getElementById('dateLabelInput').value='';renderDateSelector();renderFeedbackTable();renderColumnEditor();activeCell=null;};
 
         function renderColumnEditor(){
@@ -879,8 +900,8 @@
             document.getElementById('columnEditor').innerHTML=entry.dateColumns.map((c,i)=>`<div style="display:flex;align-items:center;gap:3px;background:#eff6ff;border-radius:12px;padding:4px 8px;border:1px solid #bfdbfe;"><input class="th-input" style="min-width:80px;" value="${escapeHtml(c)}" onchange="updateColumnName(${i},this.value)"><button class="btn btn-xs" style="color:var(--danger);" onclick="deleteColumn(${i})">×</button></div>`).join('')+'<button class="btn btn-xs" onclick="addColumn()">+ 添加列</button>';
         }
         window.updateColumnName=function(i,n){if(!n.trim())return alert('列名不能为空');pushUndo();const entry=initFeedbackEntry(currentDateLabel);entry.dateColumns[i]=n.trim();entry.maxScores[i]=extractMaxScore(n.trim());saveFeedbackDebounced();renderColumnEditor();renderFeedbackTable();};
-        window.addColumn=function(){const n=prompt('新列名称','新项目');if(!n||!n.trim())return;pushUndo();const entry=initFeedbackEntry(currentDateLabel);entry.dateColumns.push(n.trim());entry.maxScores.push(extractMaxScore(n.trim()));entry.records.forEach(r=>{r.values.push('');r.colors.push('');});saveFeedbackDebounced();renderColumnEditor();renderFeedbackTable();};
-        window.deleteColumn=function(i){const entry=initFeedbackEntry(currentDateLabel);if(entry.dateColumns.length<=1)return alert('至少保留一列');if(!confirm(`删除"${entry.dateColumns[i]}"？`))return;pushUndo();entry.dateColumns.splice(i,1);entry.maxScores.splice(i,1);entry.records.forEach(r=>{r.values.splice(i,1);r.colors.splice(i,1);});saveFeedbackDebounced();renderColumnEditor();renderFeedbackTable();};
+        window.addColumn=async function(){const n=await showPrompt('新列名称','新项目');if(!n||!n.trim())return;pushUndo();const entry=initFeedbackEntry(currentDateLabel);entry.dateColumns.push(n.trim());entry.maxScores.push(extractMaxScore(n.trim()));entry.records.forEach(r=>{r.values.push('');r.colors.push('');});saveFeedbackDebounced();renderColumnEditor();renderFeedbackTable();};
+        window.deleteColumn=async function(i){const entry=initFeedbackEntry(currentDateLabel);if(entry.dateColumns.length<=1)return alert('至少保留一列');if(!await showConfirm(`删除"${entry.dateColumns[i]}"？`))return;pushUndo();entry.dateColumns.splice(i,1);entry.maxScores.splice(i,1);entry.records.forEach(r=>{r.values.splice(i,1);r.colors.splice(i,1);});saveFeedbackDebounced();renderColumnEditor();renderFeedbackTable();};
         window.toggleCollapse=function(btn){btn.nextElementSibling.style.display=btn.nextElementSibling.style.display==='block'?'none':'block';};
 
         // ========== 班级管理 ==========
@@ -986,25 +1007,25 @@
                 <label class="btn btn-outline btn-sm" style="cursor:pointer;">📥 导入Excel<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importStudentsInModal('${classId}', event)"></label>
             </div>
             <div style="margin-top:8px">${students.length?students.map((s,i)=>`
-                <div class="student-list-item"><span>${escapeHtml(s)}</span>
+                <div class="student-list-item" data-idx="${i}"><span id="stuName-${classId}-${i}">${escapeHtml(s)}</span>
                 <div style="display:flex; gap:4px;">
-                    <button class="btn btn-xs" onclick="editStudentInModal('${classId}',${i})">✏️</button>
+                    <button class="btn btn-xs" id="stuEditBtn-${classId}-${i}" onclick="editStudentInModal('${classId}',${i})">✏️</button>
                     <button class="btn btn-xs" style="color:var(--danger);" onclick="deleteStudentInModal('${classId}',${i})">🗑️</button>
                 </div></div>`).join(''):'<div class="empty-state">暂无学生</div>'}</div>`;
         }
         window.addStudentInModal=function(classId){const cls=classes.find(c=>c.id===classId);if(!cls)return;const name=document.getElementById(`studentInput-${classId}`).value.trim();if(!name)return alert('请输入姓名');if(cls.students.includes(name))return alert('已存在');cls.students.push(name);updateClassStudents(cls);document.getElementById(`studentInput-${classId}`).value='';renderStudentListInModal(classId);};
-        window.editStudentInModal=function(classId,idx){const cls=classes.find(c=>c.id===classId);if(!cls)return;const old=cls.students[idx];const newName=prompt('新姓名',old);if(!newName||!newName.trim()||newName.trim()===old)return;const trimmed=newName.trim();if(cls.students.includes(trimmed))return alert('姓名重复');cls.students[idx]=trimmed;updateClassStudents(cls);renameInFeedback(classId,old,trimmed);renderStudentListInModal(classId);};
-        window.deleteStudentInModal=function(classId,idx){if(!confirm('确定删除？'))return;const cls=classes.find(c=>c.id===classId);if(!cls)return;const name=cls.students[idx];cls.students.splice(idx,1);updateClassStudents(cls);syncStudentDeletion(classId,name);renderStudentListInModal(classId);};
-        window.importStudentsInModal=function(classId,event){const file=event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(e){try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});const sh=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(sh,{header:1});const names=rows.map(r=>String(r[0]||'').trim()).filter(n=>n);if(!names.length)return alert('未读取到姓名');const cls=classes.find(c=>c.id===classId);if(!cls)return;if(confirm('确定替换？取消则追加'))cls.students=names;else{const exist=new Set(cls.students);names.forEach(n=>{if(!exist.has(n))cls.students.push(n);});}updateClassStudents(cls);renderStudentListInModal(classId);}catch(ex){alert('解析失败');}};reader.readAsArrayBuffer(file);};
+        window.editStudentInModal=function(classId,idx){const cls=classes.find(c=>c.id===classId);if(!cls)return;const old=cls.students[idx];const span=document.getElementById(`stuName-${classId}-${idx}`);const btn=document.getElementById(`stuEditBtn-${classId}-${idx}`);if(!span||!btn)return;if(span.querySelector('input'))return;const input=document.createElement('input');input.type='text';input.value=old;input.style.cssText='font-size:14px;padding:4px 8px;border:1px solid var(--accent);border-radius:8px;outline:none;width:100%;min-width:80px;';span.innerHTML='';span.appendChild(input);btn.textContent='✅';input.focus();input.select();const save=()=>{const newName=input.value.trim();input.removeEventListener('blur',save);if(!newName||newName===old){span.textContent=old;btn.textContent='✏️';return;}if(cls.students.includes(newName)){span.textContent=old;btn.textContent='✏️';alert('姓名重复');return;}cls.students[idx]=newName;updateClassStudents(cls);renameInFeedback(classId,old,newName);renderStudentListInModal(classId);};input.addEventListener('blur',save);input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();input.blur();}if(e.key==='Escape'){input.value=old;input.blur();}});};
+        window.deleteStudentInModal=async function(classId,idx){if(!await showConfirm('确定删除？'))return;const cls=classes.find(c=>c.id===classId);if(!cls)return;const name=cls.students[idx];cls.students.splice(idx,1);updateClassStudents(cls);syncStudentDeletion(classId,name);renderStudentListInModal(classId);};
+        window.importStudentsInModal=function(classId,event){const file=event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=async function(e){try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});const sh=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(sh,{header:1});const names=rows.map(r=>String(r[0]||'').trim()).filter(n=>n);if(!names.length)return alert('未读取到姓名');const cls=classes.find(c=>c.id===classId);if(!cls)return;if(await showConfirm('确定替换？取消则追加'))cls.students=names;else{const exist=new Set(cls.students);names.forEach(n=>{if(!exist.has(n))cls.students.push(n);});}updateClassStudents(cls);renderStudentListInModal(classId);}catch(ex){alert('解析失败');}};reader.readAsArrayBuffer(file);};
         function updateClassStudents(cls){classes=classes.map(c=>c.id===cls.id?cls:c);dbSet('classes',classes);}
         function syncStudentDeletion(classId,name){const prefix=classId+'|';for(const k in feedback)if(k.startsWith(prefix)){const entry=feedback[k];const recs=Array.isArray(entry)?entry:entry.records;const filtered=recs.filter(r=>r.name!==name);if(Array.isArray(entry))feedback[k]=filtered;else{entry.records=filtered;if(!entry.records.length)delete feedback[k];}}saveFeedbackDebounced();}
         function renameInFeedback(classId,old,newName){const prefix=classId+'|';for(const k in feedback)if(k.startsWith(prefix)){const recs=Array.isArray(feedback[k])?feedback[k]:feedback[k].records;recs.forEach(r=>{if(r.name===old)r.name=newName;});}saveFeedbackDebounced();}
         window.addClass=function(){const n=document.getElementById('newClassName').value.trim();if(!n)return alert('请输入班级名称');const nc={id:'c'+Date.now(),name:n,students:[],columns:['听写(满分12)','小测(满分10)','自学资料','笔记','语音作业','小书童(满分100)','备注'],rowHeight:36,tableColors:{headerBg:'#eff6ff',headerText:'#1e40af',border:'#bfdbfe',rowEven:'#f8fafc'}};classes.push(nc);dbSet('classes',classes);document.getElementById('newClassName').value='';currentClassId=nc.id;renderClassList();setTimeout(()=>window.toggleStudentModal(nc.id),80);};
-        window.editClassName=function(id){const c=classes.find(x=>x.id===id);if(!c)return;const n=prompt('新班级名称',c.name);if(n&&n.trim()){c.name=n.trim();dbSet('classes',classes);renderClassList();updateCurrentClassDisplay();}};
-        window.deleteClass=async function(id){if(!confirm('删除班级及反馈？'))return;classes=classes.filter(x=>x.id!==id);await dbSet('classes',classes);const prefix=id+'|';for(const k in feedback)if(k.startsWith(prefix))delete feedback[k];await dbSet('feedback',feedback);currentClassId=classes.length?classes[0].id:null;renderClassList();if(currentClassId)switchView('classes');};
+        window.editClassName=async function(id){const c=classes.find(x=>x.id===id);if(!c)return;const n=await showPrompt('新班级名称',c.name);if(n&&n.trim()){c.name=n.trim();dbSet('classes',classes);renderClassList();updateCurrentClassDisplay();}};
+        window.deleteClass=async function(id){if(!await showConfirm('删除班级及反馈？'))return;classes=classes.filter(x=>x.id!==id);await dbSet('classes',classes);const prefix=id+'|';for(const k in feedback)if(k.startsWith(prefix))delete feedback[k];await dbSet('feedback',feedback);currentClassId=classes.length?classes[0].id:null;renderClassList();if(currentClassId)switchView('classes');};
 
         // ========== 导出 ==========
-        window.exportAllData=async function(){const blob=new Blob([JSON.stringify({classes,feedback,tools,analysisSel})],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='全部数据备份.json';a.click();};
+        window.exportAllData=async function(){const dateStr=new Date().toLocaleDateString('zh-CN').replace(/\//g,'-');const blob=new Blob([JSON.stringify({classes,feedback,tools,analysisSel})],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`全部数据备份_${dateStr}.json`;a.click();};
         window.importAllDataPrompt=function(){const inp=document.createElement('input');inp.type='file';inp.accept='.json';inp.onchange=async e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=async ev=>{try{const data=JSON.parse(ev.target.result);if(data.classes&&data.feedback){classes=data.classes;feedback=data.feedback;tools=data.tools||DEFAULT_TOOLS;analysisSel=data.analysisSel||{};await saveAllDataNow();alert('导入成功');location.reload();}}catch(ex){alert('文件格式错误');}};reader.readAsText(file);};inp.click();};
         window.exportStyledExcel=function(){
             const title=document.getElementById("fullTableTitleInput")?.value||"反馈表";
@@ -1412,7 +1433,16 @@
 
             let optionsHTML = '';
             if (type === 'byColumn') {
-                optionsHTML = cls.columns.map(col => {
+                // 优先使用第一次课的实际列作为板块选项
+                let columns = cls.columns;
+                const dates = getDateList();
+                if (dates.length) {
+                    const firstEntry = getEntry(cls.id, dates[0]);
+                    if (firstEntry && firstEntry.dateColumns && firstEntry.dateColumns.length) {
+                        columns = firstEntry.dateColumns;
+                    }
+                }
+                optionsHTML = columns.map(col => {
                     const pure = stripMaxScore(col);
                     return `<option value="${escapeHtml(pure)}">${escapeHtml(pure)}</option>`;
                 }).join('');
@@ -1464,6 +1494,16 @@
             const dates = getDateList();
             const students = cls.students;
 
+            // 以第一次课的列索引为基准，保证所有课次统一对齐
+            let refIdx = -1;
+            const firstDate = dates[0];
+            if (firstDate) {
+                const firstEntry = getEntry(cls.id, firstDate);
+                if (firstEntry) {
+                    refIdx = firstEntry.dateColumns.findIndex(c => columnContainsKeyword(c, colKeyword));
+                }
+            }
+
             let html = `<h3 style="text-align:center;margin-bottom:8px;">${escapeHtml(colKeyword)} 学情总结</h3>`;
             html += '<table class="stat-table"><thead>';
             html += '<tr><th>学生</th>';
@@ -1476,7 +1516,11 @@
                     const entry = getEntry(cls.id, d);
                     let val = '', bg = '', displayVal = '';
                     if (entry) {
-                        const idx = entry.dateColumns.findIndex(c => columnContainsKeyword(c, colKeyword));
+                        // 优先使用第一次课的索引作为统一基准，回退到关键词匹配
+                        let idx = refIdx;
+                        if (idx === -1 || idx >= entry.dateColumns.length || !columnContainsKeyword(entry.dateColumns[idx], colKeyword)) {
+                            idx = entry.dateColumns.findIndex(c => columnContainsKeyword(c, colKeyword));
+                        }
                         if (idx !== -1) {
                             const rec = entry.records.find(r => r.name === stu);
                             if (rec) {
@@ -1637,9 +1681,17 @@
 
         // 启动
         window.addEventListener('DOMContentLoaded', async () => {
+            // 请求浏览器持久存储权限（告诉浏览器不要自动清理数据）
+            if (navigator.storage && navigator.storage.persist) {
+                navigator.storage.persist().then(granted => { if (granted) console.log('持久存储已启用'); });
+            }
             await openDB(); let storedClasses = await dbGet('classes');
-            if (!storedClasses) { classes = defaultClasses(); feedback={}; tools=[...DEFAULT_TOOLS]; analysisSel={}; await saveAllDataNow(); }
-            else { classes = storedClasses; feedback = (await dbGet('feedback'))||{}; tools = (await dbGet('tools'))||[...DEFAULT_TOOLS]; analysisSel = (await dbGet('analysisSel'))||{}; }
+            if (!storedClasses) {
+                // IndexedDB可能被浏览器更新清空了，尝试从localStorage恢复
+                const backup = localStorage.getItem('_fullBackup');
+                if (backup) { try { const data = JSON.parse(backup); if (data.classes && data.classes.length) { classes = data.classes; feedback = data.feedback||{}; tools = data.tools||[...DEFAULT_TOOLS]; analysisSel = data.analysisSel||{}; alert('✅ 已从本地备份自动恢复数据\n\n浏览器更新可能清除了存储，数据已自动恢复。建议点击顶部 💾备份 手动导出一份文件。'); } } catch(e) {} }
+                if (!classes || !classes.length) { classes = defaultClasses(); feedback={}; tools=[...DEFAULT_TOOLS]; analysisSel={}; await saveAllDataNow(); }
+            } else { classes = storedClasses; feedback = (await dbGet('feedback'))||{}; tools = (await dbGet('tools'))||[...DEFAULT_TOOLS]; analysisSel = (await dbGet('analysisSel'))||{}; }
             currentClassId = classes.length ? classes[0].id : null;
             currentDateLabel = getDateList()[0] || 'Day1';
             buildAllViews(); applyTableColors(getCurrentClass()); switchView('classes');

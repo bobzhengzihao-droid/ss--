@@ -795,7 +795,7 @@
 
         function getCurrentDayData(){
             const cls=getCurrentClass();if(!cls)return[];
-            const entry=initFeedbackEntry(currentDateLabel);if(!entry)return[];
+            const entry=getEntry(cls.id,currentDateLabel);if(!entry)return[];
             let records=entry.records||[];
             cls.students.forEach(n=>{if(!records.find(r=>r.name===n))records.push({name:n,values:cls.columns.map(()=>''),colors:cls.columns.map(()=>'')});});
             records=records.filter(r=>cls.students.includes(r.name));
@@ -826,6 +826,13 @@
         // ========== 表格渲染 ==========
         function renderFeedbackTable(){
             const cls=getCurrentClass();if(!cls)return;
+            const key=feedbackKey(cls.id,currentDateLabel);
+            if(!feedback[key]){
+                document.getElementById('feedbackTableHead').innerHTML='';
+                document.getElementById('feedbackTableBody').innerHTML='<tr><td colspan="10" class="empty-state">请在上方输入课次名称后点击"+ 新建"</td></tr>';
+                document.getElementById('saveStatus').textContent='';
+                return;
+            }
             const entry=initFeedbackEntry(currentDateLabel);if(!entry)return;
             const dateColumns=entry.dateColumns;
             const records=getCurrentDayData();
@@ -840,7 +847,7 @@
             updateSaveStatus('✅ 已自动保存');
             if(activeCell){const nr=tb.querySelector(`.cell-input[data-row="${activeCell.dataset.row}"][data-col="${activeCell.dataset.col}"]`);if(nr){nr.classList.add('active-cell-highlight');activeCell=nr;}}
         }
-        window.selectCell=function(inp){if(activeCell)activeCell.classList.remove('active-cell-highlight');activeCell=inp;activeCell.classList.add('active-cell-highlight');};
+        window.selectCell=function(inp){if(activeCell)activeCell.classList.remove('active-cell-highlight');activeCell=inp;activeCell.classList.add('active-cell-highlight');setTimeout(function(){inp.scrollIntoView({block:'nearest'});},300);};
         window.handleKeyDown = function(e) {
             if (!activeCell) return;
             const row = parseInt(activeCell.dataset.row);
@@ -862,6 +869,13 @@
 
         function renderFullTable(){
             const cls=getCurrentClass();if(!cls)return;
+            const key=feedbackKey(cls.id,currentDateLabel);
+            if(!feedback[key]){
+                document.getElementById('fullTableTitleInput').value='';
+                document.getElementById('fullTableHead').innerHTML='';
+                document.getElementById('fullTableBody').innerHTML='<tr><td colspan="10" class="empty-state">暂无数据</td></tr>';
+                return;
+            }
             const entry=initFeedbackEntry(currentDateLabel);if(!entry)return;
             const records=getCurrentDayData();
             document.getElementById('fullTableTitleInput').value=`${currentDateLabel} 学情反馈`;
@@ -889,13 +903,18 @@
             `;
         }
         window.selectDate=function(d){pushUndo();saveCurrentDay();currentDateLabel=d;renderDateSelector();renderFeedbackTable();renderColumnEditor();activeCell=null;};
-        window.deleteDate=async function(d){if(!await showConfirm(`删除日期"${d}"？`))return;delete feedback[feedbackKey(currentClassId,d)];saveFeedbackDebounced();const dates=getDateList();currentDateLabel=dates.length?dates.includes(currentDateLabel)?currentDateLabel:dates[0]:'Day1';if(!dates.length)initFeedbackEntry('Day1');renderDateSelector();renderFeedbackTable();renderColumnEditor();};
+        window.deleteDate=async function(d){if(!await showConfirm(`删除日期"${d}"？`))return;delete feedback[feedbackKey(currentClassId,d)];saveFeedbackDebounced();const dates=getDateList();currentDateLabel=dates.length?dates.includes(currentDateLabel)?currentDateLabel:dates[0]:'Day1';renderDateSelector();renderFeedbackTable();renderColumnEditor();};
         window.deleteCurrentDate=()=>window.deleteDate(currentDateLabel);
         window.renameCurrentDate=async function(){const old=currentDateLabel;const n=await showPrompt('新标签',old);if(!n||!n.trim()||n.trim()===old)return;const t=n.trim();const ok=feedbackKey(currentClassId,old),nk=feedbackKey(currentClassId,t);if(feedback[nk]&&!await showConfirm('覆盖？'))return;feedback[nk]=feedback[ok];delete feedback[ok];saveFeedbackDebounced();currentDateLabel=t;renderDateSelector();renderFeedbackTable();};
         window.goToDate=function(){const v=document.getElementById('dateLabelInput').value.trim();if(!v)return alert('请输入课次名称');if(getDateList().includes(v))return alert('该课次已存在，请直接从下拉框选择');if(currentDateLabel&&getEntry(currentClassId,currentDateLabel)){pushUndo();saveCurrentDay();}currentDateLabel=v;initFeedbackEntry(currentDateLabel);document.getElementById('dateLabelInput').value='';renderDateSelector();renderFeedbackTable();renderColumnEditor();activeCell=null;};
 
         function renderColumnEditor(){
             const cls=getCurrentClass();if(!cls)return;
+            const key=feedbackKey(cls.id,currentDateLabel);
+            if(!feedback[key]){
+                document.getElementById('columnEditor').innerHTML=cls.columns.map((c,i)=>`<div style="display:flex;align-items:center;gap:3px;background:#f1f5f9;border-radius:12px;padding:4px 8px;border:1px solid #e2e8f0;"><span style="font-size:13px;color:#94a3b8;">${escapeHtml(c)}</span></div>`).join('');
+                return;
+            }
             const entry=initFeedbackEntry(currentDateLabel);
             document.getElementById('columnEditor').innerHTML=entry.dateColumns.map((c,i)=>`<div style="display:flex;align-items:center;gap:3px;background:#eff6ff;border-radius:12px;padding:4px 8px;border:1px solid #bfdbfe;"><input class="th-input" style="min-width:80px;" value="${escapeHtml(c)}" onchange="updateColumnName(${i},this.value)"><button class="btn btn-xs" style="color:var(--danger);" onclick="deleteColumn(${i})">×</button></div>`).join('')+'<button class="btn btn-xs" onclick="addColumn()">+ 添加列</button>';
         }

@@ -418,13 +418,13 @@
             background: var(--card-bg);
             border-radius: 16px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.12);
-            padding: 10px;
+            padding: 8px;
             display: none;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
             max-width: 300px;
             width: 85%;
-            max-height: 70vh;
+            max-height: 50vh;
             overflow-y: auto;
             touch-action: none;
             user-select: none;
@@ -902,17 +902,20 @@
         }
         function scrollCellIntoView(el) {
             if (!el) return;
-            // 用 center 确保键盘弹出后单元格仍在可见区域
-            el.scrollIntoView({ block: 'center', behavior: 'instant' });
+            var rect = el.getBoundingClientRect();
+            var viewH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+            var margin = 60;
+            // 单元格已在可见区域内则跳过，避免无意义跳动
+            if (rect.top >= 0 && rect.bottom <= viewH - margin) return;
+            el.scrollIntoView({ block: 'center', behavior: 'smooth' });
         }
         window.selectCell=function(inp){
             if(activeCell)activeCell.classList.remove('active-cell-highlight');
             activeCell=inp;
             activeCell.classList.add('active-cell-highlight');
-            // 多次滚动：立即 + 键盘动画中 + 键盘到位后
+            // 流畅滚动 + 键盘到位后补一次
             scrollCellIntoView(inp);
-            setTimeout(function(){scrollCellIntoView(inp);}, 150);
-            setTimeout(function(){scrollCellIntoView(inp);}, 400);
+            setTimeout(function(){scrollCellIntoView(inp);}, 350);
         };
         window.handleKeyDown = function(e) {
             if (!activeCell) return;
@@ -1813,11 +1816,13 @@
                     }, 200);
                 }
             });
-            // 键盘弹出/收起时，确保当前编辑的单元格不被遮挡
+            // 键盘弹出/收起时，确保活跃单元格不被遮挡（防抖，避免频繁跳动）
             if (window.visualViewport) {
+                var vvTimer;
                 window.visualViewport.addEventListener('resize', function() {
+                    clearTimeout(vvTimer);
                     if (activeCell && document.activeElement === activeCell) {
-                        setTimeout(function(){ scrollCellIntoView(activeCell); }, 100);
+                        vvTimer = setTimeout(function(){ scrollCellIntoView(activeCell); }, 150);
                     }
                 });
             }

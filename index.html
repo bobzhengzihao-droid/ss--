@@ -90,6 +90,7 @@
             -webkit-tap-highlight-color: transparent;
         }
         .class-name-display:hover { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); }
+        .class-name-display:active { transform: scale(0.95); opacity: 0.8; }
 
         /* ===== BUTTONS ===== */
         .btn {
@@ -121,6 +122,7 @@
             box-shadow: none;
         }
         .btn-outline:hover { background: #eff6ff; box-shadow: 0 2px 8px rgba(37,99,235,0.12); }
+        .btn-outline:active { background: #dbeafe; transform: scale(0.97); }
         .btn-sm { padding: 6px 12px; font-size: 12px; }
         .btn-xs {
             padding: 5px 10px;
@@ -132,6 +134,7 @@
             font-weight: 500;
         }
         .btn-xs:hover { background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%); }
+        .btn-xs:active { opacity: 0.7; transform: scale(0.96); }
 
         /* ===== CARDS ===== */
         .card {
@@ -205,6 +208,7 @@
             transition: all var(--transition);
         }
         .nav-tab:hover { color: var(--accent); background: #eff6ff; }
+        .nav-tab:active { transform: scale(0.95); opacity: 0.8; }
         .nav-tab.active {
             background: var(--accent-gradient);
             color: white;
@@ -324,6 +328,7 @@
             -webkit-tap-highlight-color: transparent;
         }
         .date-action-btn:hover { border-color: var(--accent); color: var(--accent); background: #eff6ff; }
+        .date-action-btn:active { transform: scale(0.9); opacity: 0.7; }
         .date-action-btn.danger:hover { border-color: var(--danger); color: var(--danger); background: #fef2f2; }
 
         /* ===== DATE CHIPS (保留用于其他地方) ===== */
@@ -342,6 +347,7 @@
             -webkit-tap-highlight-color: transparent;
         }
         .date-chip:hover { border-color: var(--accent); background: #eff6ff; }
+        .date-chip:active { transform: scale(0.95); opacity: 0.8; }
         .date-chip.active {
             background: var(--accent-gradient);
             color: white;
@@ -370,6 +376,7 @@
             -webkit-tap-highlight-color: transparent;
         }
         .capsule-btn:hover { background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); box-shadow: var(--shadow); }
+        .capsule-btn:active { background: #e2e8f0; transform: scale(0.99); }
         .capsule-btn[aria-expanded="true"] { border-radius: var(--radius) var(--radius) 0 0; border-bottom-color: transparent; }
         .collapsible { margin-bottom: 12px; }
         .collapsible:last-child { margin-bottom: 0; }
@@ -404,6 +411,7 @@
             -webkit-tap-highlight-color: transparent;
         }
         .float-btn:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(37,99,235,0.5); }
+        .float-btn:active { transform: scale(0.9); opacity: 0.8; }
         .tool-popup {
             position: fixed;
             z-index: 9998;
@@ -426,6 +434,7 @@
         .popup-header { display: flex; justify-content: space-between; align-items: center; cursor: move; font-weight: 600; color: var(--primary); }
         .close-popup { background: #f1f5f9; border: none; font-size: 16px; cursor: pointer; color: var(--text-light); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: var(--transition); -webkit-tap-highlight-color: transparent; }
         .close-popup:hover { background: #e5e7eb; color: var(--text); }
+        .close-popup:active { transform: scale(0.85); opacity: 0.7; }
         .quick-tag {
             padding: 8px 16px;
             border-radius: var(--btn-radius);
@@ -438,6 +447,7 @@
             user-select: none;
         }
         .quick-tag:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .quick-tag:active { transform: scale(0.92); opacity: 0.75; }
         .color-dot {
             width: 28px;
             height: 28px;
@@ -448,12 +458,39 @@
             -webkit-tap-highlight-color: transparent;
         }
         .color-dot:hover { transform: scale(1.15); border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+        .color-dot:active { transform: scale(0.85); opacity: 0.7; }
         .tool-edit-panel { display: none; flex-direction: column; gap: 6px; max-height: 40vh; overflow-y: auto; }
         .tool-edit-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; background: var(--input-bg); padding: 6px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-light); }
         .tool-edit-row input[type="text"] { flex: 1; min-width: 50px; padding: 3px 6px; font-size: 11px; border: 1px solid var(--border); border-radius: var(--input-radius); outline: none; background: var(--card-bg); }
         .tool-edit-row input[type="text"]:focus { border-color: var(--accent); }
         .tool-edit-row input[type="color"] { width: 28px; height: 24px; border: 1px solid var(--border); border-radius: 4px; padding: 0; cursor: pointer; background: none; }
         .tool-edit-row .btn.btn-xs { padding: 3px 6px; font-size: 10px; }
+        .popup-footer {
+            display: flex;
+            justify-content: space-between;
+            gap: 6px;
+            margin-top: 4px;
+            padding-top: 8px;
+            border-top: 1px solid var(--border);
+        }
+        .popup-action-btn {
+            padding: 6px 16px;
+            border-radius: var(--btn-radius);
+            border: 1.5px solid var(--border);
+            background: var(--input-bg);
+            color: var(--text);
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: var(--transition);
+            -webkit-tap-highlight-color: transparent;
+            white-space: nowrap;
+        }
+        .popup-action-btn:hover { background: #eff6ff; border-color: var(--accent-light); }
+        .popup-action-btn:active { background: #dbeafe; transform: scale(0.95); opacity: 0.8; }
 
         /* ===== CLASS LIST ===== */
         .class-card {
@@ -475,6 +512,7 @@
             transform: translateX(3px);
             box-shadow: var(--shadow-md);
         }
+        .class-card:active { transform: scale(0.98); opacity: 0.8; }
         .class-card-wrapper { transition: transform 0.25s ease; }
         .class-card-wrapper.dragging { opacity: 0.3; z-index: 999; transition: none; }
         .drag-handle {
@@ -538,6 +576,7 @@
             -webkit-tap-highlight-color: transparent;
         }
         .student-list-item:hover { box-shadow: var(--shadow-md); border-color: var(--accent-light); }
+        .student-list-item:active { background: #f8fafc; transform: scale(0.98); }
 
         /* ===== FORMS ===== */
         .check-group { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -657,10 +696,14 @@
     </div>
     <div class="float-btn" id="floatBtn" onmousedown="startDragFloat(event)" ontouchstart="startDragFloat(event)">⚡</div>
     <div class="tool-popup" id="toolPopup" onmousedown="startDragPopup(event)" ontouchstart="startDragPopup(event)">
-        <div class="popup-header"><span>快捷工具 <button class="btn btn-xs" onclick="openToolEditor()">⚙️</button></span><button class="close-popup" onclick="closePopup()">✕</button></div>
+        <div class="popup-header"><span>快捷工具</span><button class="close-popup" onclick="closePopup()">✕</button></div>
         <div id="toolItems" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
         <div class="tool-edit-panel" id="toolEditPanel"></div>
         <div><button class="btn btn-xs" id="btnSaveTools" style="display:none;" onclick="saveToolChanges()">💾 保存</button></div>
+        <div class="popup-footer">
+            <button class="popup-action-btn" onclick="openToolEditor()">⚙️ 编辑</button>
+            <button class="popup-action-btn" onclick="quickFill('清空')">🗑️ 清空</button>
+        </div>
     </div>
     <div class="nav-tabs">
         <button class="nav-tab" data-view="classes" onclick="switchView('classes')">🏫 班级</button>
@@ -857,7 +900,20 @@
             updateSaveStatus('✅ 已自动保存');
             if(activeCell){const nr=tb.querySelector(`.cell-input[data-row="${activeCell.dataset.row}"][data-col="${activeCell.dataset.col}"]`);if(nr){nr.classList.add('active-cell-highlight');activeCell=nr;}}
         }
-        window.selectCell=function(inp){if(activeCell)activeCell.classList.remove('active-cell-highlight');activeCell=inp;activeCell.classList.add('active-cell-highlight');setTimeout(function(){inp.scrollIntoView({block:'nearest'});},300);};
+        function scrollCellIntoView(el) {
+            if (!el) return;
+            // 用 center 确保键盘弹出后单元格仍在可见区域
+            el.scrollIntoView({ block: 'center', behavior: 'instant' });
+        }
+        window.selectCell=function(inp){
+            if(activeCell)activeCell.classList.remove('active-cell-highlight');
+            activeCell=inp;
+            activeCell.classList.add('active-cell-highlight');
+            // 多次滚动：立即 + 键盘动画中 + 键盘到位后
+            scrollCellIntoView(inp);
+            setTimeout(function(){scrollCellIntoView(inp);}, 150);
+            setTimeout(function(){scrollCellIntoView(inp);}, 400);
+        };
         window.handleKeyDown = function(e) {
             if (!activeCell) return;
             const row = parseInt(activeCell.dataset.row);
@@ -1044,7 +1100,7 @@
         }
         window.addStudentInModal=function(classId){const cls=classes.find(c=>c.id===classId);if(!cls)return;const name=document.getElementById(`studentInput-${classId}`).value.trim();if(!name)return alert('请输入姓名');if(cls.students.includes(name))return alert('已存在');cls.students.push(name);updateClassStudents(cls);document.getElementById(`studentInput-${classId}`).value='';renderStudentListInModal(classId);};
         window.editStudentInModal=function(classId,idx){const cls=classes.find(c=>c.id===classId);if(!cls)return;const old=cls.students[idx];const span=document.getElementById(`stuName-${classId}-${idx}`);const btn=document.getElementById(`stuEditBtn-${classId}-${idx}`);if(!span||!btn)return;if(span.querySelector('input'))return;const input=document.createElement('input');input.type='text';input.value=old;input.style.cssText='font-size:14px;padding:4px 8px;border:1px solid var(--accent);border-radius:8px;outline:none;width:100%;min-width:80px;';span.innerHTML='';span.appendChild(input);btn.textContent='✅';input.focus();input.select();const save=()=>{const newName=input.value.trim();input.removeEventListener('blur',save);if(!newName||newName===old){span.textContent=old;btn.textContent='✏️';return;}if(cls.students.includes(newName)){span.textContent=old;btn.textContent='✏️';alert('姓名重复');return;}cls.students[idx]=newName;updateClassStudents(cls);renameInFeedback(classId,old,newName);renderStudentListInModal(classId);};input.addEventListener('blur',save);input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();input.blur();}if(e.key==='Escape'){input.value=old;input.blur();}});};
-        window.deleteStudentInModal=async function(classId,idx){if(!await showConfirm('确定删除？'))return;const cls=classes.find(c=>c.id===classId);if(!cls)return;const name=cls.students[idx];cls.students.splice(idx,1);updateClassStudents(cls);syncStudentDeletion(classId,name);renderStudentListInModal(classId);};
+        window.deleteStudentInModal=async function(classId,idx){const cls=classes.find(c=>c.id===classId);if(!cls)return;const name=cls.students[idx];if(!await showConfirm(`确定删除「${name}」？\n该学生在所有课次中的反馈数据也会一并清除。`))return;cls.students.splice(idx,1);updateClassStudents(cls);syncStudentDeletion(classId,name);renderStudentListInModal(classId);};
         window.importStudentsInModal=function(classId,event){const file=event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=async function(e){try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});const sh=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(sh,{header:1});const names=rows.map(r=>String(r[0]||'').trim()).filter(n=>n);if(!names.length)return alert('未读取到姓名');const cls=classes.find(c=>c.id===classId);if(!cls)return;if(await showConfirm('确定替换？取消则追加'))cls.students=names;else{const exist=new Set(cls.students);names.forEach(n=>{if(!exist.has(n))cls.students.push(n);});}updateClassStudents(cls);renderStudentListInModal(classId);}catch(ex){alert('解析失败');}};reader.readAsArrayBuffer(file);};
         function updateClassStudents(cls){classes=classes.map(c=>c.id===cls.id?cls:c);dbSet('classes',classes);}
         function syncStudentDeletion(classId,name){const prefix=classId+'|';for(const k in feedback)if(k.startsWith(prefix)){const entry=feedback[k];const recs=Array.isArray(entry)?entry:entry.records;const filtered=recs.filter(r=>r.name!==name);if(Array.isArray(entry))feedback[k]=filtered;else{entry.records=filtered;if(!entry.records.length)delete feedback[k];}}saveFeedbackDebounced();}
@@ -1392,7 +1448,15 @@
             isDraggingFloat = false; isDraggingPopup = false;
         });
 
-        function renderToolItems(){document.getElementById('toolItems').innerHTML=tools.map(tool=>{if(tool.type==='text')return `<span class="quick-tag" style="${tool.style}" onmousedown="event.preventDefault();quickFill('${tool.label.replace(/'/g,"\\'")}')">${tool.label}</span>`;else return `<span class="color-dot" style="background:${tool.color||'white'};border:${tool.color?'2px solid transparent':'2px dashed #ccc'};" onmousedown="event.preventDefault();setCellColor('${tool.color||''}')" title="${tool.label||''}"></span>`;}).join('');}
+        function renderToolItems(){
+            // 清空已移至底部独立按钮，此处不再渲染
+            const visibleTools = tools.filter(t => t.label !== '清空');
+            const html = visibleTools.map(tool => tool.type==='text'
+                ? `<span class="quick-tag" style="${tool.style}" onmousedown="event.preventDefault();quickFill('${tool.label.replace(/'/g,"\\'")}')">${tool.label}</span>`
+                : `<span class="color-dot" style="background:${tool.color||'white'};border:${tool.color?'2px solid transparent':'2px dashed #ccc'};" onmousedown="event.preventDefault();setCellColor('${tool.color||''}')" title="${tool.label||''}"></span>`
+            ).join('');
+            document.getElementById('toolItems').innerHTML = html;
+        }
         window.quickFill=function(value){if(!activeCell)return;pushUndo();if(value==='清空'){activeCell.value='';const td=activeCell.closest('td');if(td)td.style.backgroundColor='';saveCurrentDay();}else{activeCell.value=value;activeCell.dispatchEvent(new Event('input'));saveCurrentDay();}updateSaveStatus('✅ 已应用');setTimeout(()=>updateSaveStatus('✅ 已自动保存'),1000);};
         window.setCellColor=function(color){if(!activeCell)return;pushUndo();const td=activeCell.closest('td');if(td){td.style.backgroundColor=color||'';const row=parseInt(activeCell.dataset.row),col=parseInt(activeCell.dataset.col);const records=getCurrentDayData();if(records[row]){if(!records[row].colors)records[row].colors=getCurrentClass().columns.map(()=>'');records[row].colors[col]=color;saveCurrentDay();}}};
         window.openToolEditor=function(){const panel=document.getElementById('toolEditPanel');panel.style.display='flex';let html='';tools.forEach((tool,i)=>{if(tool.type==='text'){const rawBg=(tool.style.match(/background:([^;]+)/)||[])[1]||'';const isGradient=rawBg.trim().startsWith('linear-gradient');const bgColor=isGradient?(rawBg.match(/#[0-9a-fA-F]{3,6}/)||['#93c5fd'])[0]:rawBg.trim()||'#ffffff';const textColor=(tool.style.match(/color:([^;]+)/)||[])[1]||'#000000';html+=`<div class="tool-edit-row" data-tool-idx="${i}"><input type="text" value="${escapeHtml(tool.label)}" data-index="${i}" data-field="label"><input type="color" value="${bgColor}" data-index="${i}" data-field="bg" data-has-gradient="${isGradient?1:0}"><input type="color" value="${textColor.trim()}" data-index="${i}" data-field="textColor"><button class="btn btn-xs" onclick="deleteTool(${i})">🗑️</button></div>`;}else{html+=`<div class="tool-edit-row"><span>●</span><input type="color" value="${tool.color||'#ffffff'}" data-index="${i}" data-field="color"><input type="text" value="${escapeHtml(tool.label||'')}" data-index="${i}" data-field="label"><button class="btn btn-xs" onclick="deleteTool(${i})">🗑️</button></div>`;}});html+=`<div style="display:flex;gap:4px;"><button class="btn btn-xs" onclick="addTool()">+ 文字</button><button class="btn btn-xs" onclick="addColorTool()">+ 颜色</button></div>`;panel.innerHTML=html;document.getElementById('btnSaveTools').style.display='inline-flex';};
@@ -1749,6 +1813,14 @@
                     }, 200);
                 }
             });
+            // 键盘弹出/收起时，确保当前编辑的单元格不被遮挡
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', function() {
+                    if (activeCell && document.activeElement === activeCell) {
+                        setTimeout(function(){ scrollCellIntoView(activeCell); }, 100);
+                    }
+                });
+            }
         });
         window.addEventListener('keydown', e => {
             if ((e.ctrlKey||e.metaKey)&&e.key==='z') { e.preventDefault(); undo(); }

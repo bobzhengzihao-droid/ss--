@@ -87,6 +87,7 @@
             transition: var(--transition);
             border: 1px solid var(--table-border);
             line-height: 1.4;
+            -webkit-tap-highlight-color: transparent;
         }
         .class-name-display:hover { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); }
 
@@ -303,6 +304,7 @@
             min-width: 120px;
             transition: var(--transition);
             outline: none;
+            -webkit-tap-highlight-color: transparent;
         }
         .date-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
         .date-select:hover { border-color: var(--accent-light); }
@@ -319,6 +321,7 @@
             justify-content: center;
             font-size: 14px;
             transition: var(--transition);
+            -webkit-tap-highlight-color: transparent;
         }
         .date-action-btn:hover { border-color: var(--accent); color: var(--accent); background: #eff6ff; }
         .date-action-btn.danger:hover { border-color: var(--danger); color: var(--danger); background: #fef2f2; }
@@ -336,6 +339,7 @@
             align-items: center;
             gap: 5px;
             transition: var(--transition);
+            -webkit-tap-highlight-color: transparent;
         }
         .date-chip:hover { border-color: var(--accent); background: #eff6ff; }
         .date-chip.active {
@@ -363,6 +367,7 @@
             width: 100%;
             transition: var(--transition);
             color: var(--text);
+            -webkit-tap-highlight-color: transparent;
         }
         .capsule-btn:hover { background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); box-shadow: var(--shadow); }
         .capsule-btn[aria-expanded="true"] { border-radius: var(--radius) var(--radius) 0 0; border-bottom-color: transparent; }
@@ -396,6 +401,7 @@
             touch-action: none;
             user-select: none;
             transition: var(--transition);
+            -webkit-tap-highlight-color: transparent;
         }
         .float-btn:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(37,99,235,0.5); }
         .tool-popup {
@@ -418,7 +424,7 @@
         }
         .tool-popup.open { display: flex; }
         .popup-header { display: flex; justify-content: space-between; align-items: center; cursor: move; font-weight: 600; color: var(--primary); }
-        .close-popup { background: #f1f5f9; border: none; font-size: 16px; cursor: pointer; color: var(--text-light); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: var(--transition); }
+        .close-popup { background: #f1f5f9; border: none; font-size: 16px; cursor: pointer; color: var(--text-light); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: var(--transition); -webkit-tap-highlight-color: transparent; }
         .close-popup:hover { background: #e5e7eb; color: var(--text); }
         .quick-tag {
             padding: 8px 16px;
@@ -428,6 +434,8 @@
             cursor: pointer;
             white-space: nowrap;
             transition: var(--transition);
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
         }
         .quick-tag:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
         .color-dot {
@@ -437,6 +445,7 @@
             cursor: pointer;
             border: 2.5px solid var(--border);
             transition: var(--transition);
+            -webkit-tap-highlight-color: transparent;
         }
         .color-dot:hover { transform: scale(1.15); border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
         .tool-edit-panel { display: none; flex-direction: column; gap: 6px; max-height: 40vh; overflow-y: auto; }
@@ -512,7 +521,7 @@
         .custom-dialog-input { width: 100%; padding: 8px 12px; font-size: 15px; border: 2px solid #e2e8f0; border-radius: 12px; outline: none; text-align: center; margin-bottom: 12px; box-sizing: border-box; }
         .custom-dialog-input:focus { border-color: #2563eb; }
         .custom-dialog-btns { display: flex; gap: 8px; justify-content: center; }
-        .custom-dialog-btns button { min-width: 80px; padding: 8px 18px; border-radius: 9999px; font-size: 14px; font-weight: 600; border: none; cursor: pointer; }
+        .custom-dialog-btns button { min-width: 80px; padding: 8px 18px; border-radius: 9999px; font-size: 14px; font-weight: 600; border: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
         .custom-dialog-btn-cancel { background: #f1f5f9; color: #64748b; }
         .custom-dialog-btn-ok { background: #2563eb; color: #fff; }
         .student-list-item {
@@ -526,6 +535,7 @@
             border: 1px solid var(--border);
             box-shadow: var(--shadow);
             transition: var(--transition);
+            -webkit-tap-highlight-color: transparent;
         }
         .student-list-item:hover { box-shadow: var(--shadow-md); border-color: var(--accent-light); }
 
@@ -1385,10 +1395,11 @@
         function renderToolItems(){document.getElementById('toolItems').innerHTML=tools.map(tool=>{if(tool.type==='text')return `<span class="quick-tag" style="${tool.style}" onmousedown="event.preventDefault();quickFill('${tool.label.replace(/'/g,"\\'")}')">${tool.label}</span>`;else return `<span class="color-dot" style="background:${tool.color||'white'};border:${tool.color?'2px solid transparent':'2px dashed #ccc'};" onmousedown="event.preventDefault();setCellColor('${tool.color||''}')" title="${tool.label||''}"></span>`;}).join('');}
         window.quickFill=function(value){if(!activeCell)return;pushUndo();if(value==='清空'){activeCell.value='';const td=activeCell.closest('td');if(td)td.style.backgroundColor='';saveCurrentDay();}else{activeCell.value=value;activeCell.dispatchEvent(new Event('input'));saveCurrentDay();}updateSaveStatus('✅ 已应用');setTimeout(()=>updateSaveStatus('✅ 已自动保存'),1000);};
         window.setCellColor=function(color){if(!activeCell)return;pushUndo();const td=activeCell.closest('td');if(td){td.style.backgroundColor=color||'';const row=parseInt(activeCell.dataset.row),col=parseInt(activeCell.dataset.col);const records=getCurrentDayData();if(records[row]){if(!records[row].colors)records[row].colors=getCurrentClass().columns.map(()=>'');records[row].colors[col]=color;saveCurrentDay();}}};
-        window.openToolEditor=function(){const panel=document.getElementById('toolEditPanel');panel.style.display='flex';let html='';tools.forEach((tool,i)=>{if(tool.type==='text'){const rawBg=(tool.style.match(/background:([^;]+)/)||[])[1]||'';const isGradient=rawBg.trim().startsWith('linear-gradient');const bgColor=isGradient?(rawBg.match(/#[0-9a-fA-F]{3,6}/)||['#93c5fd'])[0]:rawBg.trim()||'#ffffff';const textColor=(tool.style.match(/color:([^;]+)/)||[])[1]||'#000000';html+=`<div class="tool-edit-row" data-tool-idx="${i}"><input type="text" value="${escapeHtml(tool.label)}" data-index="${i}" data-field="label"><input type="color" value="${bgColor}" data-index="${i}" data-field="bg" data-has-gradient="${isGradient?1:0}"><input type="color" value="${textColor.trim()}" data-index="${i}" data-field="textColor"><button class="btn btn-xs" onclick="deleteTool(${i})">🗑️</button></div>`;}else{html+=`<div class="tool-edit-row"><span>●</span><input type="color" value="${tool.color||'#ffffff'}" data-index="${i}" data-field="color"><input type="text" value="${escapeHtml(tool.label||'')}" data-index="${i}" data-field="label"><button class="btn btn-xs" onclick="deleteTool(${i})">🗑️</button></div>`;}});html+=`<button class="btn btn-xs" onclick="addTool()">+ 添加项</button>`;panel.innerHTML=html;document.getElementById('btnSaveTools').style.display='inline-flex';};
+        window.openToolEditor=function(){const panel=document.getElementById('toolEditPanel');panel.style.display='flex';let html='';tools.forEach((tool,i)=>{if(tool.type==='text'){const rawBg=(tool.style.match(/background:([^;]+)/)||[])[1]||'';const isGradient=rawBg.trim().startsWith('linear-gradient');const bgColor=isGradient?(rawBg.match(/#[0-9a-fA-F]{3,6}/)||['#93c5fd'])[0]:rawBg.trim()||'#ffffff';const textColor=(tool.style.match(/color:([^;]+)/)||[])[1]||'#000000';html+=`<div class="tool-edit-row" data-tool-idx="${i}"><input type="text" value="${escapeHtml(tool.label)}" data-index="${i}" data-field="label"><input type="color" value="${bgColor}" data-index="${i}" data-field="bg" data-has-gradient="${isGradient?1:0}"><input type="color" value="${textColor.trim()}" data-index="${i}" data-field="textColor"><button class="btn btn-xs" onclick="deleteTool(${i})">🗑️</button></div>`;}else{html+=`<div class="tool-edit-row"><span>●</span><input type="color" value="${tool.color||'#ffffff'}" data-index="${i}" data-field="color"><input type="text" value="${escapeHtml(tool.label||'')}" data-index="${i}" data-field="label"><button class="btn btn-xs" onclick="deleteTool(${i})">🗑️</button></div>`;}});html+=`<div style="display:flex;gap:4px;"><button class="btn btn-xs" onclick="addTool()">+ 文字</button><button class="btn btn-xs" onclick="addColorTool()">+ 颜色</button></div>`;panel.innerHTML=html;document.getElementById('btnSaveTools').style.display='inline-flex';};
         window.saveToolChanges=function(){const panel=document.getElementById('toolEditPanel');const inputs=panel.querySelectorAll('input');inputs.forEach(inp=>{const idx=parseInt(inp.dataset.index);if(isNaN(idx)||!tools[idx])return;const field=inp.dataset.field;if(tools[idx].type==='text'){if(field==='label')tools[idx].label=inp.value.trim();else if(field==='bg'){const hasGrad=inp.dataset.hasGradient==='1';const curBg=(tools[idx].style.match(/background:([^;]+)/)||[])[1]||'';if(hasGrad&&curBg.includes('linear-gradient')){const newBg=curBg.replace(/#[0-9a-fA-F]{3,6}/g,inp.value);tools[idx].style=tools[idx].style.replace(/background:[^;]+;?/,`background:${newBg};`);}else{tools[idx].style=tools[idx].style.replace(/background:[^;]+;?/,`background:${inp.value};`);}}else if(field==='textColor')tools[idx].style=tools[idx].style.replace(/color:[^;]+;?/,`color:${inp.value};`);}else{if(field==='color')tools[idx].color=inp.value;else if(field==='label')tools[idx].label=inp.value.trim();}});dbSet('tools',tools);renderToolItems();panel.style.display='none';panel.innerHTML='';document.getElementById('btnSaveTools').style.display='none';};
         window.deleteTool=function(idx){if(tools.length<=1)return alert('至少保留一项');tools.splice(idx,1);dbSet('tools',tools);openToolEditor();};
         window.addTool=function(){tools.push({type:'text',label:'新标签',style:'background:#e2e8f0;color:#1e293b;'});dbSet('tools',tools);openToolEditor();};
+        window.addColorTool=function(){tools.push({type:'color',color:'#93c5fd',label:'新颜色'});dbSet('tools',tools);openToolEditor();};
         window.togglePopup=function(){const popup=document.getElementById('toolPopup');popup.classList.toggle('open');if(popup.classList.contains('open')){renderToolItems();document.getElementById('toolEditPanel').style.display='none';}};
         window.closePopup=function(){document.getElementById('toolPopup').classList.remove('open');};
 
@@ -1447,6 +1458,7 @@
         window.switchStatType = function() {
             const type = document.getElementById('statType').value;
             const targetSelect = document.getElementById('statTarget');
+            const previousTarget = targetSelect.value;
             const cls = getCurrentClass();
             if (!cls) return;
 
@@ -1478,7 +1490,12 @@
             }
 
             targetSelect.innerHTML = optionsHTML;
-            targetSelect.selectedIndex = 0;
+            // 保留用户之前的选择
+            if (previousTarget && [...targetSelect.options].some(o => o.value === previousTarget)) {
+                targetSelect.value = previousTarget;
+            } else {
+                targetSelect.selectedIndex = 0;
+            }
             window.renderStatTable();
         };
 

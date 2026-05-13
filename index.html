@@ -693,42 +693,83 @@
         /* ===== LOGIN OVERLAY ===== */
         .login-overlay {
             position: fixed; inset: 0; z-index: 99999;
-            background: var(--bg);
+            background: #faf7f2;
             display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+        .login-overlay::before {
+            content: '';
+            position: absolute; top: -30%; left: -20%;
+            width: 140%; height: 100%;
+            background: radial-gradient(ellipse at 50% 35%, rgba(210,180,140,0.13) 0%, rgba(250,247,242,0) 60%),
+                        radial-gradient(circle at 72% 25%, rgba(190,160,130,0.08) 0%, transparent 50%);
+            pointer-events: none;
         }
         .login-card {
-            background: var(--card-bg); border-radius: 20px;
-            padding: 28px 24px; width: 92%; max-width: 380px;
-            box-shadow: var(--shadow-lg); text-align: center;
+            position: relative;
+            background: #fffdf9; border-radius: 24px;
+            padding: 36px 28px 32px; width: 90%; max-width: 380px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 30px rgba(60,50,30,0.08), 0 20px 60px rgba(60,50,30,0.04);
+            text-align: center;
+            animation: cardRise 0.5s ease-out;
         }
-        .login-card h2 { font-size: 1.3rem; margin-bottom: 4px; color: var(--primary); }
-        .login-card .sub { font-size: 12px; color: var(--text-muted); margin-bottom: 16px; }
-        .login-tabs { display: flex; gap: 0; margin-bottom: 16px; border-radius: var(--btn-radius); background: var(--input-bg); padding: 3px; }
+        @keyframes cardRise {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .login-card h2 {
+            font-family: "Noto Serif SC", "Songti SC", "STSong", "SimSun", "Georgia", "Times New Roman", serif;
+            font-size: 1.5rem; margin-bottom: 6px; color: #3b3d71; font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+        .login-card .sub {
+            font-size: 12px; color: #a09888; margin-bottom: 22px;
+            letter-spacing: 0.04em;
+        }
+        .login-tabs {
+            display: flex; gap: 0; margin-bottom: 20px;
+            border-radius: 9999px; background: #f4f0e8; padding: 4px;
+            position: relative;
+        }
         .login-tab {
-            flex: 1; padding: 8px; border: none; background: transparent;
-            font-size: 13px; font-weight: 600; cursor: pointer; border-radius: var(--btn-radius);
-            color: var(--text-light); transition: var(--transition);
-            -webkit-tap-highlight-color: transparent;
+            flex: 1; padding: 10px; border: none; background: transparent;
+            font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 9999px;
+            color: #a09888; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            -webkit-tap-highlight-color: transparent; position: relative; z-index: 1;
         }
-        .login-tab.active { background: var(--accent-gradient); color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,0.25); }
-        .login-tab:active { transform: scale(0.95); }
+        .login-tab.active {
+            background: #3b3d71; color: #faf7f2;
+            box-shadow: 0 2px 8px rgba(59,61,113,0.3);
+        }
+        .login-tab:active { transform: scale(0.96); }
         .login-input {
-            width: 100%; padding: 12px 14px; border-radius: var(--btn-radius);
-            border: 1.5px solid var(--border); font-size: 14px; margin-bottom: 10px;
-            background: var(--input-bg); outline: none; transition: var(--transition);
+            width: 100%; padding: 13px 16px; border-radius: 14px;
+            border: 1.5px solid #e8e2d8; font-size: 14px; margin-bottom: 12px;
+            background: #fdfaf5; outline: none;
+            transition: all 0.25s ease; color: #2d2a24;
+            box-sizing: border-box; font-family: inherit;
         }
-        .login-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); background: #fff; }
+        .login-input::placeholder { color: #c5beb2; }
+        .login-input:focus {
+            border-color: #928b7a;
+            box-shadow: 0 0 0 3px rgba(180,160,130,0.12);
+            background: #fffdf9;
+        }
         .login-btn {
-            width: 100%; padding: 12px; border-radius: var(--btn-radius);
-            background: var(--accent-gradient); color: #fff; border: none;
+            width: 100%; padding: 13px; border-radius: 14px;
+            background: #3b3d71; color: #faf7f2; border: none;
             font-size: 15px; font-weight: 600; cursor: pointer;
-            transition: var(--transition); -webkit-tap-highlight-color: transparent;
+            transition: all 0.25s ease; -webkit-tap-highlight-color: transparent;
+            margin-top: 4px; letter-spacing: 0.05em;
         }
-        .login-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
-        .login-btn:active { transform: scale(0.97); }
-        .login-msg { font-size: 12px; margin-top: 8px; min-height: 18px; }
-        .login-msg.error { color: var(--danger); }
-        .login-msg.success { color: var(--success); }
+        .login-btn:hover {
+            background: #4a4c80; transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(59,61,113,0.25);
+        }
+        .login-btn:active { transform: scale(0.98); background: #30325e; }
+        .login-msg { font-size: 12px; margin-top: 10px; min-height: 18px; }
+        .login-msg.error { color: #c0392b; }
+        .login-msg.success { color: #5d8c5e; }
         .logout-link {
             font-size: 11px; color: var(--text-muted); margin-top: 12px; cursor: pointer;
             text-decoration: underline; -webkit-tap-highlight-color: transparent;
@@ -741,7 +782,7 @@
     <!-- 登录浮层 -->
     <div class="login-overlay" id="loginOverlay">
         <div class="login-card">
-            <h2>📒 班级反馈表</h2>
+            <h2>班级反馈表</h2>
             <div class="sub">多设备数据同步 · AI 智能分析</div>
             <div class="login-tabs">
                 <button class="login-tab active" id="tabLogin" onclick="switchLoginTab('login')">登 录</button>

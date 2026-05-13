@@ -2078,18 +2078,12 @@
             }
 
             // 键盘弹出时浮动按钮上移
-            let floatSavedTop = floatBtnTop, popupSavedTop = null, popupSavedLeft = null;
+            let floatSavedTop = floatBtnTop;
             document.addEventListener('focusin', e => {
                 const tag = e.target.tagName;
                 if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target.closest('.cell-input')) {
                     const floatBtn = document.getElementById('floatBtn');
                     if (floatBtn) { floatSavedTop = parseInt(floatBtn.style.top) || floatBtnTop; floatBtn.style.top = '10px'; floatBtn.style.bottom = 'auto'; }
-                    const popup = document.getElementById('toolPopup');
-                    if (popup && popup.classList.contains('open')) {
-                        popupSavedTop = parseInt(popup.style.top) || popup.getBoundingClientRect().top;
-                        popupSavedLeft = parseInt(popup.style.left) || popup.getBoundingClientRect().left;
-                        popup.style.top = '60px'; popup.style.bottom = 'auto';
-                    }
                 }
             });
             document.addEventListener('focusout', e => {
@@ -2099,11 +2093,6 @@
                         const floatBtn = document.getElementById('floatBtn');
                         if (floatBtn && !document.activeElement || (document.activeElement && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA')) {
                             floatBtn.style.top = floatSavedTop + 'px'; floatBtn.style.bottom = 'auto';
-                        }
-                        const popup = document.getElementById('toolPopup');
-                        if (popup && popup.classList.contains('open') && popupSavedTop != null) {
-                            popup.style.top = popupSavedTop + 'px'; popup.style.left = popupSavedLeft + 'px';
-                            popupSavedTop = null; popupSavedLeft = null;
                         }
                     }, 200);
                 }

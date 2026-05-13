@@ -1707,8 +1707,8 @@
         window.deleteTool=function(idx){if(tools.length<=1)return alert('至少保留一项');tools.splice(idx,1);dbSet('tools',tools);openToolEditor();};
         window.addTool=function(){tools.push({type:'text',label:'新标签',style:'background:#e2e8f0;color:#1e293b;'});dbSet('tools',tools);openToolEditor();};
         window.addColorTool=function(){tools.push({type:'color',color:'#93c5fd',label:'新颜色'});dbSet('tools',tools);openToolEditor();};
-        window.togglePopup=function(){try{var popup=document.getElementById('toolPopup');popup.classList.toggle('open');if(popup.classList.contains('open')){if(!popup.style.left){var btn=document.getElementById('floatBtn');var bl=parseInt(btn.style.left)||floatBtnLeft;var bt=parseInt(btn.style.top)||floatBtnTop;popup.style.right='auto';popup.style.bottom='auto';popup.style.left=Math.max(4,bl+56-280)+'px';popup.style.top=Math.max(4,bt-10)+'px';}renderToolItems();document.getElementById('toolEditPanel').style.display='none';}}catch(e){console.error('togglePopup error:',e);}};
-        window.closePopup=function(){try{document.getElementById('toolPopup').classList.remove('open');}catch(e){}};
+        window.togglePopup=function(){const popup=document.getElementById('toolPopup');popup.classList.toggle('open');if(popup.classList.contains('open')){renderToolItems();document.getElementById('toolEditPanel').style.display='none';document.getElementById('btnSaveTools').style.display='none';}};
+        window.closePopup=function(){var popup=document.getElementById('toolPopup');popup.classList.remove('open');document.getElementById('toolEditPanel').style.display='none';document.getElementById('btnSaveTools').style.display='none';};
 
         // ========== 页面构建 ==========
         function buildAllViews(){
@@ -2041,12 +2041,18 @@
             }
 
             // 键盘弹出时浮动按钮上移
-            let floatSavedTop = floatBtnTop;
+            let floatSavedTop = floatBtnTop, popupSavedTop = null, popupSavedLeft = null;
             document.addEventListener('focusin', e => {
                 const tag = e.target.tagName;
                 if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target.closest('.cell-input')) {
                     const floatBtn = document.getElementById('floatBtn');
                     if (floatBtn) { floatSavedTop = parseInt(floatBtn.style.top) || floatBtnTop; floatBtn.style.top = '10px'; floatBtn.style.bottom = 'auto'; }
+                    const popup = document.getElementById('toolPopup');
+                    if (popup && popup.classList.contains('open')) {
+                        popupSavedTop = parseInt(popup.style.top) || popup.getBoundingClientRect().top;
+                        popupSavedLeft = parseInt(popup.style.left) || popup.getBoundingClientRect().left;
+                        popup.style.top = '60px'; popup.style.bottom = 'auto';
+                    }
                 }
             });
             document.addEventListener('focusout', e => {
@@ -2056,6 +2062,11 @@
                         const floatBtn = document.getElementById('floatBtn');
                         if (floatBtn && !document.activeElement || (document.activeElement && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA')) {
                             floatBtn.style.top = floatSavedTop + 'px'; floatBtn.style.bottom = 'auto';
+                        }
+                        const popup = document.getElementById('toolPopup');
+                        if (popup && popup.classList.contains('open') && popupSavedTop != null) {
+                            popup.style.top = popupSavedTop + 'px'; popup.style.left = popupSavedLeft + 'px';
+                            popupSavedTop = null; popupSavedLeft = null;
                         }
                     }, 200);
                 }

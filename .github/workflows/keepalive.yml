@@ -1,8 +1,8 @@
 name: Supabase Keepalive                                                                                          
-                                         
+                                                                                                                    
   on:                                                                                                               
-    schedule:
-      - cron: '23 3 */5 * *'                                                                                        
+    schedule:                                                                                                       
+      - cron: "23 3 * * 0,3"                                                                                        
     workflow_dispatch:                                                                                              
                                                                                                                     
   jobs:                                                                                                             
@@ -15,4 +15,4 @@ name: Supabase Keepalive
               "https://furpcqytmgxqkxlbselj.supabase.co/rest/v1/" \                                                 
               -H "apikey:                                                                                           
   eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1cnBjcXl0bWd4cWt4bGJzZWxqIiwicm9sZSI6ImFub
-  24iLCJpYXQiOjE3Nzg2MjYyNTYsImV4cCI6MjA5NDIwMjI1Nn0.522KmI4GJrghlteeQiRVMGJdytu3R4pf7E1NLyTByzE"
+  24iLCJpYXQiOjE3Nzg2MjYyNTYsImV4cCI6MjA5NDIwMjI1Nn0.522KmI4GJrghlteeQiRVMGJdytu3R4pf7E1NLyTByzE"  

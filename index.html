@@ -1382,11 +1382,19 @@
             const origW=wrapper.getAttribute('style')||'',origT=table.getAttribute('style')||'';
             wrapper.style.padding='20px';wrapper.style.overflow='visible';wrapper.style.maxHeight='none';wrapper.style.width='fit-content';wrapper.style.margin='0 auto';
             table.style.minWidth='auto';table.style.width='auto';
+            const allCells=table.querySelectorAll('th,td');
+            const origCellStyles=[];
+            allCells.forEach(cell=>{
+                origCellStyles.push({el:cell, ws:cell.style.whiteSpace, mw:cell.style.maxWidth});
+                cell.style.whiteSpace='nowrap';
+                cell.style.maxWidth='none';
+            });
             table.querySelectorAll('th:first-child, td:first-child').forEach(cell=>cell.style.minWidth='32px');
             table.querySelectorAll('th:nth-child(2), td:nth-child(2)').forEach(cell=>cell.style.minWidth='70px');
             table.querySelectorAll('th:not(:first-child):not(:nth-child(2)), td:not(:first-child):not(:nth-child(2))').forEach(cell=>cell.style.minWidth='90px');
             html2canvas(wrapper,{scale:2,backgroundColor:'#ffffff'}).then(canvas=>{
                 table.querySelectorAll('th,td').forEach(cell=>{cell.style.minWidth='';});
+                origCellStyles.forEach(({el,ws,mw})=>{el.style.whiteSpace=ws;el.style.maxWidth=mw;});
                 wrapper.setAttribute('style',origW);table.setAttribute('style',origT);
                 canvas.toBlob(blob=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(document.getElementById('fullTableTitleInput')?.value||'反馈表')+'.png';a.click();});
             });

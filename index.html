@@ -10,6 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/mammoth@1.7.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
         :root {
             /* 蓝白配色风格 */
@@ -681,13 +682,79 @@
 
         /* ===== SELECTION ===== */
         ::selection { background: #bfdbfe; color: var(--primary); }
+
+        /* ===== LOGIN OVERLAY ===== */
+        .login-overlay {
+            position: fixed; inset: 0; z-index: 99999;
+            background: var(--bg);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .login-card {
+            background: var(--card-bg); border-radius: 20px;
+            padding: 28px 24px; width: 92%; max-width: 380px;
+            box-shadow: var(--shadow-lg); text-align: center;
+        }
+        .login-card h2 { font-size: 1.3rem; margin-bottom: 4px; color: var(--primary); }
+        .login-card .sub { font-size: 12px; color: var(--text-muted); margin-bottom: 16px; }
+        .login-tabs { display: flex; gap: 0; margin-bottom: 16px; border-radius: var(--btn-radius); background: var(--input-bg); padding: 3px; }
+        .login-tab {
+            flex: 1; padding: 8px; border: none; background: transparent;
+            font-size: 13px; font-weight: 600; cursor: pointer; border-radius: var(--btn-radius);
+            color: var(--text-light); transition: var(--transition);
+            -webkit-tap-highlight-color: transparent;
+        }
+        .login-tab.active { background: var(--accent-gradient); color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,0.25); }
+        .login-tab:active { transform: scale(0.95); }
+        .login-input {
+            width: 100%; padding: 12px 14px; border-radius: var(--btn-radius);
+            border: 1.5px solid var(--border); font-size: 14px; margin-bottom: 10px;
+            background: var(--input-bg); outline: none; transition: var(--transition);
+        }
+        .login-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); background: #fff; }
+        .login-btn {
+            width: 100%; padding: 12px; border-radius: var(--btn-radius);
+            background: var(--accent-gradient); color: #fff; border: none;
+            font-size: 15px; font-weight: 600; cursor: pointer;
+            transition: var(--transition); -webkit-tap-highlight-color: transparent;
+        }
+        .login-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+        .login-btn:active { transform: scale(0.97); }
+        .login-msg { font-size: 12px; margin-top: 8px; min-height: 18px; }
+        .login-msg.error { color: var(--danger); }
+        .login-msg.success { color: var(--success); }
+        .logout-link {
+            font-size: 11px; color: var(--text-muted); margin-top: 12px; cursor: pointer;
+            text-decoration: underline; -webkit-tap-highlight-color: transparent;
+        }
+        .logout-link:hover { color: var(--danger); }
+        .logout-link:active { opacity: 0.7; }
     </style>
 </head>
 <body>
+    <!-- 登录浮层 -->
+    <div class="login-overlay" id="loginOverlay" style="display:none;">
+        <div class="login-card">
+            <h2>📒 班级反馈表</h2>
+            <div class="sub">多设备数据同步 · AI 智能分析</div>
+            <div class="login-tabs">
+                <button class="login-tab active" id="tabLogin" onclick="switchLoginTab('login')">登 录</button>
+                <button class="login-tab" id="tabRegister" onclick="switchLoginTab('register')">注 册</button>
+            </div>
+            <input class="login-input" id="loginName" placeholder="姓名" autocomplete="username">
+            <input class="login-input" id="loginPassword" type="password" placeholder="密码" autocomplete="current-password">
+            <input class="login-input" id="regCode" type="text" placeholder="注册码" style="display:none;">
+            <button class="login-btn" id="loginBtn" onclick="handleLogin()">登 录</button>
+            <div class="login-msg" id="loginMsg"></div>
+            <div class="logout-link" id="logoutLink" style="display:none;" onclick="handleLogout()">退出登录</div>
+        </div>
+    </div>
+
+    <!-- 主应用 -->
+    <div id="mainApp" style="display:none;">
     <div class="container" id="app">
         <div class="header">
             <div class="class-selector"><span>🏫</span><span class="class-name-display" id="currentClassName" onclick="switchView('classes')">未选择</span></div>
-            <div style="display:flex;gap:6px;flex-shrink:0;"><button class="btn btn-xs btn-outline" onclick="exportAllData()">💾 备份</button><button class="btn btn-xs btn-outline" onclick="importAllDataPrompt()">📥 恢复</button></div>
+            <div style="display:flex;gap:6px;flex-shrink:0;"><span id="headerUserName" style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;margin-right:4px;"></span><button class="btn btn-xs btn-outline" onclick="exportAllData()" title="💾 备份">💾 备份</button><button class="btn btn-xs btn-outline" onclick="importAllDataPrompt()" title="📥 导入">📥 导入</button><button class="btn btn-xs btn-outline" onclick="handleLogout()" title="退出">🚪</button></div>
         </div>
         <div id="view-classes" class="view"></div>
         <div id="view-feedback" class="view" style="display:none;"></div>
@@ -711,47 +778,62 @@
         <button class="nav-tab" data-view="fulltable" onclick="switchToFullTable()">📋 总表</button>
         <button class="nav-tab" data-view="analysis" onclick="switchView('analysis')">📈 分析</button>
     </div>
+    </div><!-- /#mainApp -->
 
     <script>
     (function() {
-        // ========== 数据库封装 ==========
-        const DB_NAME = 'FeedbackAppDB', DB_VERSION = 1, STORE_NAME = 'appData';
-        let db, useIndexedDB = true;
+        // ========== Supabase 初始化 ==========
+        const SUPABASE_URL = 'https://furpcqytmgxqkxlbselj.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1cnBjcXl0bWd4cWt4bGJzZWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MjYyNTYsImV4cCI6MjA5NDIwMjI1Nn0.522KmI4GJrghlteeQiRVMGJdytu3R4pf7E1NLyTByzE';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const REG_CODE = 'english2024';
 
-        async function openDB() {
-            return new Promise((resolve) => {
-                const request = indexedDB.open(DB_NAME, DB_VERSION);
-                request.onupgradeneeded = (e) => { if (!e.target.result.objectStoreNames.contains(STORE_NAME)) e.target.result.createObjectStore(STORE_NAME); };
-                request.onsuccess = (e) => { db = e.target.result; useIndexedDB = true; resolve(db); };
-                request.onerror = () => { useIndexedDB = false; resolve(null); };
-            });
-        }
-        async function dbGet(key) {
-            if (useIndexedDB && db) {
-                return new Promise((resolve, reject) => {
-                    const tx = db.transaction(STORE_NAME, 'readonly');
-                    const store = tx.objectStore(STORE_NAME);
-                    const req = store.get(key);
-                    req.onsuccess = () => resolve(req.result);
-                    req.onerror = reject;
-                });
-            } else {
-                const val = localStorage.getItem(key);
-                return val ? JSON.parse(val) : undefined;
+        function nameToEmail(name) {
+            let normalized = name.trim().replace(/\s+/g, '');
+            let hash = '';
+            for (let i = 0; i < normalized.length; i++) {
+                hash += normalized.charCodeAt(i).toString();
             }
+            return 't_' + hash.slice(0, 12) + '@bobo.run';
         }
+
+        // ========== 数据库封装（Supabase 优先 + localStorage 备份）==========
+        let _userId = null;
+        function _cacheKey(k) { return '_fb_' + (_userId || 'anon') + '_' + k; }
+
+        async function _saveKey(key, value) {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    await supabase.from('data_store').upsert({
+                        user_id: user.id, key: key, value: value,
+                        updated_at: new Date().toISOString()
+                    }, { onConflict: 'user_id,key' });
+                }
+            } catch(e) {}
+            try { localStorage.setItem(_cacheKey(key), JSON.stringify(value)); } catch(e) {}
+        }
+
+        async function _loadKey(key) {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    const { data, error } = await supabase.from('data_store')
+                        .select('value').eq('user_id', user.id).eq('key', key).maybeSingle();
+                    if (data && data.value) return data.value;
+                }
+            } catch(e) {}
+            try {
+                const raw = localStorage.getItem(_cacheKey(key));
+                if (raw) return JSON.parse(raw);
+            } catch(e) {}
+            return undefined;
+        }
+
+        async function dbGet(key) { return await _loadKey(key); }
         async function dbSet(key, value) {
-            if (useIndexedDB && db) {
-                return new Promise((resolve, reject) => {
-                    const tx = db.transaction(STORE_NAME, 'readwrite');
-                    const store = tx.objectStore(STORE_NAME);
-                    store.put(value, key);
-                    tx.oncomplete = resolve;
-                    tx.onerror = reject;
-                });
-            } else {
-                localStorage.setItem(key, JSON.stringify(value));
-            }
+            await _saveKey(key, value);
+            try { localStorage.setItem(_cacheKey(key), JSON.stringify(value)); } catch(e) {}
         }
 
         // ========== 默认数据 ==========
@@ -804,6 +886,114 @@
         let saveFeedbackTimeout;
         function saveFeedbackDebounced(){clearTimeout(saveFeedbackTimeout);saveFeedbackTimeout=setTimeout(()=>{dbSet('feedback',feedback);try{localStorage.setItem('_bk_feedback',JSON.stringify(feedback));}catch(e){}},300);}
         async function saveAllDataNow(){await dbSet('classes',classes);await dbSet('feedback',feedback);await dbSet('tools',tools);await dbSet('analysisSel',analysisSel);try{localStorage.setItem('_fullBackup',JSON.stringify({classes,feedback,tools,analysisSel,time:Date.now()}));}catch(e){}}
+
+        // ========== 认证 ==========
+        window.switchLoginTab = function(tab) {
+            document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
+            document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
+            document.getElementById('regCode').style.display = tab === 'register' ? '' : 'none';
+            document.getElementById('loginBtn').textContent = tab === 'login' ? '登 录' : '注 册';
+            document.getElementById('loginMsg').textContent = '';
+            document.getElementById('loginMsg').className = 'login-msg';
+        };
+
+        window.handleLogin = async function() {
+            const name = document.getElementById('loginName').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const isRegister = document.getElementById('tabRegister').classList.contains('active');
+            const msgEl = document.getElementById('loginMsg');
+            msgEl.textContent = ''; msgEl.className = 'login-msg';
+
+            if (!name || !password) { msgEl.textContent = '请填写姓名和密码'; msgEl.className = 'login-msg error'; return; }
+
+            if (isRegister) {
+                const code = document.getElementById('regCode').value.trim();
+                if (code !== REG_CODE) { msgEl.textContent = '注册码不正确'; msgEl.className = 'login-msg error'; return; }
+                if (password.length < 4) { msgEl.textContent = '密码至少4位'; msgEl.className = 'login-msg error'; return; }
+
+                const email = nameToEmail(name);
+                const { data, error } = await supabase.auth.signUp({
+                    email, password,
+                    options: { data: { name } }
+                });
+                if (error) {
+                    if (error.message.includes('already') || error.message.includes('exists')) {
+                        msgEl.textContent = '该姓名已注册，请直接登录';
+                    } else {
+                        msgEl.textContent = '注册失败：' + error.message;
+                    }
+                    msgEl.className = 'login-msg error'; return;
+                }
+                // Auto-confirm via trigger — retry signIn after short delay
+                if (!data.session) {
+                    msgEl.textContent = '注册成功，正在自动登录...'; msgEl.className = 'login-msg success';
+                    await new Promise(r => setTimeout(r, 1500));
+                    const { data: d2, error: e2 } = await supabase.auth.signInWithPassword({ email, password });
+                    if (e2) { msgEl.textContent = '注册成功，请切换到登录页登录'; msgEl.className = 'login-msg success'; switchLoginTab('login'); return; }
+                    await onLoginSuccess(d2.user);
+                    return;
+                }
+                await onLoginSuccess(data.user);
+            } else {
+                const email = nameToEmail(name);
+                const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+                if (error) { msgEl.textContent = '姓名或密码错误'; msgEl.className = 'login-msg error'; return; }
+                await onLoginSuccess(data.user);
+            }
+        };
+
+        async function onLoginSuccess(user) {
+            _userId = user.id;
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('mainApp').style.display = '';
+            document.getElementById('logoutLink').style.display = '';
+            const name = user.user_metadata?.name || user.email?.split('@')[0] || '';
+            document.getElementById('headerUserName').textContent = '👤 ' + name;
+            await loadUserData();
+        }
+
+        window.handleLogout = async function() {
+            await supabase.auth.signOut();
+            _userId = null;
+            document.getElementById('loginOverlay').style.display = '';
+            document.getElementById('mainApp').style.display = 'none';
+            document.getElementById('loginName').value = '';
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('regCode').value = '';
+            document.getElementById('regCode').style.display = 'none';
+            document.getElementById('loginMsg').textContent = '';
+            document.getElementById('loginMsg').className = 'login-msg';
+            document.getElementById('logoutLink').style.display = 'none';
+            switchLoginTab('login');
+        };
+
+        async function loadUserData() {
+            let storedClasses = await dbGet('classes');
+            if (!storedClasses) {
+                const backup = localStorage.getItem('_fullBackup');
+                if (backup) { try { const data = JSON.parse(backup); if (data.classes && data.classes.length) { classes = data.classes; feedback = data.feedback || {}; tools = data.tools || [...DEFAULT_TOOLS]; analysisSel = data.analysisSel || {}; alert('✅ 已从本地备份自动恢复数据'); } } catch(e) {} }
+                if (!classes || !classes.length) { classes = defaultClasses(); feedback = {}; tools = [...DEFAULT_TOOLS]; analysisSel = {}; await saveAllDataNow(); }
+            } else {
+                classes = storedClasses;
+                feedback = (await dbGet('feedback')) || {};
+                tools = (await dbGet('tools')) || [...DEFAULT_TOOLS];
+                analysisSel = (await dbGet('analysisSel')) || {};
+            }
+            currentClassId = classes.length ? classes[0].id : null;
+            currentDateLabel = getDateList()[0] || 'Day1';
+            buildAllViews();
+            applyTableColors(getCurrentClass());
+            switchView('classes');
+            const floatBtn = document.getElementById('floatBtn');
+            floatBtn.style.left = floatBtnLeft + 'px'; floatBtn.style.top = floatBtnTop + 'px';
+        }
+
+        // 登录页回车提交
+        document.addEventListener('keydown', function(e) {
+            if (document.getElementById('loginOverlay').style.display !== 'none' && e.key === 'Enter') {
+                e.preventDefault(); handleLogin();
+            }
+        });
 
         // ========== 撤销/重做 ==========
         function pushUndo(){const cls=getCurrentClass();if(!cls)return;const key=feedbackKey(cls.id,currentDateLabel);const entry=feedback[key];if(!entry)return;undoStack.push({key,snapshot:JSON.parse(JSON.stringify(entry))});if(undoStack.length>MAX_UNDO)undoStack.shift();redoStack.length=0;}
@@ -1282,8 +1472,6 @@
 
         // ========== AI 分析 ==========
         window.runAIAnalysis = async function() {
-            const apiKey = document.getElementById('apiKeyInput')?.value?.trim();
-            if (!apiKey) return alert('请填写 DeepSeek API Key');
             const cls = getCurrentClass(); if (!cls) return;
             const studentName = document.getElementById('analysisStudentSelect').value;
             if (!studentName) return alert('请选择学生');
@@ -1317,12 +1505,37 @@
 
             document.getElementById('aiResult').innerHTML = '分析中，请稍候...';
             try {
-                const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                    body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }], temperature: 0.7, max_tokens: 1000 })
-                });
-                const data = await response.json();
-                let resultText = data.choices?.[0]?.message?.content || 'API 返回异常';
+                let resultText;
+                // 优先使用 Supabase Edge Function（无需 API Key）
+                try {
+                    const { data, error } = await supabase.functions.invoke('ai-analyze', {
+                        body: {
+                            student_name: studentName,
+                            class_name: cls.name,
+                            date: radarDate,
+                            score_desc: scoreDesc,
+                            manual_desc: manualDesc,
+                            file_content: fileContent,
+                            system_prompt: systemPrompt,
+                            user_prompt: userPrompt
+                        }
+                    });
+                    if (!error && data && data.result) {
+                        resultText = data.result;
+                    } else {
+                        throw new Error(error?.message || 'Edge Function 返回空');
+                    }
+                } catch (efErr) {
+                    // Edge Function 失败，尝试直接调用 DeepSeek（需要 API Key 在代码中）
+                    const apiKey = document.getElementById('apiKeyInput')?.value?.trim();
+                    if (!apiKey) throw new Error('AI 服务暂时不可用，请稍后重试');
+                    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                        body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }], temperature: 0.7, max_tokens: 1000 })
+                    });
+                    const data = await response.json();
+                    resultText = data.choices?.[0]?.message?.content || 'API 返回异常';
+                }
                 resultText = resultText.replace(/[#*_`>]/g, '');
                 document.getElementById('aiResult').innerHTML = resultText.replace(/\n/g, '<br>');
             } catch (err) { document.getElementById('aiResult').innerHTML = '请求失败：' + err.message; }
@@ -1493,7 +1706,7 @@
                 </div>
                 <div class="table-wrapper" id="statTableWrapper"></div>
             </div>`;
-            document.getElementById('view-analysis').innerHTML=`<div class="card"><div class="card-title">📈 汇总分析</div><div style="display:flex;gap:8px"><span>学生：</span><select id="analysisStudentSelect" class="input" style="padding:8px;border-radius:12px;flex:1" onchange="refreshAnalysis()"><option value="">-- 请选择 --</option></select></div><div class="check-group" id="analysisDateCheckGroup"></div><div class="check-group" id="analysisColumnCheckGroup"></div></div><div class="card" id="analysisChartsArea"><div id="analysisReportTitle" style="text-align:center;font-size:1.1rem;font-weight:700;margin-bottom:12px">学习分析报告</div><div id="lineChartsContainer"></div><div id="radarSection" style="margin-top:16px;"><div class="check-group" style="margin-bottom:8px"><span>雷达图课次：</span><select id="radarDateSelect" class="input" style="width:120px;padding:6px;border-radius:12px" onchange="refreshRadarColumns();saveRadarCols()"></select></div><div class="check-group" id="radarColumnCheckGroup" style="margin:8px 0"></div><div style="height:320px"><canvas id="radarChartCanvas" height="320"></canvas></div></div><div style="margin-top:16px"><input type="password" id="apiKeyInput" class="input" placeholder="DeepSeek API Key" style="width:100%;padding:8px;margin-bottom:8px"><textarea id="examDescTextarea" class="ai-textarea" placeholder="手动输入试卷描述或题型知识点（可选）" rows="3"></textarea><div style="display:flex; gap:6px; align-items: center; margin:8px 0;"><label class="btn btn-outline btn-sm" style="cursor:pointer;">📎 上传试卷文件<input type="file" id="examFileInput" accept=".txt,.docx,.pdf" style="display:none" onchange="document.getElementById('fileNameDisplay').textContent = this.files[0]?.name || ''"></label><span id="fileNameDisplay" style="font-size:12px; color:var(--text-light);"></span></div><button class="btn btn-sm" onclick="runAIAnalysis()">🤖 测试分析</button></div><div id="aiResult" style="margin-top:12px;padding:12px;background:var(--input-bg);border-radius:12px;font-size:14px;white-space:pre-wrap;"></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-sm" onclick="downloadPDFReport()">📥 下载PDF报告</button></div></div><div id="analysisTablesContainer"></div>`;
+            document.getElementById('view-analysis').innerHTML=`<div class="card"><div class="card-title">📈 汇总分析</div><div style="display:flex;gap:8px"><span>学生：</span><select id="analysisStudentSelect" class="input" style="padding:8px;border-radius:12px;flex:1" onchange="refreshAnalysis()"><option value="">-- 请选择 --</option></select></div><div class="check-group" id="analysisDateCheckGroup"></div><div class="check-group" id="analysisColumnCheckGroup"></div></div><div class="card" id="analysisChartsArea"><div id="analysisReportTitle" style="text-align:center;font-size:1.1rem;font-weight:700;margin-bottom:12px">学习分析报告</div><div id="lineChartsContainer"></div><div id="radarSection" style="margin-top:16px;"><div class="check-group" style="margin-bottom:8px"><span>雷达图课次：</span><select id="radarDateSelect" class="input" style="width:120px;padding:6px;border-radius:12px" onchange="refreshRadarColumns();saveRadarCols()"></select></div><div class="check-group" id="radarColumnCheckGroup" style="margin:8px 0"></div><div style="height:320px"><canvas id="radarChartCanvas" height="320"></canvas></div></div><div style="margin-top:16px"><input type="password" id="apiKeyInput" class="input" placeholder="DeepSeek API Key（备选，Edge Function 失效时使用）" style="width:100%;padding:6px;margin-bottom:6px;font-size:11px"><textarea id="examDescTextarea" class="ai-textarea" placeholder="手动输入试卷描述或题型知识点（可选）" rows="3"></textarea><div style="display:flex; gap:6px; align-items: center; margin:8px 0;"><label class="btn btn-outline btn-sm" style="cursor:pointer;">📎 上传试卷文件<input type="file" id="examFileInput" accept=".txt,.docx,.pdf" style="display:none" onchange="document.getElementById('fileNameDisplay').textContent = this.files[0]?.name || ''"></label><span id="fileNameDisplay" style="font-size:12px; color:var(--text-light);"></span></div><button class="btn btn-sm" onclick="runAIAnalysis()">🤖 测试分析</button></div><div id="aiResult" style="margin-top:12px;padding:12px;background:var(--input-bg);border-radius:12px;font-size:14px;white-space:pre-wrap;"></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-sm" onclick="downloadPDFReport()">📥 下载PDF报告</button></div></div><div id="analysisTablesContainer"></div>`;
         }
 
         function switchView(viewName){
@@ -1782,27 +1995,32 @@
             }, 50);
         };
 
-        // 启动
+        // 启动：检查 Supabase 会话
         window.addEventListener('DOMContentLoaded', async () => {
-            // 请求浏览器持久存储权限（告诉浏览器不要自动清理数据）
+            // 请求浏览器持久存储权限
             if (navigator.storage && navigator.storage.persist) {
                 navigator.storage.persist().then(granted => { if (granted) console.log('持久存储已启用'); });
             }
-            await openDB(); let storedClasses = await dbGet('classes');
-            if (!storedClasses) {
-                // IndexedDB可能被浏览器更新清空了，尝试从localStorage恢复
-                const backup = localStorage.getItem('_fullBackup');
-                if (backup) { try { const data = JSON.parse(backup); if (data.classes && data.classes.length) { classes = data.classes; feedback = data.feedback||{}; tools = data.tools||[...DEFAULT_TOOLS]; analysisSel = data.analysisSel||{}; alert('✅ 已从本地备份自动恢复数据\n\n浏览器更新可能清除了存储，数据已自动恢复。建议点击顶部 💾备份 手动导出一份文件。'); } } catch(e) {} }
-                if (!classes || !classes.length) { classes = defaultClasses(); feedback={}; tools=[...DEFAULT_TOOLS]; analysisSel={}; await saveAllDataNow(); }
-            } else { classes = storedClasses; feedback = (await dbGet('feedback'))||{}; tools = (await dbGet('tools'))||[...DEFAULT_TOOLS]; analysisSel = (await dbGet('analysisSel'))||{}; }
-            currentClassId = classes.length ? classes[0].id : null;
-            currentDateLabel = getDateList()[0] || 'Day1';
-            buildAllViews(); applyTableColors(getCurrentClass()); switchView('classes');
-            const floatBtn = document.getElementById('floatBtn'); floatBtn.style.left = floatBtnLeft + 'px'; floatBtn.style.top = floatBtnTop + 'px';
+
+            const loginOverlay = document.getElementById('loginOverlay');
+
+            // 检查是否已有 Supabase 会话
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session && session.user) {
+                await onLoginSuccess(session.user);
+            } else {
+                // 没有会话，显示登录页（清除残留的 display:none）
+                loginOverlay.style.display = '';
+                document.getElementById('mainApp').style.display = 'none';
+                switchLoginTab('login');
+            }
+
+            // 键盘弹出时浮动按钮上移
             let floatSavedTop = floatBtnTop;
             document.addEventListener('focusin', e => {
                 const tag = e.target.tagName;
                 if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target.closest('.cell-input')) {
+                    const floatBtn = document.getElementById('floatBtn');
                     if (floatBtn) { floatSavedTop = parseInt(floatBtn.style.top) || floatBtnTop; floatBtn.style.top = '10px'; floatBtn.style.bottom = 'auto'; }
                 }
             });
@@ -1810,13 +2028,14 @@
                 const related = e.relatedTarget;
                 if (!related || (related.tagName !== 'INPUT' && related.tagName !== 'TEXTAREA' && !related.closest('.cell-input'))) {
                     setTimeout(() => {
+                        const floatBtn = document.getElementById('floatBtn');
                         if (floatBtn && !document.activeElement || (document.activeElement && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA')) {
                             floatBtn.style.top = floatSavedTop + 'px'; floatBtn.style.bottom = 'auto';
                         }
                     }, 200);
                 }
             });
-            // 键盘弹出/收起时，确保活跃单元格不被遮挡（防抖，避免频繁跳动）
+            // 键盘弹出/收起时，确保活跃单元格不被遮挡
             if (window.visualViewport) {
                 var vvTimer;
                 window.visualViewport.addEventListener('resize', function() {

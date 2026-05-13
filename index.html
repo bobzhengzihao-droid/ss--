@@ -58,6 +58,11 @@
             -webkit-font-smoothing: antialiased;
         }
         #mainApp { width: 100%; }
+        .app-only { display: none; }
+        body.logged-in .app-only { display: flex; }
+        body.logged-in #mainApp.app-only { display: block; }
+        body.logged-in .tool-popup.app-only { display: none; }
+        body.logged-in .tool-popup.app-only.open { display: flex; }
         .container { width: 100%; max-width: 1100px; margin: 0 auto; padding: 16px 16px 8px; display: flex; flex-direction: column; gap: 12px; }
 
         /* ===== HEADER ===== */
@@ -750,7 +755,7 @@
     </div>
 
     <!-- 主应用 -->
-    <div id="mainApp" style="display:none;">
+    <div id="mainApp" class="app-only">
     <div class="container" id="app">
         <div class="header">
             <div class="class-selector"><span>🏫</span><span class="class-name-display" id="currentClassName" onclick="switchView('classes')">未选择</span></div>
@@ -760,9 +765,11 @@
         <div id="view-feedback" class="view" style="display:none;"></div>
         <div id="view-fulltable" class="view" style="display:none;"></div>
         <div id="view-analysis" class="view" style="display:none;"></div>
-    </div>
-    <div class="float-btn" id="floatBtn" onmousedown="startDragFloat(event)" ontouchstart="startDragFloat(event)">⚡</div>
-    <div class="tool-popup" id="toolPopup" onmousedown="startDragPopup(event)" ontouchstart="startDragPopup(event)">
+    </div><!-- /.container -->
+    </div><!-- /#mainApp -->
+
+    <div class="float-btn app-only" id="floatBtn" onmousedown="startDragFloat(event)" ontouchstart="startDragFloat(event)">⚡</div>
+    <div class="tool-popup app-only" id="toolPopup" onmousedown="startDragPopup(event)" ontouchstart="startDragPopup(event)">
         <div class="popup-header"><span>快捷工具</span><button class="close-popup" onclick="closePopup()">✕</button></div>
         <div id="toolItems" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
         <div class="tool-edit-panel" id="toolEditPanel"></div>
@@ -772,13 +779,12 @@
             <button class="popup-action-btn" onclick="quickFill('清空')">🗑️ 清空</button>
         </div>
     </div>
-    <div class="nav-tabs">
+    <div class="nav-tabs app-only">
         <button class="nav-tab" data-view="classes" onclick="switchView('classes')">🏫 班级</button>
         <button class="nav-tab" data-view="feedback" onclick="switchView('feedback')">✏️ 反馈</button>
         <button class="nav-tab" data-view="fulltable" onclick="switchToFullTable()">📋 总表</button>
         <button class="nav-tab" data-view="analysis" onclick="switchView('analysis')">📈 分析</button>
     </div>
-    </div><!-- /#mainApp -->
 
     <script>
     (function() {
@@ -967,8 +973,8 @@
 
         async function onLoginSuccess(user) {
             _userId = user.id;
+            document.body.classList.add('logged-in');
             document.getElementById('loginOverlay').style.display = 'none';
-            document.getElementById('mainApp').style.display = '';
             const name = user.user_metadata?.name || user.email?.split('@')[0] || '';
             document.getElementById('headerUserName').textContent = '👤 ' + name;
             await loadUserData();
@@ -977,8 +983,8 @@
         window.handleLogout = async function() {
             if (supabaseReady) { try { await supabase.auth.signOut(); } catch(e) {} }
             _userId = null;
+            document.body.classList.remove('logged-in');
             document.getElementById('loginOverlay').style.display = '';
-            document.getElementById('mainApp').style.display = 'none';
             document.getElementById('loginName').value = '';
             document.getElementById('loginPassword').value = '';
             document.getElementById('regCode').value = '';
@@ -1701,8 +1707,8 @@
         window.deleteTool=function(idx){if(tools.length<=1)return alert('至少保留一项');tools.splice(idx,1);dbSet('tools',tools);openToolEditor();};
         window.addTool=function(){tools.push({type:'text',label:'新标签',style:'background:#e2e8f0;color:#1e293b;'});dbSet('tools',tools);openToolEditor();};
         window.addColorTool=function(){tools.push({type:'color',color:'#93c5fd',label:'新颜色'});dbSet('tools',tools);openToolEditor();};
-        window.togglePopup=function(){const popup=document.getElementById('toolPopup');popup.classList.toggle('open');if(popup.classList.contains('open')){renderToolItems();document.getElementById('toolEditPanel').style.display='none';}};
-        window.closePopup=function(){document.getElementById('toolPopup').classList.remove('open');};
+        window.togglePopup=function(){try{var popup=document.getElementById('toolPopup');popup.classList.toggle('open');if(popup.classList.contains('open')){renderToolItems();document.getElementById('toolEditPanel').style.display='none';}}catch(e){console.error('togglePopup error:',e);}};
+        window.closePopup=function(){try{document.getElementById('toolPopup').classList.remove('open');}catch(e){}};
 
         // ========== 页面构建 ==========
         function buildAllViews(){

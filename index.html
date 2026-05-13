@@ -72,18 +72,11 @@
             padding: 8px 12px;
             box-shadow: var(--shadow-md);
             display: flex;
-            flex-direction: column;
-            border: none;
-            gap: 6px;
-        }
-        .header-row {
-            display: flex;
             align-items: center;
             justify-content: space-between;
+            border: none;
             gap: 8px;
-            width: 100%;
         }
-        .header-actions { justify-content: flex-end; }
         .class-selector { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; }
         .class-selector > span:first-child { font-size: 1rem; }
         .class-name-display {
@@ -766,15 +759,10 @@
     <div id="mainApp" class="app-only">
     <div class="container" id="app">
         <div class="header">
-            <div class="header-row">
-                <div class="class-selector"><span>🏫</span><span class="class-name-display" id="currentClassName" onclick="switchView('classes')">未选择</span></div>
-                <span id="headerUserName" style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;"></span>
-            </div>
-            <div class="header-row header-actions">
-                <button class="btn btn-xs btn-outline" onclick="exportAllData()" title="💾 备份">💾 备份</button>
-                <button class="btn btn-xs btn-outline" onclick="importAllDataPrompt()" title="📥 导入">📥 导入</button>
-                <button class="btn btn-xs btn-outline" onclick="handleLogout()" title="退出">🚪 退出</button>
-            </div>
+            <div class="class-selector"><span>🏫</span><span class="class-name-display" id="currentClassName" onclick="switchView('classes')">未选择</span></div>
+            <span id="headerUserName" onclick="handleLogout()" style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;cursor:pointer;" title="点击退出登录"></span>
+            <button class="btn btn-xs btn-outline" onclick="exportAllData()">💾 备份</button>
+            <button class="btn btn-xs btn-outline" onclick="importAllDataPrompt()">📥 导入</button>
         </div>
         <div id="view-classes" class="view"></div>
         <div id="view-feedback" class="view" style="display:none;"></div>

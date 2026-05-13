@@ -732,7 +732,7 @@
 </head>
 <body>
     <!-- 登录浮层 -->
-    <div class="login-overlay" id="loginOverlay" style="display:none;">
+    <div class="login-overlay" id="loginOverlay">
         <div class="login-card">
             <h2>📒 班级反馈表</h2>
             <div class="sub">多设备数据同步 · AI 智能分析</div>
@@ -745,7 +745,6 @@
             <input class="login-input" id="regCode" type="text" placeholder="注册码" style="display:none;">
             <button class="login-btn" id="loginBtn" onclick="handleLogin()">登 录</button>
             <div class="login-msg" id="loginMsg"></div>
-            <div class="logout-link" id="logoutLink" style="display:none;" onclick="handleLogout()">退出登录</div>
         </div>
     </div>
 
@@ -946,7 +945,6 @@
             _userId = user.id;
             document.getElementById('loginOverlay').style.display = 'none';
             document.getElementById('mainApp').style.display = '';
-            document.getElementById('logoutLink').style.display = '';
             const name = user.user_metadata?.name || user.email?.split('@')[0] || '';
             document.getElementById('headerUserName').textContent = '👤 ' + name;
             await loadUserData();
@@ -963,7 +961,6 @@
             document.getElementById('regCode').style.display = 'none';
             document.getElementById('loginMsg').textContent = '';
             document.getElementById('loginMsg').className = 'login-msg';
-            document.getElementById('logoutLink').style.display = 'none';
             switchLoginTab('login');
         };
 
@@ -2002,17 +1999,15 @@
                 navigator.storage.persist().then(granted => { if (granted) console.log('持久存储已启用'); });
             }
 
-            const loginOverlay = document.getElementById('loginOverlay');
-
             // 检查是否已有 Supabase 会话
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session && session.user) {
-                await onLoginSuccess(session.user);
-            } else {
-                // 没有会话，显示登录页（清除残留的 display:none）
-                loginOverlay.style.display = '';
-                document.getElementById('mainApp').style.display = 'none';
-                switchLoginTab('login');
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session && session.user) {
+                    await onLoginSuccess(session.user);
+                }
+            } catch(e) {
+                // Supabase 不可用时，登录页已默认显示，无需额外操作
+                console.warn('Session check failed:', e.message);
             }
 
             // 键盘弹出时浮动按钮上移

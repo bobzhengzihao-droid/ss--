@@ -1533,6 +1533,7 @@
             document.getElementById('aiResult').innerHTML = '分析中，请稍候...';
             try {
                 let resultText;
+                let triedEdgeFunction = false;
                 // 优先使用 Supabase Edge Function（无需 API Key）
                 try {
                     const { data, error } = await supabase.functions.invoke('ai-analyze', {
@@ -1547,23 +1548,26 @@
                             user_prompt: userPrompt
                         }
                     });
+                    triedEdgeFunction = true;
                     if (!error && data && data.result) {
                         resultText = data.result;
+                    } else if (data && data.error) {
+                        throw new Error('Edge Function 错误：' + data.error);
                     } else {
                         throw new Error(error?.message || 'Edge Function 返回空');
                     }
                 } catch (efErr) {
-                    // Edge Function 失败，尝试直接调用 DeepSeek（需要 API Key 在代码中）
-                    const apiKey = document.getElementById('apiKeyInput')?.value?.trim();
-                    if (!apiKey) throw new Error('AI 服务暂时不可用，请稍后重试');
+                    // Edge Function 失败，尝试用 API Key 直连 DeepSeek
+                    const apiKey = document.getElementById('apiKeyInput')?.value?.trim() || 'sk-f95865f2f4124536b6156a906cdeb841';
                     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
                         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
                         body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }], temperature: 0.7, max_tokens: 1000 })
                     });
                     const data = await response.json();
-                    resultText = data.choices?.[0]?.message?.content || 'API 返回异常';
+                    resultText = data.choices?.[0]?.message?.content;
+                    if (!resultText) throw new Error('DeepSeek 请求失败：' + (data.error?.message || JSON.stringify(data)));
                 }
-                resultText = resultText.replace(/[#*_`>]/g, '');
+                resultText = (resultText || '').replace(/[#*_`>]/g, '');
                 document.getElementById('aiResult').innerHTML = resultText.replace(/\n/g, '<br>');
             } catch (err) { document.getElementById('aiResult').innerHTML = '请求失败：' + err.message; }
         };

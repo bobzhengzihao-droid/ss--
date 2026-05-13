@@ -424,15 +424,15 @@
             position: fixed;
             z-index: 9998;
             background: var(--card-bg);
-            border-radius: 16px;
+            border-radius: 14px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.12);
-            padding: 8px;
+            padding: 6px;
             display: none;
             flex-direction: column;
-            gap: 6px;
-            max-width: 300px;
-            width: 85%;
-            max-height: 50vh;
+            gap: 4px;
+            max-width: 260px;
+            width: 80%;
+            max-height: 38vh;
             overflow-y: auto;
             touch-action: none;
             user-select: none;
@@ -440,13 +440,13 @@
         }
         .tool-popup.open { display: flex; }
         .popup-header { display: flex; justify-content: space-between; align-items: center; cursor: move; font-weight: 600; color: var(--primary); }
-        .close-popup { background: #f1f5f9; border: none; font-size: 16px; cursor: pointer; color: var(--text-light); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: var(--transition); -webkit-tap-highlight-color: transparent; }
+        .close-popup { background: #f1f5f9; border: none; font-size: 14px; cursor: pointer; color: var(--text-light); width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: var(--transition); -webkit-tap-highlight-color: transparent; }
         .close-popup:hover { background: #e5e7eb; color: var(--text); }
         .close-popup:active { transform: scale(0.85); opacity: 0.7; }
         .quick-tag {
-            padding: 8px 16px;
+            padding: 5px 10px;
             border-radius: var(--btn-radius);
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             cursor: pointer;
             white-space: nowrap;
@@ -457,11 +457,11 @@
         .quick-tag:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
         .quick-tag:active { transform: scale(0.92); opacity: 0.75; }
         .color-dot {
-            width: 28px;
-            height: 28px;
+            width: 22px;
+            height: 22px;
             border-radius: 50%;
             cursor: pointer;
-            border: 2.5px solid var(--border);
+            border: 2px solid var(--border);
             transition: var(--transition);
             -webkit-tap-highlight-color: transparent;
         }
@@ -476,23 +476,23 @@
         .popup-footer {
             display: flex;
             justify-content: space-between;
-            gap: 6px;
-            margin-top: 4px;
-            padding-top: 8px;
+            gap: 4px;
+            margin-top: 2px;
+            padding-top: 6px;
             border-top: 1px solid var(--border);
         }
         .popup-action-btn {
-            padding: 6px 16px;
+            padding: 4px 10px;
             border-radius: var(--btn-radius);
             border: 1.5px solid var(--border);
             background: var(--input-bg);
             color: var(--text);
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 600;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
-            gap: 4px;
+            gap: 3px;
             transition: var(--transition);
             -webkit-tap-highlight-color: transparent;
             white-space: nowrap;
@@ -672,7 +672,7 @@
             .table-wrapper {
                 -webkit-overflow-scrolling: touch;
             }
-            .tool-popup { max-width: 96%; padding: 8px; }
+            .tool-popup { max-width: 92%; padding: 6px; }
         }
 
         /* ===== FULL TABLE WRAP ===== */

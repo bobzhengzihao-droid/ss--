@@ -784,8 +784,26 @@
         // ========== Supabase 初始化 ==========
         const SUPABASE_URL = 'https://furpcqytmgxqkxlbselj.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1cnBjcXl0bWd4cWt4bGJzZWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MjYyNTYsImV4cCI6MjA5NDIwMjI1Nn0.522KmI4GJrghlteeQiRVMGJdytu3R4pf7E1NLyTByzE';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         const REG_CODE = 'english2024';
+        let supabase = null;
+        let supabaseReady = false;
+
+        try {
+            if (window.supabase && window.supabase.createClient) {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                supabaseReady = true;
+            }
+        } catch(e) {}
+
+        if (!supabaseReady) {
+            // SDK 未加载，显示提示
+            document.addEventListener('DOMContentLoaded', function() {
+                document.getElementById('loginBtn').disabled = true;
+                document.getElementById('loginBtn').textContent = '服务加载中，请刷新重试';
+                document.getElementById('loginMsg').textContent = '⚠️ 网络连接异常，请检查网络后刷新页面';
+                document.getElementById('loginMsg').className = 'login-msg error';
+            });
+        }
 
         function nameToEmail(name) {
             let normalized = name.trim().replace(/\s+/g, '');
@@ -897,6 +915,11 @@
         };
 
         window.handleLogin = async function() {
+            if (!supabaseReady) {
+                document.getElementById('loginMsg').textContent = '⚠️ 服务未就绪，请刷新页面重试';
+                document.getElementById('loginMsg').className = 'login-msg error';
+                return;
+            }
             const name = document.getElementById('loginName').value.trim();
             const password = document.getElementById('loginPassword').value;
             const isRegister = document.getElementById('tabRegister').classList.contains('active');
@@ -951,7 +974,7 @@
         }
 
         window.handleLogout = async function() {
-            await supabase.auth.signOut();
+            if (supabaseReady) { try { await supabase.auth.signOut(); } catch(e) {} }
             _userId = null;
             document.getElementById('loginOverlay').style.display = '';
             document.getElementById('mainApp').style.display = 'none';

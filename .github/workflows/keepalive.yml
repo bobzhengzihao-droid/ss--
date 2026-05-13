@@ -7,4 +7,6 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - run: curl -s https://furpcqytmgxqkxlbselj.supabase.co/rest/v1/ -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1cnBjcXl0bWd4cWt4bGJzZWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MjYyNTYsImV4cCI6MjA5NDIwMjI1Nn0.522KmI4GJrghlteeQiRVMGJdytu3R4pf7E1NLyTByzE"
+      - run: >
+          curl -s https://furpcqytmgxqkxlbselj.supabase.co/rest/v1/
+          -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1cnBjcXl0bWd4cWt4bGJzZWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MjYyNTYsImV4cCI6MjA5NDIwMjI1Nn0.522KmI4GJrghlteeQiRVMGJdytu3R4pf7E1NLyTByzE'

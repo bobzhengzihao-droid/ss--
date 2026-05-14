@@ -723,6 +723,111 @@
         .admin-api-row { display: flex; gap: 6px; margin-bottom: 12px; }
         .admin-api-row input { flex: 1; }
 
+        /* ===== 管理员全屏视图 ===== */
+        #view-admin { padding: 0; min-height: calc(100vh - var(--nav-height) - 120px); }
+        .admin-topbar {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 12px; background: var(--card-bg);
+            border-radius: var(--radius); box-shadow: var(--shadow-md);
+            margin-bottom: 10px; flex-wrap: wrap;
+        }
+        .admin-topbar-title { font-weight: 700; font-size: 15px; color: var(--primary); white-space: nowrap; }
+        .admin-search-input {
+            flex: 1; min-width: 120px; padding: 7px 12px;
+            border-radius: var(--input-radius); border: 1.5px solid var(--border);
+            font-size: 12px; background: var(--input-bg); outline: none;
+        }
+        .admin-search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        .admin-subtabs {
+            display: flex; gap: 4px; margin-bottom: 12px;
+            background: var(--card-bg); border-radius: 9999px;
+            padding: 4px; box-shadow: var(--shadow);
+            overflow-x: auto; -webkit-overflow-scrolling: touch;
+        }
+        .admin-subtab {
+            flex: 1; text-align: center; padding: 8px 6px;
+            border-radius: var(--btn-radius); font-weight: 600;
+            font-size: 12px; color: var(--text-light); cursor: pointer;
+            background: transparent; border: none;
+            white-space: nowrap; min-width: 0; transition: all var(--transition);
+            -webkit-tap-highlight-color: transparent; user-select: none;
+        }
+        .admin-subtab:hover { color: var(--accent); background: #eff6ff; }
+        .admin-subtab.active {
+            background: var(--accent-gradient); color: white;
+            box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+        }
+        .admin-subview { display: none; animation: fadeIn 0.25s ease-out; }
+        .admin-subview.active { display: block; }
+        .admin-stat-grid {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 10px; margin-bottom: 14px;
+        }
+        @media (max-width: 480px) { .admin-stat-grid { grid-template-columns: 1fr; } }
+        .admin-stat-card {
+            background: var(--card-bg); border-radius: var(--radius-sm);
+            padding: 16px; box-shadow: var(--shadow);
+            display: flex; align-items: center; gap: 12px;
+            transition: var(--transition);
+        }
+        .admin-stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+        .admin-stat-icon {
+            width: 44px; height: 44px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; flex-shrink: 0;
+        }
+        .admin-stat-info { min-width: 0; }
+        .admin-stat-value { font-size: 24px; font-weight: 700; color: var(--primary); }
+        .admin-stat-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+        .admin-tlist-item {
+            background: var(--card-bg); border-radius: var(--radius-sm);
+            padding: 10px 14px; margin-bottom: 8px;
+            box-shadow: var(--shadow); cursor: pointer;
+            border-left: 3px solid var(--accent);
+            transition: var(--transition);
+        }
+        .admin-tlist-item:hover { box-shadow: var(--shadow-md); }
+        .admin-tlist-header {
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .admin-tlist-detail {
+            display: none; margin-top: 10px; padding-top: 10px;
+            border-top: 1px solid var(--border-light); font-size: 12px;
+        }
+        .admin-tlist-detail.open { display: block; }
+        .admin-score-edit-table {
+            width: 100%; font-size: 11px; border-collapse: collapse;
+            margin-top: 6px;
+        }
+        .admin-score-edit-table th, .admin-score-edit-table td {
+            border: 1px solid var(--border); padding: 4px 6px;
+            text-align: center; white-space: nowrap;
+        }
+        .admin-score-edit-table th {
+            background: var(--table-header-bg); color: var(--table-header-text);
+        }
+        .admin-score-edit-table input {
+            width: 60px; padding: 2px 4px; font-size: 11px;
+            text-align: center; border: 1px solid var(--border);
+            border-radius: 4px; outline: none;
+        }
+        .admin-score-edit-table input:focus {
+            border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37,99,235,0.1);
+        }
+        .admin-analysis-row {
+            display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;
+            align-items: center;
+        }
+        .admin-analysis-row select {
+            padding: 6px 10px; border-radius: var(--input-radius);
+            border: 1.5px solid var(--border); font-size: 12px;
+            background: var(--input-bg); outline: none;
+        }
+        .admin-analysis-chart {
+            background: var(--card-bg); border-radius: var(--radius-sm);
+            padding: 12px; box-shadow: var(--shadow); margin-top: 10px;
+        }
+
         /* ===== FULL TABLE WRAP ===== */
         #fullTable tbody td { white-space: normal; overflow-wrap: break-word; max-width: 300px; min-width: 120px; }
         #fullTable th { white-space: nowrap; min-width: 120px; }
@@ -850,6 +955,7 @@
         <div id="view-feedback" class="view" style="display:none;"></div>
         <div id="view-fulltable" class="view" style="display:none;"></div>
         <div id="view-analysis" class="view" style="display:none;"></div>
+        <div id="view-admin" class="view" style="display:none;"></div>
     </div><!-- /.container -->
     </div><!-- /#mainApp -->
 
@@ -869,6 +975,7 @@
         <button class="nav-tab" data-view="feedback" onclick="switchView('feedback')">✏️ 反馈</button>
         <button class="nav-tab" data-view="fulltable" onclick="switchToFullTable()">📋 总表</button>
         <button class="nav-tab" data-view="analysis" onclick="switchView('analysis')">📈 分析</button>
+        <button class="nav-tab app-only" data-view="admin" id="navTabAdmin" onclick="switchView('admin')" style="display:none;">⚙ 管理</button>
     </div>
 
     <script>
@@ -879,6 +986,8 @@
         const REG_CODE = 'bobo is cool';
         const API_BASE = 'http://127.0.0.1:8765';
         const isLocal = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
+        const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1cnBjcXl0bWd4cWt4bGJzZWxqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODYyNjI1NiwiZXhwIjoyMDk0MjAyMjU2fQ.HvYQfSGt953HwESXNtAj5vptIBBlxtQXouXPiiUHXR8';
+        const ADMIN_PASSWORD = 'admin888';
         let supabase = null;
         let supabaseReady = false;
 
@@ -1174,24 +1283,8 @@
         }
         function updateAdminStatus() {
             _isAdmin = checkIsAdmin();
-            // 动态更新班级管理页的管理入口
-            const adminLink = document.getElementById('adminEntry');
-            if (_isAdmin) {
-                if (!adminLink) {
-                    const cardTitle = document.querySelector('#view-classes .card-title');
-                    if (cardTitle) {
-                        const a = document.createElement('a');
-                        a.id = 'adminEntry';
-                        a.href = 'javascript:void(0)';
-                        a.onclick = function() { openAdminPanel(); };
-                        a.textContent = '⚙ 系统管理';
-                        a.style.cssText = 'margin-left:auto;font-size:12px;font-weight:500;color:var(--text-muted);text-decoration:none;padding:4px 10px;border-radius:10px;background:#f1f5f9;';
-                        cardTitle.appendChild(a);
-                    }
-                }
-            } else {
-                if (adminLink) adminLink.remove();
-            }
+            const navTab = document.getElementById('navTabAdmin');
+            if (navTab) navTab.style.display = _isAdmin ? '' : 'none';
         }
         async function onLoginSuccess(user, actualEmail) {
             _userId = user.id;
@@ -1219,7 +1312,7 @@
 
         window.handleLogout = async function() {
             if (supabaseReady) { try { await supabase.auth.signOut(); } catch(e) {} }
-            _userId = null; _isAdmin = false;
+            _userId = null; _isAdmin = false; _adminAuthPassed = false;
             document.body.classList.remove('logged-in');
             document.getElementById('loginOverlay').style.display = '';
             document.getElementById('loginName').value = '';
@@ -1256,56 +1349,40 @@
             alert('密码已修改，下次登录请使用新密码');
         };
 
+        // ===== 管理员认证 =====
+        let _adminAuthPassed = false;
+
+        async function promptAdminPassword() {
+            if (_adminAuthPassed) return true;
+            const remembered = localStorage.getItem('_fb_admin_pwd_ok');
+            if (remembered === '1') { _adminAuthPassed = true; return true; }
+            const pwd = await showPrompt('请输入管理员密码：', '');
+            if (pwd !== ADMIN_PASSWORD) {
+                alert('密码错误，无权访问管理面板');
+                return false;
+            }
+            _adminAuthPassed = true;
+            return true;
+        }
+
         // ===== 管理员面板 =====
         window.openAdminPanel = function() {
-            const existing = document.querySelector('.admin-modal');
-            if (existing) { existing.remove(); return; }
-            const modal = document.createElement('div');
-            modal.className = 'admin-modal';
-            modal.innerHTML = `<div class="admin-panel">
-                <div class="admin-header"><span class="admin-title">⚙ 系统管理</span><button class="admin-close" onclick="this.closest(\'.admin-modal\').remove()">✕</button></div>
-                <div class="admin-body" id="adminBody">
-                    <div class="admin-api-row"><input class="input" id="adminServiceKey" type="password" placeholder="Service Role Key（首次需输入）" style="font-size:12px;"><button class="btn btn-sm" onclick="loadAllTeachers()">🔍 查询</button><button class="btn btn-sm btn-outline" onclick="exportAdminExcel()" style="display:none;" id="adminExportBtn">📊 导出Excel</button></div>
-                    <div id="adminTeacherList"><div class="admin-hint">输入 Service Role Key 后点击查询</div></div>
-                </div>
-            </div>`;
-            modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
-            document.body.appendChild(modal);
-            // 读取已保存的 key
-            const savedKey = localStorage.getItem('_fb_admin_sk_' + _userId);
-            if (savedKey) {
-                document.getElementById('adminServiceKey').value = savedKey;
-            }
+            switchView('admin');
         };
 
         window.loadAllTeachers = async function() {
-            const keyEl = document.getElementById('adminServiceKey');
-            const sk = keyEl.value.trim();
-            if (!sk) { alert('请输入 Service Role Key'); return; }
-            localStorage.setItem('_fb_admin_sk_' + _userId, sk);
-            // 首次成功验证 service_role key 的 bob 即为永久管理员
-            if (checkIsAdmin() && !localStorage.getItem('_fb_admin_uid')) {
-                localStorage.setItem('_fb_admin_uid', _userId);
-                updateAdminStatus();
-            }
-            const listEl = document.getElementById('adminTeacherList');
-            listEl.innerHTML = '<div class="admin-hint">加载中...</div>';
-            const exportBtn = document.getElementById('adminExportBtn');
-            if (exportBtn) exportBtn.style.display = 'none';
+            await loadAllTeachersSilent();
+        };
 
+        async function loadAllTeachersSilent() {
+            const sk = SERVICE_ROLE_KEY;
             try {
-                // 用 service_role 创建干净客户端，只查 data_store（Auth Admin API 浏览器禁止）
                 const adminClient = window.supabase.createClient(SUPABASE_URL, sk, {
                     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false }
                 });
-
                 const { data: allData, error: dErr } = await adminClient.from('data_store').select('*');
-                if (dErr) {
-                    listEl.innerHTML = `<div class="admin-hint">数据查询失败：${dErr.message}</div>`;
-                    return;
-                }
+                if (dErr) { console.error('Admin data fetch error:', dErr); return; }
 
-                // 按 user_id 聚合所有数据
                 const userMap = {};
                 (allData || []).forEach(row => {
                     if (!userMap[row.user_id]) {
@@ -1315,10 +1392,8 @@
                     if (row.key === '_profile') {
                         try {
                             const p = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
-                            u.name = p.name || '';
-                            u.email = p.email || '';
-                            u.created = p.created || '';
-                            u.lastSignIn = p.updated || '';
+                            u.name = p.name || ''; u.email = p.email || '';
+                            u.created = p.created || ''; u.lastSignIn = p.updated || '';
                         } catch(e) {}
                     }
                     if (row.key === 'classes') {
@@ -1329,64 +1404,18 @@
                     }
                 });
 
-                // 过滤掉没有数据的空账号
                 const filtered = {};
                 Object.entries(userMap).forEach(([id, u]) => {
                     if (u.classes.length > 0 || Object.keys(u.feedback).length > 0 || u.name) {
                         filtered[id] = u;
                     }
                 });
-
-                // 存储数据供按需展开
                 window._adminData = filtered;
-
-                let html = '';
-                Object.values(filtered).forEach(u => {
-                    const classes = Array.isArray(u.classes) ? u.classes : [];
-                    const classCount = classes.length;
-                    const studentCount = classes.reduce((s,c) => s + (c.students?.length || 0), 0);
-                    const fbKeys = Object.keys(u.feedback || {});
-                    const fbCount = fbKeys.length;
-
-                    // 初始只展示班级名和学生，不渲染分数表（按需加载）
-                    let classPreviewHtml = '';
-                    classes.forEach(cls => {
-                        const clsPrefix = cls.id + '|';
-                        const clsFbCount = fbKeys.filter(k => k.startsWith(clsPrefix)).length;
-                        classPreviewHtml += `<div class="at-class-item"><b>${escapeHtml(cls.name)}</b> · ${(cls.students||[]).length}人：${escapeHtml((cls.students||[]).join('、'))}${clsFbCount > 0 ? ' · <span style="color:var(--accent);">'+clsFbCount+'次课</span>' : ''}</div>`;
-                    });
-                    if (!classPreviewHtml) classPreviewHtml = '<div style="font-size:11px;color:var(--text-muted);">暂无班级数据</div>';
-
-                    html += `<div class="admin-teacher-card" onclick="expandAdminDetail(this, '${u.id}')">
-                        <div class="at-header">
-                            <div>
-                                <div class="at-name">${escapeHtml(u.name || ('未知用户 ' + u.id.substring(0,8)))}</div>
-                                <div class="at-meta">${u.email ? escapeHtml(u.email) + ' · ' : ''}${classCount}班 · ${studentCount}人 · ${fbCount}条反馈课次</div>
-                            </div>
-                            <button class="admin-reset-btn" onclick="event.stopPropagation();resetTeacherPassword('${u.id}', '${escapeHtml(u.name || u.email)}')" title="重置密码">🔒 重置密码</button>
-                        </div>
-                        <div class="at-detail">
-                            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">注册时间：${u.created ? new Date(u.created).toLocaleDateString('zh-CN') : '未知'} · 最后登录：${u.lastSignIn ? new Date(u.lastSignIn).toLocaleDateString('zh-CN') : '未知'}</div>
-                            ${classPreviewHtml}
-                            <div class="at-scores" id="adminScores-${u.id}" style="display:none;"></div>
-                        </div>
-                    </div>`;
-                });
-                if (!html) html = '<div class="admin-hint">暂无教师数据</div>';
-                listEl.innerHTML = html;
-
-                // 预构建分数表 HTML（存内存，展开时直接注入）
-                window._adminScoreCache = {};
-                Object.values(filtered).forEach(u => {
-                    const scoreHtml = buildAdminScoreHtml(u);
-                    if (scoreHtml) window._adminScoreCache[u.id] = scoreHtml;
-                });
-                const exportBtn = document.getElementById('adminExportBtn');
-                if (exportBtn) exportBtn.style.display = '';
+                window._adminServiceKey = sk;
             } catch(e) {
-                listEl.innerHTML = `<div class="admin-hint">网络错误：${e.message}</div>`;
+                console.error('Admin load error:', e);
             }
-        };
+        }
 
         // 构建教师分数表 HTML
         function buildAdminScoreHtml(u) {
@@ -1447,10 +1476,8 @@
         window.resetTeacherPassword = async function(userId, displayName) {
             const newPwd = prompt(`为 ${displayName} 设置新密码（至少4位）：`);
             if (!newPwd || newPwd.length < 4) { alert('密码至少4位'); return; }
-            const sk = document.getElementById('adminServiceKey').value.trim();
-            if (!sk) { alert('Service Role Key 未输入'); return; }
             try {
-                const adminClient = window.supabase.createClient(SUPABASE_URL, sk, {
+                const adminClient = window.supabase.createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
                     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false }
                 });
                 const { error } = await adminClient.auth.admin.updateUserById(userId, { password: newPwd });
@@ -1501,6 +1528,364 @@
             XLSX.utils.book_append_sheet(wb, ws, '成绩明细');
             const dateStr = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
             XLSX.writeFile(wb, `全部成绩明细_${dateStr}.xlsx`);
+        };
+
+        // ===== 管理员子页签系统 =====
+        let _adminCurrentSub = 'dashboard';
+        let _adminAnalysisChart = null;
+
+        window.switchAdminSub = function(subName) {
+            _adminCurrentSub = subName;
+            document.querySelectorAll('.admin-subview').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.admin-subtab').forEach(t => t.classList.remove('active'));
+            const subMap = {
+                'dashboard': 'adminSubDashboard',
+                'teachers': 'adminSubTeachers',
+                'analysis': 'adminSubAnalysis',
+                'correction': 'adminSubCorrection'
+            };
+            const target = document.getElementById(subMap[subName]);
+            if (target) target.classList.add('active');
+            const tab = document.querySelector(`.admin-subtab[data-sub="${subName}"]`);
+            if (tab) tab.classList.add('active');
+            if (subName === 'dashboard') renderAdminDashboard();
+            else if (subName === 'teachers') renderAdminTeachers();
+            else if (subName === 'analysis') renderAdminAnalysis();
+            else if (subName === 'correction') renderAdminCorrection();
+        };
+
+        window.adminApplySearch = function() {
+            const query = (document.getElementById('adminSearchInput')?.value || '').toLowerCase();
+            if (_adminCurrentSub === 'dashboard') renderAdminDashboard(query);
+            else if (_adminCurrentSub === 'teachers') renderAdminTeachers(query);
+        };
+
+        // ===== 📊 概览 =====
+        function renderAdminDashboard(searchQuery) {
+            const container = document.getElementById('adminSubDashboard');
+            const data = window._adminData || {};
+            let users = Object.values(data);
+            if (searchQuery) {
+                const q = searchQuery.toLowerCase();
+                users = users.filter(u => {
+                    if ((u.name||'').toLowerCase().includes(q)) return true;
+                    if ((u.email||'').toLowerCase().includes(q)) return true;
+                    const classes = Array.isArray(u.classes) ? u.classes : [];
+                    return classes.some(c => c.name.toLowerCase().includes(q) || (c.students||[]).some(s => s.toLowerCase().includes(q)));
+                });
+            }
+            let totalTeachers = users.length;
+            let totalClasses = 0, totalStudents = 0, totalFeedback = 0;
+            users.forEach(u => {
+                const classes = Array.isArray(u.classes) ? u.classes : [];
+                totalClasses += classes.length;
+                totalStudents += classes.reduce((s,c) => s + (c.students?.length || 0), 0);
+                totalFeedback += Object.keys(u.feedback || {}).length;
+            });
+            let html = `<div class="admin-stat-grid">
+                <div class="admin-stat-card"><div class="admin-stat-icon" style="background:#eff6ff;">👥</div><div class="admin-stat-info"><div class="admin-stat-value">${totalTeachers}</div><div class="admin-stat-label">教师总数</div></div></div>
+                <div class="admin-stat-card"><div class="admin-stat-icon" style="background:#fef3c7;">🏫</div><div class="admin-stat-info"><div class="admin-stat-value">${totalClasses}</div><div class="admin-stat-label">班级总数</div></div></div>
+                <div class="admin-stat-card"><div class="admin-stat-icon" style="background:#d1fae5;">👨‍🎓</div><div class="admin-stat-info"><div class="admin-stat-value">${totalStudents}</div><div class="admin-stat-label">学生总数</div></div></div>
+                <div class="admin-stat-card"><div class="admin-stat-icon" style="background:#ede9fe;">📝</div><div class="admin-stat-info"><div class="admin-stat-value">${totalFeedback}</div><div class="admin-stat-label">反馈课次</div></div></div>
+            </div>`;
+            const sorted = [...users].sort((a, b) => (b.lastSignIn || '').localeCompare(a.lastSignIn || ''));
+            html += '<div class="card"><div class="card-title">📋 教师活跃度</div>';
+            sorted.forEach(u => {
+                const classes = Array.isArray(u.classes) ? u.classes : [];
+                const fbCount = Object.keys(u.feedback || {}).length;
+                html += `<div class="admin-tlist-item" onclick="document.getElementById('adminSearchInput').value='${escapeHtml(u.name||'')}';switchAdminSub('teachers');adminApplySearch();">
+                    <div class="admin-tlist-header"><div><div style="font-weight:600;font-size:13px;">${escapeHtml(u.name || u.id.substring(0,8))}</div><div style="font-size:11px;color:var(--text-muted);">${classes.length}班 · ${fbCount}条课次 · 最后活跃: ${u.lastSignIn ? new Date(u.lastSignIn).toLocaleDateString('zh-CN') : '未知'}</div></div></div></div>`;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // ===== 👥 教师管理 =====
+        function renderAdminTeachers(searchQuery) {
+            const container = document.getElementById('adminSubTeachers');
+            const data = window._adminData || {};
+            let users = Object.values(data);
+            const q = searchQuery ? searchQuery.toLowerCase() : '';
+            if (q) {
+                users = users.filter(u => {
+                    if ((u.name||'').toLowerCase().includes(q)) return true;
+                    if ((u.email||'').toLowerCase().includes(q)) return true;
+                    const classes = Array.isArray(u.classes) ? u.classes : [];
+                    return classes.some(c => c.name.toLowerCase().includes(q) || (c.students||[]).some(s => s.toLowerCase().includes(q)));
+                });
+            }
+            if (!users.length) {
+                container.innerHTML = '<div class="empty-state">暂无匹配教师数据</div>';
+                return;
+            }
+            let html = '';
+            users.forEach(u => {
+                const classes = Array.isArray(u.classes) ? u.classes : [];
+                const classCount = classes.length;
+                const studentCount = classes.reduce((s,c) => s + (c.students?.length || 0), 0);
+                const fbKeys = Object.keys(u.feedback || {});
+                const fbCount = fbKeys.length;
+                let classPreviewHtml = '';
+                classes.forEach(cls => {
+                    const clsPrefix = cls.id + '|';
+                    const clsFbCount = fbKeys.filter(k => k.startsWith(clsPrefix)).length;
+                    classPreviewHtml += `<div class="at-class-item"><b>${escapeHtml(cls.name)}</b> · ${(cls.students||[]).length}人：${escapeHtml((cls.students||[]).join('、'))}${clsFbCount > 0 ? ' · <span style="color:var(--accent);">'+clsFbCount+'次课</span>' : ''}</div>`;
+                });
+                html += `<div class="admin-teacher-card" onclick="expandAdminDetail(this, '${u.id}')">
+                    <div class="at-header"><div><div class="at-name">${escapeHtml(u.name || ('未知用户 ' + u.id.substring(0,8)))}</div><div class="at-meta">${u.email ? escapeHtml(u.email) + ' · ' : ''}${classCount}班 · ${studentCount}人 · ${fbCount}条反馈课次</div></div><button class="admin-reset-btn" onclick="event.stopPropagation();resetTeacherPassword('${u.id}', '${escapeHtml(u.name || u.email)}')" title="重置密码">🔒 重置密码</button></div>
+                    <div class="at-detail"><div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">注册时间：${u.created ? new Date(u.created).toLocaleDateString('zh-CN') : '未知'} · 最后登录：${u.lastSignIn ? new Date(u.lastSignIn).toLocaleDateString('zh-CN') : '未知'}</div>${classPreviewHtml}<div class="at-scores" id="adminScores-${u.id}" style="display:none;"></div></div></div>`;
+            });
+            container.innerHTML = html;
+            window._adminScoreCache = {};
+            Object.values(data).forEach(u => {
+                const scoreHtml = buildAdminScoreHtml(u);
+                if (scoreHtml) window._adminScoreCache[u.id] = scoreHtml;
+            });
+        }
+
+        // ===== 📈 横纵分析 =====
+        function renderAdminAnalysis(searchQuery) {
+            const container = document.getElementById('adminSubAnalysis');
+            const data = window._adminData || {};
+            const allTeachers = Object.values(data).filter(u => u.name && Array.isArray(u.classes) && u.classes.length > 0);
+            const teacherOptions = allTeachers.map(u => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
+            const allDates = new Set();
+            const allColumns = new Set();
+            Object.values(data).forEach(u => {
+                Object.entries(u.feedback || {}).forEach(([key, fb]) => {
+                    const parts = key.split('|');
+                    if (parts.length >= 2) allDates.add(parts.slice(1).join('|'));
+                    if (fb && fb.dateColumns) fb.dateColumns.forEach(c => allColumns.add(stripMaxScore(c)));
+                });
+            });
+            const dateOpts = [...allDates].sort(naturalSort).map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+            const colOpts = [...allColumns].sort().map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+            container.innerHTML = `<div class="card">
+                <div class="card-title">📈 横向对比（跨班级）</div>
+                <div class="admin-analysis-row"><select id="adminHoriDate" onchange="refreshAdminHoriChart()"><option value="">-- 选择日期 --</option>${dateOpts}</select><select id="adminHoriColumn" onchange="refreshAdminHoriChart()"><option value="">-- 选择题型 --</option>${colOpts}</select></div>
+                <div class="admin-analysis-chart" style="height:300px;"><canvas id="adminHoriCanvas" height="300"></canvas></div>
+            </div><div class="card" style="margin-top:12px;">
+                <div class="card-title">📈 纵向趋势（单学生）</div>
+                <div class="admin-analysis-row"><select id="adminVertTeacher" onchange="adminVertLoadClasses()"><option value="">-- 选择教师 --</option>${teacherOptions}</select><select id="adminVertClass" onchange="adminVertLoadDates()"><option value="">-- 选择班级 --</option></select><select id="adminVertStudent" onchange="adminVertRefreshChart()"><option value="">-- 选择学生 --</option></select></div>
+                <div class="admin-analysis-chart" style="height:300px;"><canvas id="adminVertCanvas" height="300"></canvas></div>
+            </div>`;
+        }
+
+        window.refreshAdminHoriChart = function() {
+            const date = document.getElementById('adminHoriDate')?.value;
+            const column = document.getElementById('adminHoriColumn')?.value;
+            const canvas = document.getElementById('adminHoriCanvas');
+            if (!date || !column || !canvas) return;
+            const data = window._adminData || {};
+            const labels = [];
+            const values = [];
+            Object.values(data).forEach(u => {
+                const classes = Array.isArray(u.classes) ? u.classes : [];
+                classes.forEach(cls => {
+                    const key = cls.id + '|' + date;
+                    const fb = u.feedback && u.feedback[key];
+                    if (!fb) return;
+                    const colIdx = fb.dateColumns ? fb.dateColumns.findIndex(c => columnContainsKeyword(c, column)) : -1;
+                    if (colIdx === -1) return;
+                    const maxScore = extractMaxScore(fb.dateColumns[colIdx]);
+                    const records = fb.records || [];
+                    let sum = 0, cnt = 0;
+                    records.forEach(r => {
+                        const v = (r.values && r.values[colIdx]) || '';
+                        if (v !== '') {
+                            const score = convertToNumber(v, maxScore);
+                            const pct = maxScore ? Math.round((score / maxScore) * 100) : score;
+                            sum += pct; cnt++;
+                        }
+                    });
+                    if (cnt > 0) {
+                        labels.push(`${(u.name||'?')}-${cls.name}`);
+                        values.push(Math.round(sum / cnt));
+                    }
+                });
+            });
+            if (_adminAnalysisChart) _adminAnalysisChart.destroy();
+            _adminAnalysisChart = new Chart(canvas, {
+                type: 'bar',
+                data: { labels, datasets: [{ label: `${date} · ${column} 平均%`, data: values, backgroundColor: COLORS[0] }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
+            });
+        };
+
+        window.adminVertLoadClasses = function() {
+            const data = window._adminData || {};
+            const teacherId = document.getElementById('adminVertTeacher')?.value;
+            const classSelect = document.getElementById('adminVertClass');
+            if (!teacherId || !classSelect) return;
+            const u = data[teacherId];
+            if (!u) return;
+            const classes = Array.isArray(u.classes) ? u.classes : [];
+            classSelect.innerHTML = '<option value="">-- 选择班级 --</option>' + classes.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+        };
+
+        window.adminVertLoadDates = function() {
+            const data = window._adminData || {};
+            const teacherId = document.getElementById('adminVertTeacher')?.value;
+            const classId = document.getElementById('adminVertClass')?.value;
+            const studentSelect = document.getElementById('adminVertStudent');
+            if (!teacherId || !classId || !studentSelect) return;
+            const u = data[teacherId];
+            if (!u) return;
+            const cls = (Array.isArray(u.classes) ? u.classes : []).find(c => c.id === classId);
+            if (!cls) return;
+            studentSelect.innerHTML = '<option value="">-- 选择学生 --</option>' + (cls.students || []).map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+        };
+
+        window.adminVertRefreshChart = function() {
+            const data = window._adminData || {};
+            const teacherId = document.getElementById('adminVertTeacher')?.value;
+            const classId = document.getElementById('adminVertClass')?.value;
+            const student = document.getElementById('adminVertStudent')?.value;
+            const canvas = document.getElementById('adminVertCanvas');
+            if (!teacherId || !classId || !student || !canvas) return;
+            const u = data[teacherId];
+            if (!u) return;
+            const prefix = classId + '|';
+            const allColumns = new Set();
+            const dates = [];
+            const fbEntries = Object.entries(u.feedback || {}).filter(([k]) => k.startsWith(prefix)).sort((a,b) => naturalSort(a[0], b[0]));
+            fbEntries.forEach(([key, fb]) => {
+                dates.push(key.substring(prefix.length));
+                if (fb.dateColumns) fb.dateColumns.forEach(c => allColumns.add(stripMaxScore(c)));
+            });
+            const columns = [...allColumns];
+            const datasets = [];
+            columns.forEach((col, ci) => {
+                const colScores = [];
+                fbEntries.forEach(([key, fb]) => {
+                    const colIdx = fb.dateColumns ? fb.dateColumns.findIndex(c => columnContainsKeyword(c, col)) : -1;
+                    if (colIdx === -1) { colScores.push(null); return; }
+                    const maxScore = fb.dateColumns ? extractMaxScore(fb.dateColumns[colIdx]) : null;
+                    const rec = (fb.records || []).find(r => r.name === student);
+                    if (rec) {
+                        const v = (rec.values && rec.values[colIdx]) || '';
+                        if (v !== '') {
+                            const score = convertToNumber(v, maxScore);
+                            colScores.push(maxScore ? Math.round((score/maxScore)*100) : score);
+                        } else { colScores.push(null); }
+                    } else { colScores.push(null); }
+                });
+                datasets.push({ label: col, data: colScores, borderColor: COLORS[ci % COLORS.length], borderWidth: 2, tension: 0.2, pointRadius: 3 });
+            });
+            if (_adminAnalysisChart) _adminAnalysisChart.destroy();
+            _adminAnalysisChart = new Chart(canvas, {
+                type: 'line',
+                data: { labels: dates, datasets },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
+            });
+        };
+
+        // ===== ✏️ 数据修正 =====
+        function renderAdminCorrection(searchQuery) {
+            const container = document.getElementById('adminSubCorrection');
+            const data = window._adminData || {};
+            const teacherOptions = Object.values(data).filter(u => u.name && Array.isArray(u.classes) && u.classes.length > 0).map(u => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
+            container.innerHTML = `<div class="card">
+                <div class="card-title">✏️ 数据修正</div>
+                <div class="admin-analysis-row"><select id="adminCorrTeacher" onchange="adminCorrLoadClasses()"><option value="">-- 选择教师 --</option>${teacherOptions}</select><select id="adminCorrClass" onchange="adminCorrLoadDates()"><option value="">-- 选择班级 --</option></select><select id="adminCorrDate" onchange="adminCorrLoadTable()"><option value="">-- 选择日期 --</option></select><button class="btn btn-sm" id="adminCorrSaveBtn" onclick="adminCorrSave()" style="display:none;">💾 保存修改</button><span id="adminCorrStatus" style="font-size:12px;color:var(--success);"></span></div>
+                <div id="adminCorrTableArea" style="overflow-x:auto;"></div></div>`;
+        }
+
+        window.adminCorrLoadClasses = function() {
+            const data = window._adminData || {};
+            const teacherId = document.getElementById('adminCorrTeacher')?.value;
+            const classSelect = document.getElementById('adminCorrClass');
+            if (!teacherId || !classSelect) return;
+            const u = data[teacherId];
+            if (!u) return;
+            const classes = Array.isArray(u.classes) ? u.classes : [];
+            classSelect.innerHTML = '<option value="">-- 选择班级 --</option>' + classes.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+            document.getElementById('adminCorrDate').innerHTML = '<option value="">-- 选择日期 --</option>';
+            document.getElementById('adminCorrTableArea').innerHTML = '';
+            document.getElementById('adminCorrSaveBtn').style.display = 'none';
+        };
+
+        window.adminCorrLoadDates = function() {
+            const data = window._adminData || {};
+            const teacherId = document.getElementById('adminCorrTeacher')?.value;
+            const classId = document.getElementById('adminCorrClass')?.value;
+            const dateSelect = document.getElementById('adminCorrDate');
+            if (!teacherId || !classId || !dateSelect) return;
+            const u = data[teacherId];
+            if (!u) return;
+            const prefix = classId + '|';
+            const dates = Object.keys(u.feedback || {}).filter(k => k.startsWith(prefix)).map(k => k.substring(prefix.length)).sort(naturalSort);
+            dateSelect.innerHTML = '<option value="">-- 选择日期 --</option>' + dates.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+            document.getElementById('adminCorrTableArea').innerHTML = '';
+            document.getElementById('adminCorrSaveBtn').style.display = 'none';
+        };
+
+        window.adminCorrLoadTable = function() {
+            const data = window._adminData || {};
+            const teacherId = document.getElementById('adminCorrTeacher')?.value;
+            const classId = document.getElementById('adminCorrClass')?.value;
+            const date = document.getElementById('adminCorrDate')?.value;
+            if (!teacherId || !classId || !date) return;
+            const u = data[teacherId];
+            if (!u) return;
+            const key = classId + '|' + date;
+            const fb = u.feedback && u.feedback[key];
+            if (!fb) { document.getElementById('adminCorrTableArea').innerHTML = '<div class="empty-state">该课次无反馈数据</div>'; return; }
+            const columns = fb.dateColumns || [];
+            const records = fb.records || [];
+            const cls = (Array.isArray(u.classes) ? u.classes : []).find(c => c.id === classId);
+            const students = cls ? cls.students : records.map(r => r.name);
+            let html = '<table class="admin-score-edit-table"><thead><tr><th>学生</th>';
+            columns.forEach(c => html += `<th>${escapeHtml(stripMaxScore(c))}</th>`);
+            html += '</tr></thead><tbody>';
+            students.forEach(name => {
+                const rec = records.find(r => r.name === name) || { values: columns.map(() => ''), colors: columns.map(() => '') };
+                html += `<tr><td>${escapeHtml(name)}</td>`;
+                columns.forEach((col, ci) => {
+                    const val = (rec.values && rec.values[ci]) || '';
+                    const bg = (rec.colors && rec.colors[ci]) ? rec.colors[ci] : '';
+                    html += `<td style="background:${bg};"><input value="${escapeHtml(val)}" data-student="${escapeHtml(name)}" data-col="${ci}" style="width:70px;"></td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            document.getElementById('adminCorrTableArea').innerHTML = html;
+            document.getElementById('adminCorrSaveBtn').style.display = '';
+            document.getElementById('adminCorrStatus').textContent = '';
+            window._adminCorrContext = { teacherId, classId, date };
+        };
+
+        window.adminCorrSave = async function() {
+            const ctx = window._adminCorrContext;
+            if (!ctx) return;
+            const data = window._adminData || {};
+            const u = data[ctx.teacherId];
+            if (!u) return;
+            const key = ctx.classId + '|' + ctx.date;
+            const fb = u.feedback && u.feedback[key];
+            if (!fb) return;
+            const inputs = document.querySelectorAll('#adminCorrTableArea input');
+            inputs.forEach(inp => {
+                const name = inp.dataset.student;
+                const col = parseInt(inp.dataset.col);
+                const rec = fb.records.find(r => r.name === name);
+                if (rec) {
+                    if (!rec.values) rec.values = [];
+                    rec.values[col] = inp.value.trim();
+                }
+            });
+            try {
+                const adminClient = window.supabase.createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+                    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false }
+                });
+                const { error } = await adminClient.from('data_store').upsert({
+                    user_id: ctx.teacherId, key: 'feedback', value: u.feedback,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'user_id,key' });
+                if (error) { alert('保存失败：' + error.message); return; }
+                document.getElementById('adminCorrStatus').textContent = '✅ 已保存';
+                setTimeout(() => { document.getElementById('adminCorrStatus').textContent = ''; }, 2000);
+            } catch(e) { alert('保存错误：' + e.message); }
         };
 
         async function loadUserData() {
@@ -2255,23 +2640,30 @@
                 <div class="table-wrapper" id="statTableWrapper"></div>
             </div>`;
             document.getElementById('view-analysis').innerHTML=`<div class="card"><div class="card-title">📈 汇总分析</div><div style="display:flex;gap:8px"><span>学生：</span><select id="analysisStudentSelect" class="input" style="padding:8px;border-radius:12px;flex:1" onchange="refreshAnalysis()"><option value="">-- 请选择 --</option></select></div><div class="check-group" id="analysisDateCheckGroup"></div><div class="check-group" id="analysisColumnCheckGroup"></div></div><div class="card" id="analysisChartsArea"><div id="analysisReportTitle" style="text-align:center;font-size:1.1rem;font-weight:700;margin-bottom:12px">学习分析报告</div><div id="lineChartsContainer"></div><div id="radarSection" style="margin-top:16px;"><div class="check-group" style="margin-bottom:8px"><span>雷达图课次：</span><select id="radarDateSelect" class="input" style="width:120px;padding:6px;border-radius:12px" onchange="refreshRadarColumns();saveRadarCols()"></select></div><div class="check-group" id="radarColumnCheckGroup" style="margin:8px 0"></div><div style="height:320px"><canvas id="radarChartCanvas" height="320"></canvas></div></div><div style="margin-top:16px"><input type="password" id="apiKeyInput" class="input" placeholder="DeepSeek API Key（备选，Edge Function 失效时使用）" style="width:100%;padding:6px;margin-bottom:6px;font-size:11px"><textarea id="examDescTextarea" class="ai-textarea" placeholder="手动输入试卷描述或题型知识点（可选）" rows="3"></textarea><div style="display:flex; gap:6px; align-items: center; margin:8px 0;"><label class="btn btn-outline btn-sm" style="cursor:pointer;">📎 上传试卷文件<input type="file" id="examFileInput" accept=".txt,.docx,.pdf" style="display:none" onchange="document.getElementById('fileNameDisplay').textContent = this.files[0]?.name || ''"></label><span id="fileNameDisplay" style="font-size:12px; color:var(--text-light);"></span></div><button class="btn btn-sm" onclick="runAIAnalysis()">🤖 测试分析</button></div><div id="aiResult" style="margin-top:12px;padding:12px;background:var(--input-bg);border-radius:12px;font-size:14px;white-space:pre-wrap;"></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-sm" onclick="downloadPDFReport()">📥 下载PDF报告</button></div></div><div id="analysisTablesContainer"></div>`;
+            document.getElementById('view-admin').innerHTML = `<div class="admin-topbar"><button class="btn btn-outline btn-sm" onclick="switchView('classes')">← 返回</button><span class="admin-topbar-title">⚙ 系统管理</span><input class="admin-search-input" id="adminSearchInput" type="text" placeholder="🔍 搜索教师/班级/学生..." oninput="adminApplySearch()"><button class="btn btn-xs" onclick="loadAllTeachersSilent().then(()=>{if(_adminCurrentSub==='dashboard')renderAdminDashboard();else if(_adminCurrentSub==='teachers')renderAdminTeachers();})">🔄 刷新</button><button class="btn btn-xs" onclick="exportAdminExcel()">📊 导出Excel</button></div><div class="admin-subtabs" id="adminSubtabs"><button class="admin-subtab active" data-sub="dashboard" onclick="switchAdminSub('dashboard')">📊 概览</button><button class="admin-subtab" data-sub="teachers" onclick="switchAdminSub('teachers')">👥 教师</button><button class="admin-subtab" data-sub="analysis" onclick="switchAdminSub('analysis')">📈 分析</button><button class="admin-subtab" data-sub="correction" onclick="switchAdminSub('correction')">✏️ 修正</button></div><div id="adminSubDashboard" class="admin-subview active"></div><div id="adminSubTeachers" class="admin-subview"></div><div id="adminSubAnalysis" class="admin-subview"></div><div id="adminSubCorrection" class="admin-subview"></div>`;
         }
 
-        function switchView(viewName){
+        async function switchView(viewName){
             activeCell=null; document.querySelectorAll('.view').forEach(v=>v.style.display='none');
             document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
-            const map={'classes':'view-classes','feedback':'view-feedback','fulltable':'view-fulltable','analysis':'view-analysis'};
+            const map={'classes':'view-classes','feedback':'view-feedback','fulltable':'view-fulltable','analysis':'view-analysis','admin':'view-admin'};
             if(map[viewName])document.getElementById(map[viewName]).style.display='block';
             const nav=document.querySelector(`.nav-tab[data-view="${viewName}"]`);if(nav)nav.classList.add('active');
             const floatBtn=document.getElementById('floatBtn');floatBtn.style.display=viewName==='feedback'?'flex':'none';
             if(viewName!=='feedback')closePopup();
             if(viewName==='classes')renderClassList();
             else if(viewName==='feedback'){renderDateSelector();renderColumnEditor();renderFeedbackTable();refreshStylePanel();applyTableColors(getCurrentClass());}
-            else if(viewName==='fulltable') { 
-                renderFullTable(); 
+            else if(viewName==='fulltable') {
+                renderFullTable();
                 switchStatType();
             }
             else if(viewName==='analysis')renderAnalysisOptions();
+            else if(viewName==='admin'){
+                if(!checkIsAdmin()){alert('仅管理员可访问');switchView('classes');return;}
+                if(!(await promptAdminPassword())){switchView('classes');return;}
+                if(!window._adminData) await loadAllTeachersSilent();
+                switchAdminSub('dashboard');
+            }
             updateCurrentClassDisplay(); document.querySelectorAll('.student-modal').forEach(m=>m.classList.remove('open'));activeStudentModal=null;
         }
         window.switchView=switchView;window.switchToFullTable=()=>switchView('fulltable');

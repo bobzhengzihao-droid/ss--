@@ -1154,12 +1154,12 @@
                 </div>
             </div>`;
             modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
-            // 尝试读取已保存的 key
+            document.body.appendChild(modal);
+            // 读取已保存的 key
             const savedKey = localStorage.getItem('_fb_admin_sk_' + _userId);
             if (savedKey) {
-                setTimeout(() => { const inp = document.getElementById('adminServiceKey'); if (inp) inp.value = savedKey; }, 50);
+                document.getElementById('adminServiceKey').value = savedKey;
             }
-            document.body.appendChild(modal);
         };
 
         window.loadAllTeachers = async function() {

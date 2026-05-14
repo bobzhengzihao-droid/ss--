@@ -631,13 +631,8 @@
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
-        .stat-table {
-            table-layout: fixed !important;
-            width: auto !important;
-            min-width: 100% !important;
-        }
         .stat-table th { white-space: nowrap; }
-        .stat-table td { white-space: normal; overflow-wrap: break-word; }
+        .stat-table td { white-space: normal; overflow-wrap: break-word; min-width: 90px; }
         .stat-table th:first-child,
         .stat-table td:first-child {
             white-space: nowrap;

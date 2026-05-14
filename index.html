@@ -877,6 +877,7 @@
         const SUPABASE_URL = 'https://furpcqytmgxqkxlbselj.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1cnBjcXl0bWd4cWt4bGJzZWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MjYyNTYsImV4cCI6MjA5NDIwMjI1Nn0.522KmI4GJrghlteeQiRVMGJdytu3R4pf7E1NLyTByzE';
         const REG_CODE = 'bobo is cool';
+        const API_BASE = 'http://127.0.0.1:8765';
         let supabase = null;
         let supabaseReady = false;
 
@@ -899,11 +900,70 @@
 
         function nameToEmail(name) {
             let normalized = name.trim().replace(/\s+/g, '');
+            if (normalized.includes('@')) return normalized.toLowerCase();
+            let hash = '';
+            for (let i = 0; i < normalized.length; i++) {
+                hash += normalized.charCodeAt(i).toString();
+            }
+            return 't_' + hash.slice(0, 12) + '@teacher.fb';
+        }
+
+        function legacyNameToEmail(name) {
+            let normalized = name.trim().replace(/\s+/g, '');
+            if (normalized.includes('@')) return normalized.toLowerCase();
             let hash = '';
             for (let i = 0; i < normalized.length; i++) {
                 hash += normalized.charCodeAt(i).toString();
             }
             return 't_' + hash.slice(0, 12) + '@bobo.run';
+        }
+
+        async function apiPost(path, body) {
+            let response;
+            try {
+                response = await fetch(API_BASE + path, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+            } catch(e) {
+                throw new Error('无法连接登录服务，请确认 server.py 正在运行');
+            }
+            let data = {};
+            try { data = await response.json(); } catch(e) {}
+            if (!response.ok) {
+                throw new Error(data.detail || data.message || '请求失败');
+            }
+            return data;
+        }
+
+        async function loginViaApi(name, password) {
+            const authData = await apiPost('/api/auth/login', { name, password });
+            const { data, error } = await supabase.auth.setSession({
+                access_token: authData.access_token,
+                refresh_token: authData.refresh_token
+            });
+            if (error) throw error;
+            const user = data.user || (await supabase.auth.getUser()).data.user;
+            if (!user) throw new Error('登录会话创建失败');
+            return { user, email: authData.email || nameToEmail(name) };
+        }
+
+        async function loginDirect(name, password) {
+            const savedEmail = localStorage.getItem('_fb_name_email_' + name);
+            const candidates = [];
+            if (savedEmail) candidates.push(savedEmail);
+            candidates.push(name.includes('@') ? name : nameToEmail(name));
+            const legacyEmail = legacyNameToEmail(name);
+            if (!candidates.includes(legacyEmail)) candidates.push(legacyEmail);
+
+            let lastError = null;
+            for (const email of candidates) {
+                const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+                if (!error) return { user: data.user, email };
+                lastError = error;
+            }
+            throw lastError || new Error('姓名或密码错误');
         }
 
         // ========== 数据库封装（Supabase 优先 + localStorage 备份）==========
@@ -1020,55 +1080,35 @@
 
             if (!name || !password) { msgEl.textContent = '请填写姓名和密码'; msgEl.className = 'login-msg error'; return; }
 
-            if (isRegister) {
-                const code = document.getElementById('regCode').value.trim();
-                if (code !== REG_CODE) { msgEl.textContent = '注册码不正确'; msgEl.className = 'login-msg error'; return; }
-                if (password.length < 4) { msgEl.textContent = '密码至少4位'; msgEl.className = 'login-msg error'; return; }
+            const btn = document.getElementById('loginBtn');
+            btn.disabled = true;
+            btn.textContent = isRegister ? '注册中...' : '登录中...';
 
-                // 同名老师自动加随机后缀
-                let email = name.includes('@') ? name : nameToEmail(name);
-                let signUpData = null, signUpError = null;
-                for (let attempt = 0; attempt < 10; attempt++) {
-                    const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name } } });
-                    if (!error) { signUpData = data; break; }
-                    if (error.message.includes('already') || error.message.includes('exists')) {
-                        const suffix = Math.random().toString(36).substring(2, 5);
-                        let normalized = name.trim().replace(/\s+/g, '');
-                        let hash = '';
-                        for (let i = 0; i < normalized.length; i++) hash += normalized.charCodeAt(i).toString();
-                        email = 't_' + hash.slice(0, 12) + '_' + suffix + '@bobo.run';
-                        continue;
+            try {
+                if (isRegister) {
+                    const code = document.getElementById('regCode').value.trim();
+                    if (code !== REG_CODE) { msgEl.textContent = '注册码不正确'; msgEl.className = 'login-msg error'; return; }
+                    if (password.length < 4) { msgEl.textContent = '密码至少4位'; msgEl.className = 'login-msg error'; return; }
+
+                    const regData = await apiPost('/api/auth/register', { name, password, code });
+                    msgEl.textContent = '注册成功，正在自动登录...'; msgEl.className = 'login-msg success';
+                    const loginResult = await loginViaApi(name, password);
+                    await onLoginSuccess(loginResult.user, regData.email || loginResult.email);
+                } else {
+                    try {
+                        const loginResult = await loginViaApi(name, password);
+                        await onLoginSuccess(loginResult.user, loginResult.email);
+                    } catch(apiError) {
+                        const directResult = await loginDirect(name, password);
+                        await onLoginSuccess(directResult.user, directResult.email);
                     }
-                    signUpError = error;
-                    break;
                 }
-                if (signUpError) { msgEl.textContent = '注册失败：' + signUpError.message; msgEl.className = 'login-msg error'; return; }
-                if (!signUpData) { msgEl.textContent = '该姓名已注册多次，请联系管理员'; msgEl.className = 'login-msg error'; return; }
-                // Auto-confirm via trigger — retry signIn after short delay
-                if (!signUpData.session) {
-                    const baseEmail = nameToEmail(name);
-                    const isAltEmail = (email !== baseEmail);
-                    msgEl.textContent = '注册成功，正在自动登录...' + (isAltEmail ? '（账号：'+email+'，请截图保存）' : ''); msgEl.className = 'login-msg success';
-                    await new Promise(r => setTimeout(r, 1500));
-                    const { data: d2, error: e2 } = await supabase.auth.signInWithPassword({ email, password });
-                    if (e2) { msgEl.textContent = '注册成功，请切换到登录页登录' + (isAltEmail ? '（账号：'+email+'）' : ''); msgEl.className = 'login-msg success'; switchLoginTab('login'); return; }
-                    await onLoginSuccess(d2.user, email);
-                    return;
-                }
-                await onLoginSuccess(signUpData.user, email);
-            } else {
-                // 优先使用本设备记忆的邮箱（处理同名冲突）
-                const savedEmail = localStorage.getItem('_fb_name_email_' + name);
-                let email = savedEmail || (name.includes('@') ? name : nameToEmail(name));
-                let { data, error } = await supabase.auth.signInWithPassword({ email, password });
-                // 如果记忆邮箱失败，回退到标准邮箱
-                if (error && savedEmail) {
-                    email = name.includes('@') ? name : nameToEmail(name);
-                    const retry = await supabase.auth.signInWithPassword({ email, password });
-                    data = retry.data; error = retry.error;
-                }
-                if (error) { msgEl.textContent = savedEmail ? '密码错误' : '姓名或密码错误（若与他人同名，请联系管理员）'; msgEl.className = 'login-msg error'; return; }
-                await onLoginSuccess(data.user, email);
+            } catch(e) {
+                msgEl.textContent = (isRegister ? '注册失败：' : '') + (e.message || '姓名或密码错误');
+                msgEl.className = 'login-msg error';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = document.getElementById('tabRegister').classList.contains('active') ? '注 册' : '登 录';
             }
         };
 
@@ -1346,10 +1386,6 @@
                     scoresEl.dataset.loaded = '1';
                 }
                 scoresEl.style.display = cached ? 'block' : 'none';
-            }
-        };
-            } catch(e) {
-                listEl.innerHTML = `<div class="admin-hint">网络错误：${e.message}</div>`;
             }
         };
 

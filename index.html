@@ -1026,7 +1026,7 @@
                 if (password.length < 4) { msgEl.textContent = '密码至少4位'; msgEl.className = 'login-msg error'; return; }
 
                 // 同名老师自动加随机后缀
-                let email = nameToEmail(name);
+                let email = name.includes('@') ? name : nameToEmail(name);
                 let signUpData = null, signUpError = null;
                 for (let attempt = 0; attempt < 10; attempt++) {
                     const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name } } });
@@ -1059,11 +1059,11 @@
             } else {
                 // 优先使用本设备记忆的邮箱（处理同名冲突）
                 const savedEmail = localStorage.getItem('_fb_name_email_' + name);
-                let email = savedEmail || nameToEmail(name);
+                let email = savedEmail || (name.includes('@') ? name : nameToEmail(name));
                 let { data, error } = await supabase.auth.signInWithPassword({ email, password });
                 // 如果记忆邮箱失败，回退到标准邮箱
                 if (error && savedEmail) {
-                    email = nameToEmail(name);
+                    email = name.includes('@') ? name : nameToEmail(name);
                     const retry = await supabase.auth.signInWithPassword({ email, password });
                     data = retry.data; error = retry.error;
                 }

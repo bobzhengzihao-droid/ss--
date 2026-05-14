@@ -2019,8 +2019,10 @@
         window.exportStatImage = function() {
             const wrapper = document.getElementById('statTableWrapper');
             const table = wrapper.querySelector('.stat-table');
+            const wrapDiv = wrapper.querySelector('.stat-table-wrap');
             const origStyle = wrapper.getAttribute('style') || '';
             const origTblStyle = table ? table.getAttribute('style') || '' : '';
+            const origWrapStyle = wrapDiv ? wrapDiv.getAttribute('style') || '' : '';
             const origParentStyle = wrapper.parentNode.style.cssText;
 
             // 解除所有限制，让表格完全展开
@@ -2031,17 +2033,19 @@
             wrapper.style.width = 'auto';
             wrapper.style.maxWidth = 'none';
             wrapper.style.margin = '0';
+            if (wrapDiv) {
+                wrapDiv.style.overflow = 'visible';
+                wrapDiv.style.maxHeight = 'none';
+            }
             if (table) {
                 table.style.tableLayout = 'auto';
                 table.style.width = 'auto';
                 table.style.minWidth = 'auto';
             }
 
-            // 短暂延迟后测量精确尺寸
             setTimeout(() => {
                 let w = wrapper.scrollWidth;
                 let h = wrapper.scrollHeight;
-                // 确保容器宽度贴合表格，包含边框
                 wrapper.style.width = (w + 4) + 'px';
                 w = wrapper.scrollWidth;
                 h = wrapper.scrollHeight;
@@ -2054,9 +2058,9 @@
                     windowWidth: w + 4,
                     windowHeight: h + 4
                 }).then(canvas => {
-                    // 恢复样式
                     wrapper.setAttribute('style', origStyle);
                     if (table) table.setAttribute('style', origTblStyle);
+                    if (wrapDiv) wrapDiv.setAttribute('style', origWrapStyle);
                     wrapper.parentNode.style.cssText = origParentStyle;
 
                     canvas.toBlob(blob => {

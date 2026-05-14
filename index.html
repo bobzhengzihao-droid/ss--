@@ -829,7 +829,7 @@
                 <button class="login-tab active" id="tabLogin" onclick="switchLoginTab('login')">登 录</button>
                 <button class="login-tab" id="tabRegister" onclick="switchLoginTab('register')">注 册</button>
             </div>
-            <input class="login-input" id="loginName" placeholder="姓名" autocomplete="username">
+            <input class="login-input" id="loginName" placeholder="姓名或邮箱" autocomplete="username">
             <input class="login-input" id="loginPassword" type="password" placeholder="密码" autocomplete="current-password">
             <input class="login-input" id="regCode" type="text" placeholder="注册码" style="display:none;">
             <button class="login-btn" id="loginBtn" onclick="handleLogin()">登 录</button>
@@ -1219,8 +1219,13 @@
                     const classCount = Array.isArray(u.classes) ? u.classes.length : 0;
                     const studentCount = Array.isArray(u.classes) ? u.classes.reduce((s,c) => s + (c.students?.length || 0), 0) : 0;
                     const fbCount = u.feedbackKeys.length;
-                    const classesJson = encodeURIComponent(JSON.stringify(u.classes));
-                    html += `<div class="admin-teacher-card" onclick="toggleAdminDetail(this, \'${u.id}\', \'${classesJson}\')">
+                    const classes = Array.isArray(u.classes) ? u.classes : [];
+                    let classDetailHtml = '';
+                    classes.forEach(c => {
+                        classDetailHtml += `<div class="at-class-item"><b>${escapeHtml(c.name)}</b> · ${(c.students||[]).length}人：${escapeHtml((c.students||[]).join('、'))}</div>`;
+                    });
+                    if (!classDetailHtml) classDetailHtml = '<div style="font-size:11px;color:var(--text-muted);">暂无班级数据</div>';
+                    html += `<div class="admin-teacher-card" onclick="this.querySelector('.at-detail').classList.toggle('open')">
                         <div class="at-header">
                             <div>
                                 <div class="at-name">${escapeHtml(u.name || u.email)}</div>
@@ -1228,33 +1233,17 @@
                             </div>
                             <button class="admin-reset-btn" onclick="event.stopPropagation();resetTeacherPassword('${u.id}', '${escapeHtml(u.name || u.email)}')" title="重置密码">🔒 重置密码</button>
                         </div>
-                        <div class="at-detail" id="adminDetail-${u.id}">
-                            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">注册时间：${u.created ? new Date(u.created).toLocaleDateString('zh-CN') : '未知'} · 最后登录：${u.lastSignIn ? new Date(u.lastSignIn).toLocaleDateString('zh-CN') : '未知'}</div>
+                        <div class="at-detail">
+                            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">注册时间：${u.created ? new Date(u.created).toLocaleDateString('zh-CN') : '未知'} · 最后登录：${u.lastSignIn ? new Date(u.lastSignIn).toLocaleDateString('zh-CN') : '未知'}</div>
+                            ${classDetailHtml}
                         </div>
                     </div>`;
                 });
                 if (!html) html = '<div class="admin-hint">暂无教师数据</div>';
                 listEl.innerHTML = html;
-                // 展开详情
-                Object.values(userMap).forEach(u => {
-                    const detailEl = document.getElementById('adminDetail-' + u.id);
-                    if (!detailEl) return;
-                    const classes = Array.isArray(u.classes) ? u.classes : [];
-                    let detailHtml = `<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">注册时间：${u.created ? new Date(u.created).toLocaleDateString('zh-CN') : '未知'} · 最后登录：${u.lastSignIn ? new Date(u.lastSignIn).toLocaleDateString('zh-CN') : '未知'}</div>`;
-                    classes.forEach(c => {
-                        detailHtml += `<div class="at-class-item"><b>${escapeHtml(c.name)}</b> · ${(c.students||[]).length}人：${escapeHtml((c.students||[]).join('、'))}</div>`;
-                    });
-                    detailEl.innerHTML = detailHtml;
-                });
             } catch(e) {
                 listEl.innerHTML = `<div class="admin-hint">错误：${e.message}</div>`;
             }
-        };
-
-        window.toggleAdminDetail = function(card, userId, classesJson) {
-            const detail = document.getElementById('adminDetail-' + userId);
-            if (!detail) return;
-            detail.classList.toggle('open');
         };
 
         window.resetTeacherPassword = async function(userId, displayName) {

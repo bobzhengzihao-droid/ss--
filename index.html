@@ -1190,30 +1190,28 @@
             listEl.innerHTML = '<div class="admin-hint">加载中...</div>';
 
             try {
-                // 直接用 fetch 调 Supabase Admin API（不依赖 SDK）
-                const authUrl = SUPABASE_URL + '/auth/v1/admin/users';
-                const restUrl = SUPABASE_URL + '/rest/v1/data_store?select=*';
+                // 用 service_role 创建干净客户端（关闭自动会话）
+                const adminClient = window.supabase.createClient(SUPABASE_URL, sk, {
+                    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false }
+                });
 
-                const [usersRes, dataRes] = await Promise.all([
-                    fetch(authUrl, { headers: { 'Authorization': 'Bearer ' + sk, 'apikey': sk } }),
-                    fetch(restUrl, { headers: { 'apikey': sk, 'Authorization': 'Bearer ' + sk } })
+                // 并行查询用户列表和数据
+                const [userResult, dataResult] = await Promise.all([
+                    adminClient.auth.admin.listUsers(),
+                    adminClient.from('data_store').select('*')
                 ]);
 
-                if (!usersRes.ok) {
-                    const errText = await usersRes.text();
-                    listEl.innerHTML = `<div class="admin-hint">用户查询失败（${usersRes.status}）：${errText.substring(0,200)}</div>`;
+                if (userResult.error) {
+                    listEl.innerHTML = `<div class="admin-hint">用户查询失败：${userResult.error.message}</div>`;
                     return;
                 }
-                if (!dataRes.ok) {
-                    const errText = await dataRes.text();
-                    listEl.innerHTML = `<div class="admin-hint">数据查询失败（${dataRes.status}）：${errText.substring(0,200)}</div>`;
+                if (dataResult.error) {
+                    listEl.innerHTML = `<div class="admin-hint">数据查询失败：${dataResult.error.message}</div>`;
                     return;
                 }
 
-                const usersData = await usersRes.json();
-                const allData = await dataRes.json();
-
-                const users = usersData.users || usersData;
+                const users = userResult.data.users;
+                const allData = dataResult.data;
 
                 // 按 user_id 聚合
                 const userMap = {};
@@ -1304,12 +1302,11 @@
             const sk = document.getElementById('adminServiceKey').value.trim();
             if (!sk) { alert('Service Role Key 未输入'); return; }
             try {
-                const res = await fetch(SUPABASE_URL + '/auth/v1/admin/users/' + userId, {
-                    method: 'PUT',
-                    headers: { 'Authorization': 'Bearer ' + sk, 'apikey': sk, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: newPwd })
+                const adminClient = window.supabase.createClient(SUPABASE_URL, sk, {
+                    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false }
                 });
-                if (!res.ok) { const err = await res.text(); alert('重置失败（' + res.status + '）：' + err.substring(0,200)); return; }
+                const { error } = await adminClient.auth.admin.updateUserById(userId, { password: newPwd });
+                if (error) { alert('重置失败：' + error.message); return; }
                 alert('密码已重置，请将新密码告知 ' + displayName);
             } catch(e) {
                 alert('错误：' + e.message);

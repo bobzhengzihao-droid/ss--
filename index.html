@@ -1063,10 +1063,38 @@
         };
 
         let _isAdmin = false;
+        function checkIsAdmin() {
+            // 双重验证：名字是 bob + （已保存的 admin ID 匹配 或 尚未设置 admin ID）
+            const name = (document.getElementById('headerUserName').textContent || '').replace('👤 ', '');
+            if (name.toLowerCase() !== 'bob') return false;
+            const adminId = localStorage.getItem('_fb_admin_uid');
+            if (adminId && adminId !== _userId) return false;
+            return true;
+        }
+        function updateAdminStatus() {
+            _isAdmin = checkIsAdmin();
+            // 动态更新班级管理页的管理入口
+            const adminLink = document.getElementById('adminEntry');
+            if (_isAdmin) {
+                if (!adminLink) {
+                    const cardTitle = document.querySelector('#view-classes .card-title');
+                    if (cardTitle) {
+                        const a = document.createElement('a');
+                        a.id = 'adminEntry';
+                        a.href = 'javascript:void(0)';
+                        a.onclick = function() { openAdminPanel(); };
+                        a.textContent = '⚙ 系统管理';
+                        a.style.cssText = 'margin-left:auto;font-size:12px;font-weight:500;color:var(--text-muted);text-decoration:none;padding:4px 10px;border-radius:10px;background:#f1f5f9;';
+                        cardTitle.appendChild(a);
+                    }
+                }
+            } else {
+                if (adminLink) adminLink.remove();
+            }
+        }
         async function onLoginSuccess(user) {
             _userId = user.id;
             const name = user.user_metadata?.name || user.email?.split('@')[0] || '';
-            _isAdmin = (name.toLowerCase() === 'bob');
             document.body.classList.add('logged-in');
             document.getElementById('loginOverlay').style.display = 'none';
             document.getElementById('headerUserName').textContent = '👤 ' + name;
@@ -1139,6 +1167,11 @@
             const sk = keyEl.value.trim();
             if (!sk) { alert('请输入 Service Role Key'); return; }
             localStorage.setItem('_fb_admin_sk_' + _userId, sk);
+            // 首次成功验证 service_role key 的 bob 即为永久管理员
+            if (checkIsAdmin() && !localStorage.getItem('_fb_admin_uid')) {
+                localStorage.setItem('_fb_admin_uid', _userId);
+                updateAdminStatus();
+            }
             const listEl = document.getElementById('adminTeacherList');
             listEl.innerHTML = '<div class="admin-hint">加载中...</div>';
 
@@ -1240,6 +1273,7 @@
             currentClassId = classes.length ? classes[0].id : null;
             currentDateLabel = getDateList()[0] || 'Day1';
             buildAllViews();
+            updateAdminStatus();
             applyTableColors(getCurrentClass());
             switchView('classes');
             const floatBtn = document.getElementById('floatBtn');
@@ -1955,7 +1989,7 @@
 
         // ========== 页面构建 ==========
         function buildAllViews(){
-            document.getElementById('view-classes').innerHTML=`<div class="card"><div class="card-title">📚 班级管理${_isAdmin?'<a href="javascript:void(0)" onclick="openAdminPanel()" style="margin-left:auto;font-size:12px;font-weight:500;color:var(--text-muted);text-decoration:none;padding:4px 10px;border-radius:10px;background:#f1f5f9;">⚙ 系统管理</a>':''}</div><div style="display:flex;gap:6px"><input class="input" id="newClassName" placeholder="新班级名称" style="flex:1"><button class="btn" onclick="addClass()">➕ 新建</button></div><div id="classListContainer"></div></div>`;
+            document.getElementById('view-classes').innerHTML=`<div class="card"><div class="card-title">📚 班级管理</div><div style="display:flex;gap:6px"><input class="input" id="newClassName" placeholder="新班级名称" style="flex:1"><button class="btn" onclick="addClass()">➕ 新建</button></div><div id="classListContainer"></div></div>`;
             document.getElementById('view-feedback').innerHTML=`<div class="card" style="padding:10px 12px;"><div class="card-title">📝 每日反馈</div><div class="feedback-actions"><span style="font-size:13px;">新建课次：</span><input class="input" id="dateLabelInput" style="width:72px;" placeholder="Day1"><button class="btn btn-sm" onclick="goToDate()">+ 新建</button><button class="btn btn-sm" onclick="undo()" style="background:#2563eb">↩️ 撤销</button></div><div id="dateSelector" class="date-selector-row" style="margin-top:6px;"></div><div style="display:flex;justify-content:space-between;margin-top:6px;"><span id="saveStatus" class="save-indicator">✅ 已自动保存</span><button class="btn btn-outline btn-xs" onclick="switchToFullTable()">📊 完整表格</button></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">🎨 表格样式 ▼</button><div class="collapsible-content"><div class="style-row"><span>表头背景:</span><input type="color" id="styleHeaderBg" onchange="applyStyleColor('headerBg',this.value)"><span>表头文字:</span><input type="color" id="styleHeaderText" onchange="applyStyleColor('headerText',this.value)"><span>边框:</span><input type="color" id="styleBorder" onchange="applyStyleColor('border',this.value)"><span>斑马纹:</span><input type="color" id="styleRowEven" onchange="applyStyleColor('rowEven',this.value)"></div><div class="style-row"><span>行高:</span><input type="number" id="styleRowHeight" min="24" max="60" style="width:60px" onchange="applyRowHeight()"></div></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">📐 列设置 ▼</button><div class="collapsible-content"><div id="columnEditor" style="display:flex;gap:4px;flex-wrap:wrap"></div></div></div><div class="card" style="padding:6px"><div class="table-wrapper"><table id="feedbackTable"><thead id="feedbackTableHead"></thead><tbody id="feedbackTableBody"></tbody></table></div></div>`;
             document.getElementById('view-fulltable').innerHTML=`<div class="card"><div class="card-title">📄 完整反馈表</div><div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="switchView('feedback')">↩️ 返回</button><button class="btn btn-sm" onclick="printTable()">🖨️ 打印</button><button class="btn btn-sm" onclick="exportStyledExcel()">📊 Excel</button><button class="btn btn-sm" onclick="exportAsImage()">🖼️ 图片</button></div></div>
             <div class="card" style="padding:6px"><div class="table-wrapper" id="fullTableWrapper"><div class="title-wrapper"><input id="fullTableTitleInput" style="font-size:1.2rem;font-weight:700;border:none;background:transparent;text-align:center;width:100%" placeholder="标题"></div><table id="fullTable"><thead id="fullTableHead"></thead><tbody id="fullTableBody"></tbody></table></div></div>

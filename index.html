@@ -1105,27 +1105,25 @@
         async function onLoginSuccess(user, actualEmail) {
             _userId = user.id;
             const name = user.user_metadata?.name || user.email?.split('@')[0] || '';
-            const email = user.email || '';
             // 记住本设备的实际邮箱，解决同名登录问题
             if (actualEmail) {
-                localStorage.setItem('_fb_name_email_' + name, actualEmail);
-            }
-            // 保存用户档案到 data_store（供管理员面板查询）
-            if (name) {
-                try {
-                    const { data: existing } = await supabase.from('data_store').select('value').eq('user_id', user.id).eq('key', '_profile').maybeSingle();
-                    const profile = { name, email, updated: new Date().toISOString() };
-                    if (!existing) profile.created = new Date().toISOString();
-                    await supabase.from('data_store').upsert({
-                        user_id: user.id, key: '_profile', value: profile,
-                        updated_at: new Date().toISOString()
-                    }, { onConflict: 'user_id,key' });
-                } catch(e) {}
+                try { localStorage.setItem('_fb_name_email_' + name, actualEmail); } catch(e) {}
             }
             document.body.classList.add('logged-in');
             document.getElementById('loginOverlay').style.display = 'none';
             document.getElementById('headerUserName').textContent = '👤 ' + name;
             await loadUserData();
+            // 保存用户档案到 data_store（异步，不影响登录体验）
+            saveUserProfile(user, name);
+        }
+
+        function saveUserProfile(user, name) {
+            if (!name || !supabaseReady) return;
+            const email = user.email || '';
+            supabase.from('data_store').upsert({
+                user_id: user.id, key: '_profile', value: { name, email, updated: new Date().toISOString() },
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id,key' }).catch(function(){});
         }
 
         window.handleLogout = async function() {

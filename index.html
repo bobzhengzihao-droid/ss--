@@ -1105,9 +1105,22 @@
         async function onLoginSuccess(user, actualEmail) {
             _userId = user.id;
             const name = user.user_metadata?.name || user.email?.split('@')[0] || '';
+            const email = user.email || '';
             // 记住本设备的实际邮箱，解决同名登录问题
             if (actualEmail) {
                 localStorage.setItem('_fb_name_email_' + name, actualEmail);
+            }
+            // 保存用户档案到 data_store（供管理员面板查询）
+            if (name) {
+                try {
+                    const { data: existing } = await supabase.from('data_store').select('value').eq('user_id', user.id).eq('key', '_profile').maybeSingle();
+                    const profile = { name, email, updated: new Date().toISOString() };
+                    if (!existing) profile.created = new Date().toISOString();
+                    await supabase.from('data_store').upsert({
+                        user_id: user.id, key: '_profile', value: profile,
+                        updated_at: new Date().toISOString()
+                    }, { onConflict: 'user_id,key' });
+                } catch(e) {}
             }
             document.body.classList.add('logged-in');
             document.getElementById('loginOverlay').style.display = 'none';
@@ -1190,46 +1203,51 @@
             listEl.innerHTML = '<div class="admin-hint">加载中...</div>';
 
             try {
-                // 用 service_role 创建干净客户端（关闭自动会话）
+                // 用 service_role 创建干净客户端，只查 data_store（Auth Admin API 浏览器禁止）
                 const adminClient = window.supabase.createClient(SUPABASE_URL, sk, {
                     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false }
                 });
 
-                // 并行查询用户列表和数据
-                const [userResult, dataResult] = await Promise.all([
-                    adminClient.auth.admin.listUsers(),
-                    adminClient.from('data_store').select('*')
-                ]);
-
-                if (userResult.error) {
-                    listEl.innerHTML = `<div class="admin-hint">用户查询失败：${userResult.error.message}</div>`;
-                    return;
-                }
-                if (dataResult.error) {
-                    listEl.innerHTML = `<div class="admin-hint">数据查询失败：${dataResult.error.message}</div>`;
+                const { data: allData, error: dErr } = await adminClient.from('data_store').select('*');
+                if (dErr) {
+                    listEl.innerHTML = `<div class="admin-hint">数据查询失败：${dErr.message}</div>`;
                     return;
                 }
 
-                const users = userResult.data.users;
-                const allData = dataResult.data;
-
-                // 按 user_id 聚合
+                // 按 user_id 聚合所有数据
                 const userMap = {};
-                users.forEach(u => {
-                    userMap[u.id] = { id: u.id, email: u.email, name: u.user_metadata?.name || '', created: u.created_at, lastSignIn: u.last_sign_in_at, classes: [], feedback: {} };
-                });
                 (allData || []).forEach(row => {
-                    if (!userMap[row.user_id]) return;
+                    if (!userMap[row.user_id]) {
+                        userMap[row.user_id] = { id: row.user_id, name: '', email: '', created: '', lastSignIn: '', classes: [], feedback: {} };
+                    }
+                    const u = userMap[row.user_id];
+                    if (row.key === '_profile') {
+                        try {
+                            const p = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+                            u.name = p.name || '';
+                            u.email = p.email || '';
+                            u.created = p.created || '';
+                            u.lastSignIn = p.updated || '';
+                        } catch(e) {}
+                    }
                     if (row.key === 'classes') {
-                        try { userMap[row.user_id].classes = JSON.parse(row.value); } catch(e) {}
+                        try { u.classes = JSON.parse(typeof row.value === 'string' ? row.value : JSON.stringify(row.value)); } catch(e) {}
                     }
                     if (row.key === 'feedback') {
-                        try { userMap[row.user_id].feedback = JSON.parse(row.value); } catch(e) {}
+                        try { u.feedback = JSON.parse(typeof row.value === 'string' ? row.value : JSON.stringify(row.value)); } catch(e) {}
+                    }
+                });
+
+                // 过滤掉没有数据的空账号
+                const filtered = {};
+                Object.entries(userMap).forEach(([id, u]) => {
+                    if (u.classes.length > 0 || Object.keys(u.feedback).length > 0 || u.name) {
+                        filtered[id] = u;
                     }
                 });
 
                 let html = '';
-                Object.values(userMap).forEach(u => {
+                Object.values(filtered).forEach(u => {
                     const classes = Array.isArray(u.classes) ? u.classes : [];
                     const classCount = classes.length;
                     const studentCount = classes.reduce((s,c) => s + (c.students?.length || 0), 0);
@@ -1278,8 +1296,8 @@
                     html += `<div class="admin-teacher-card" onclick="this.querySelector('.at-detail').classList.toggle('open')">
                         <div class="at-header">
                             <div>
-                                <div class="at-name">${escapeHtml(u.name || u.email)}</div>
-                                <div class="at-meta">${escapeHtml(u.email)} · ${classCount}班 · ${studentCount}人 · ${fbCount}条反馈课次</div>
+                                <div class="at-name">${escapeHtml(u.name || ('未知用户 ' + u.id.substring(0,8)))}</div>
+                                <div class="at-meta">${u.email ? escapeHtml(u.email) + ' · ' : ''}${classCount}班 · ${studentCount}人 · ${fbCount}条反馈课次</div>
                             </div>
                             <button class="admin-reset-btn" onclick="event.stopPropagation();resetTeacherPassword('${u.id}', '${escapeHtml(u.name || u.email)}')" title="重置密码">🔒 重置密码</button>
                         </div>

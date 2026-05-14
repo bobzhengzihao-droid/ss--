@@ -1766,9 +1766,8 @@
             document.getElementById('view-fulltable').innerHTML=`<div class="card"><div class="card-title">📄 完整反馈表</div><div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="switchView('feedback')">↩️ 返回</button><button class="btn btn-sm" onclick="printTable()">🖨️ 打印</button><button class="btn btn-sm" onclick="exportStyledExcel()">📊 Excel</button><button class="btn btn-sm" onclick="exportAsImage()">🖼️ 图片</button></div></div>
             <div class="card" style="padding:6px"><div class="table-wrapper" id="fullTableWrapper"><div class="title-wrapper"><input id="fullTableTitleInput" style="font-size:1.2rem;font-weight:700;border:none;background:transparent;text-align:center;width:100%" placeholder="标题"></div><table id="fullTable"><thead id="fullTableHead"></thead><tbody id="fullTableBody"></tbody></table></div></div>
             <div class="card" style="margin-top:12px">
-                <div class="card-title" style="justify-content:space-between;">
-                    <span>📊 统计表</span>
-                    <div style="display:flex; gap:6px;">
+                <div class="card-title">📊 统计表
+                    <div style="display:flex; gap:6px; margin-left:auto;">
                         <button class="btn btn-sm btn-outline" onclick="exportStatExcel()">📊 Excel</button>
                         <button class="btn btn-sm btn-outline" onclick="exportStatImage()">🖼️ 图片</button>
                     </div>

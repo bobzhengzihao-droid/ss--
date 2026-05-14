@@ -1331,7 +1331,7 @@
 
         window.handleLogout = async function() {
             if (supabaseReady) { try { await supabase.auth.signOut(); } catch(e) {} }
-            _userId = null; _isAdmin = false; _adminAuthPassed = false;
+            _userId = null; _isAdmin = false; _adminAuthPassed = false; window._cachedServiceKey = null;
             document.body.classList.remove('logged-in');
             document.getElementById('loginOverlay').style.display = '';
             document.getElementById('loginName').value = '';
@@ -1371,6 +1371,17 @@
         // ===== 管理员认证 =====
         let _adminAuthPassed = false;
 
+        function getServiceKey() {
+            if (window._cachedServiceKey) return window._cachedServiceKey;
+            const saved = localStorage.getItem('_fb_service_key');
+            if (saved) { window._cachedServiceKey = saved; return saved; }
+            const key = prompt('请输入 Supabase Service Role Key（仅需一次）：\n\n（可在 server.py 第23行找到）\n\n输入后自动保存到浏览器，以后无需重复输入。');
+            if (!key || key.length < 20) { alert('Key 无效，请重新粘贴'); return null; }
+            localStorage.setItem('_fb_service_key', key.trim());
+            window._cachedServiceKey = key.trim();
+            return key.trim();
+        }
+
         async function promptAdminPassword() {
             if (_adminAuthPassed) return true;
             const remembered = localStorage.getItem('_fb_admin_pwd_ok');
@@ -1394,23 +1405,61 @@
         };
 
         async function loadAllTeachersSilent() {
+            // Try server API first
             try {
                 const resp = await fetch(API_BASE + '/api/admin/all-teachers', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ admin_password: ADMIN_PASSWORD })
                 });
-                if (!resp.ok) {
-                    const err = await resp.json().catch(() => ({ message: resp.statusText }));
-                    console.error('Admin data fetch error:', err);
-                    alert('无法加载管理数据：' + (err.detail || err.message || '服务器不可达，请确认已启动 server.py'));
+                if (resp.ok) {
+                    const data = await resp.json();
+                    window._adminData = data || {};
                     return;
                 }
-                const data = await resp.json();
-                window._adminData = data || {};
+            } catch(e) {
+                console.warn('Server API unreachable, falling back to direct Supabase');
+            }
+
+            // Fallback: direct Supabase with user-provided key
+            const sk = getServiceKey();
+            if (!sk) return;
+            try {
+                const adminClient = window.supabase.createClient(SUPABASE_URL, sk, {
+                    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false }
+                });
+                const { data: allData, error: dErr } = await adminClient.from('data_store').select('*');
+                if (dErr) { console.error('Admin data fetch error:', dErr); return; }
+
+                const userMap = {};
+                (allData || []).forEach(row => {
+                    if (!userMap[row.user_id]) {
+                        userMap[row.user_id] = { id: row.user_id, name: '', email: '', created: '', lastSignIn: '', classes: [], feedback: {} };
+                    }
+                    const u = userMap[row.user_id];
+                    if (row.key === '_profile') {
+                        try {
+                            const p = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+                            u.name = p.name || ''; u.email = p.email || '';
+                            u.created = p.created || ''; u.lastSignIn = p.updated || '';
+                        } catch(e) {}
+                    }
+                    if (row.key === 'classes') {
+                        try { u.classes = JSON.parse(typeof row.value === 'string' ? row.value : JSON.stringify(row.value)); } catch(e) {}
+                    }
+                    if (row.key === 'feedback') {
+                        try { u.feedback = JSON.parse(typeof row.value === 'string' ? row.value : JSON.stringify(row.value)); } catch(e) {}
+                    }
+                });
+                const filtered = {};
+                Object.entries(userMap).forEach(([id, u]) => {
+                    if (u.classes.length > 0 || Object.keys(u.feedback).length > 0 || u.name) {
+                        filtered[id] = u;
+                    }
+                });
+                window._adminData = filtered;
             } catch(e) {
                 console.error('Admin load error:', e);
-                alert('管理后台需要 server.py 运行中。请在终端执行：python3 server.py');
             }
         }
 
@@ -1473,20 +1522,34 @@
         window.resetTeacherPassword = async function(userId, displayName) {
             const newPwd = prompt(`为 ${displayName} 设置新密码（至少4位）：`);
             if (!newPwd || newPwd.length < 4) { alert('密码至少4位'); return; }
+
+            // Try server API first
             try {
                 const resp = await fetch(API_BASE + '/api/admin/reset-password', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ admin_password: ADMIN_PASSWORD, name: displayName, new_password: newPwd })
                 });
-                if (!resp.ok) {
-                    const err = await resp.json().catch(() => ({ message: resp.statusText }));
-                    alert('重置失败：' + (err.detail || err.message || '服务器不可达'));
+                if (resp.ok) {
+                    alert('密码已重置，请将新密码告知 ' + displayName);
                     return;
                 }
+            } catch(e) {
+                console.warn('Server API unreachable for reset, falling back to direct Supabase');
+            }
+
+            // Fallback: direct Supabase
+            const sk = getServiceKey();
+            if (!sk) return;
+            try {
+                const adminClient = window.supabase.createClient(SUPABASE_URL, sk, {
+                    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false }
+                });
+                const { error } = await adminClient.auth.admin.updateUserById(userId, { password: newPwd });
+                if (error) { alert('重置失败：' + error.message); return; }
                 alert('密码已重置，请将新密码告知 ' + displayName);
             } catch(e) {
-                alert('错误：管理后台需要 server.py 运行中。请在终端执行：python3 server.py');
+                alert('重置错误：' + e.message);
             }
         };
 
@@ -1885,20 +1948,37 @@
                     rec.values[col] = inp.value.trim();
                 }
             });
+            // Try server API first
             try {
                 const resp = await fetch(API_BASE + '/api/admin/save-correction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ admin_password: ADMIN_PASSWORD, user_id: ctx.teacherId, feedback: u.feedback })
                 });
-                if (!resp.ok) {
-                    const err = await resp.json().catch(() => ({ message: resp.statusText }));
-                    alert('保存失败：' + (err.detail || err.message || '服务器不可达'));
+                if (resp.ok) {
+                    document.getElementById('adminCorrStatus').textContent = '✅ 已保存';
+                    setTimeout(() => { document.getElementById('adminCorrStatus').textContent = ''; }, 2000);
                     return;
                 }
+            } catch(e) {
+                console.warn('Server API unreachable for save, falling back to direct Supabase');
+            }
+
+            // Fallback: direct Supabase
+            const sk = getServiceKey();
+            if (!sk) return;
+            try {
+                const adminClient = window.supabase.createClient(SUPABASE_URL, sk, {
+                    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false }
+                });
+                const { error } = await adminClient.from('data_store').upsert({
+                    user_id: ctx.teacherId, key: 'feedback', value: u.feedback,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'user_id,key' });
+                if (error) { alert('保存失败：' + error.message); return; }
                 document.getElementById('adminCorrStatus').textContent = '✅ 已保存';
                 setTimeout(() => { document.getElementById('adminCorrStatus').textContent = ''; }, 2000);
-            } catch(e) { alert('保存错误：管理后台需要 server.py 运行中。请在终端执行：python3 server.py'); }
+            } catch(e) { alert('保存错误：' + e.message); }
         };
 
         async function loadUserData() {

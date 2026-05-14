@@ -1265,7 +1265,7 @@
             modal.innerHTML = `<div class="admin-panel">
                 <div class="admin-header"><span class="admin-title">⚙ 系统管理</span><button class="admin-close" onclick="this.closest(\'.admin-modal\').remove()">✕</button></div>
                 <div class="admin-body" id="adminBody">
-                    <div class="admin-api-row"><input class="input" id="adminServiceKey" type="password" placeholder="Service Role Key（首次需输入）" style="font-size:12px;"><button class="btn btn-sm" onclick="loadAllTeachers()">🔍 查询</button></div>
+                    <div class="admin-api-row"><input class="input" id="adminServiceKey" type="password" placeholder="Service Role Key（首次需输入）" style="font-size:12px;"><button class="btn btn-sm" onclick="loadAllTeachers()">🔍 查询</button><button class="btn btn-sm btn-outline" onclick="exportAdminExcel()" style="display:none;" id="adminExportBtn">📊 导出Excel</button></div>
                     <div id="adminTeacherList"><div class="admin-hint">输入 Service Role Key 后点击查询</div></div>
                 </div>
             </div>`;
@@ -1290,6 +1290,8 @@
             }
             const listEl = document.getElementById('adminTeacherList');
             listEl.innerHTML = '<div class="admin-hint">加载中...</div>';
+            const exportBtn = document.getElementById('adminExportBtn');
+            if (exportBtn) exportBtn.style.display = 'none';
 
             try {
                 // 用 service_role 创建干净客户端，只查 data_store（Auth Admin API 浏览器禁止）
@@ -1379,6 +1381,8 @@
                     const scoreHtml = buildAdminScoreHtml(u);
                     if (scoreHtml) window._adminScoreCache[u.id] = scoreHtml;
                 });
+                const exportBtn = document.getElementById('adminExportBtn');
+                if (exportBtn) exportBtn.style.display = '';
             } catch(e) {
                 listEl.innerHTML = `<div class="admin-hint">网络错误：${e.message}</div>`;
             }
@@ -1455,6 +1459,48 @@
             } catch(e) {
                 alert('错误：' + e.message);
             }
+        };
+
+        // ===== 管理员导出：格式2 长表 =====
+        window.exportAdminExcel = function() {
+            const allData = window._adminData;
+            if (!allData || !Object.keys(allData).length) { alert('请先查询数据'); return; }
+
+            const rows = [['教师', '班级', '日期', '学生', '题型', '得分']];
+            Object.values(allData).forEach(u => {
+                const classes = Array.isArray(u.classes) ? u.classes : [];
+                const fbKeys = Object.keys(u.feedback || {});
+                const teacherName = u.name || (u.id || '').substring(0, 8);
+
+                classes.forEach(cls => {
+                    const clsPrefix = cls.id + '|';
+                    fbKeys.filter(k => k.startsWith(clsPrefix)).forEach(k => {
+                        const dateLabel = k.substring(clsPrefix.length);
+                        const fb = u.feedback[k];
+                        const records = fb && Array.isArray(fb.records) ? fb.records : [];
+                        const dateColumns = fb && Array.isArray(fb.dateColumns) ? fb.dateColumns : [];
+
+                        records.forEach(r => {
+                            (r.values || []).forEach((val, vi) => {
+                                if (val === '' || val === null || val === undefined) return;
+                                const colName = dateColumns[vi] || ('题型' + (vi + 1));
+                                rows.push([teacherName, cls.name, dateLabel, r.name, colName, String(val)]);
+                            });
+                        });
+                    });
+                });
+            });
+
+            if (rows.length <= 1) { alert('没有可导出的数据'); return; }
+            const ws = XLSX.utils.aoa_to_sheet(rows);
+            ws['!cols'] = [
+                {wch: 10}, {wch: 16}, {wch: 14}, {wch: 8},
+                {wch: 12}, {wch: 8}
+            ];
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '成绩明细');
+            const dateStr = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
+            XLSX.writeFile(wb, `全部成绩明细_${dateStr}.xlsx`);
         };
 
         async function loadUserData() {

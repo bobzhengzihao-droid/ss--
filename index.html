@@ -2032,6 +2032,7 @@
             wrapper.style.maxHeight = 'none';
             wrapper.style.width = 'auto';
             wrapper.style.maxWidth = 'none';
+            wrapper.style.borderRadius = '0';
             wrapper.style.margin = '0';
             if (wrapDiv) {
                 wrapDiv.style.overflow = 'visible';
@@ -2047,16 +2048,17 @@
                 let w = wrapper.scrollWidth;
                 let h = wrapper.scrollHeight;
                 wrapper.style.width = (w + 4) + 'px';
+                // 宽度变化后重新取高度
                 w = wrapper.scrollWidth;
                 h = wrapper.scrollHeight;
 
                 html2canvas(wrapper, {
                     scale: 2,
                     backgroundColor: '#ffffff',
-                    width: w + 4,
-                    height: h + 4,
-                    windowWidth: w + 4,
-                    windowHeight: h + 4
+                    width: w + 8,
+                    height: h + 16,
+                    windowWidth: w + 8,
+                    windowHeight: h + 16
                 }).then(canvas => {
                     wrapper.setAttribute('style', origStyle);
                     if (table) table.setAttribute('style', origTblStyle);

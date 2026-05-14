@@ -632,22 +632,15 @@
             -webkit-overflow-scrolling: touch;
         }
         .stat-table {
-            table-layout: auto !important;
+            table-layout: fixed !important;
             width: auto !important;
             min-width: 100% !important;
-        }
-        .stat-table th,
-        .stat-table td {
-            min-width: 65px;
-            max-width: 140px;
         }
         .stat-table th { white-space: nowrap; }
         .stat-table td { white-space: normal; word-break: break-all; }
         .stat-table th:first-child,
         .stat-table td:first-child {
             white-space: nowrap;
-            max-width: none;
-            min-width: 50px;
             position: sticky;
             left: 0;
             background-color: inherit;
@@ -1900,8 +1893,8 @@
 
             let html = `<h3 style="text-align:center;margin-bottom:8px;">${escapeHtml(colKeyword)} 学情总结</h3>`;
             html += '<div class="stat-table-wrap"><table class="stat-table"><thead>';
-            html += '<tr><th>学生</th>';
-            dates.forEach(d => html += `<th>${escapeHtml(d)}</th>`);
+            html += '<tr><th style="width:70px">学生</th>';
+            dates.forEach(d => html += `<th style="width:110px">${escapeHtml(d)}</th>`);
             html += '</tr></thead><tbody>';
 
             students.forEach(stu => {
@@ -1961,8 +1954,8 @@
             }
 
             let html = `<h3 style="text-align:center;margin-bottom:8px;">${escapeHtml(studentName)} 学情统计</h3>`;
-            html += '<div class="stat-table-wrap"><table class="stat-table"><thead><tr><th>日期</th>';
-            columns.forEach(col => html += `<th>${escapeHtml(stripMaxScore(col))}</th>`);
+            html += '<div class="stat-table-wrap"><table class="stat-table"><thead><tr><th style="width:70px">日期</th>';
+            columns.forEach(col => html += `<th style="width:110px">${escapeHtml(stripMaxScore(col))}</th>`);
             html += '</tr></thead><tbody>';
 
             dates.forEach(d => {

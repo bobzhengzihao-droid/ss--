@@ -632,7 +632,7 @@
             -webkit-overflow-scrolling: touch;
         }
         .stat-table th { white-space: nowrap; }
-        .stat-table td { white-space: normal; overflow-wrap: break-word; min-width: 90px; }
+        .stat-table td { white-space: normal; overflow-wrap: break-word; min-width: 110px; }
         .stat-table th:first-child,
         .stat-table td:first-child {
             white-space: nowrap;
@@ -2010,6 +2010,15 @@
             const origWrapStyle = wrapDiv ? wrapDiv.getAttribute('style') || '' : '';
             const origParentStyle = wrapper.parentNode.style.cssText;
 
+            // 保存所有单元格样式，临时禁止换行
+            const allCells = table ? table.querySelectorAll('th,td') : [];
+            const origCellStyles = [];
+            allCells.forEach(cell => {
+                origCellStyles.push({ el: cell, ws: cell.style.whiteSpace, mw: cell.style.maxWidth });
+                cell.style.whiteSpace = 'nowrap';
+                cell.style.maxWidth = 'none';
+            });
+
             // 解除所有限制，让表格完全展开
             wrapper.parentNode.style.overflow = 'visible';
             wrapper.parentNode.style.maxHeight = 'none';
@@ -2033,7 +2042,6 @@
                 let w = wrapper.scrollWidth;
                 let h = wrapper.scrollHeight;
                 wrapper.style.width = (w + 4) + 'px';
-                // 宽度变化后重新取高度
                 w = wrapper.scrollWidth;
                 h = wrapper.scrollHeight;
 
@@ -2041,14 +2049,15 @@
                     scale: 2,
                     backgroundColor: '#ffffff',
                     width: w + 8,
-                    height: h + 16,
+                    height: h + 24,
                     windowWidth: w + 8,
-                    windowHeight: h + 16
+                    windowHeight: h + 24
                 }).then(canvas => {
                     wrapper.setAttribute('style', origStyle);
                     if (table) table.setAttribute('style', origTblStyle);
                     if (wrapDiv) wrapDiv.setAttribute('style', origWrapStyle);
                     wrapper.parentNode.style.cssText = origParentStyle;
+                    origCellStyles.forEach(s => { s.el.style.whiteSpace = s.ws; s.el.style.maxWidth = s.mw; });
 
                     canvas.toBlob(blob => {
                         const target = document.getElementById('statTarget').value;

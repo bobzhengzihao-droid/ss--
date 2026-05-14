@@ -878,6 +878,7 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1cnBjcXl0bWd4cWt4bGJzZWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MjYyNTYsImV4cCI6MjA5NDIwMjI1Nn0.522KmI4GJrghlteeQiRVMGJdytu3R4pf7E1NLyTByzE';
         const REG_CODE = 'bobo is cool';
         const API_BASE = 'http://127.0.0.1:8765';
+        const isLocal = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
         let supabase = null;
         let supabaseReady = false;
 
@@ -1117,24 +1118,38 @@
                     if (password.length < 4) { msgEl.textContent = '密码至少4位'; msgEl.className = 'login-msg error'; return; }
 
                     let regData;
-                    try {
-                        regData = await apiPost('/api/auth/register', { name, password, code });
-                    } catch(apiError) {
+                    if (isLocal) {
+                        try {
+                            regData = await apiPost('/api/auth/register', { name, password, code });
+                        } catch(apiError) {
+                            regData = await registerDirect(name, password, code);
+                        }
+                    } else {
                         regData = await registerDirect(name, password, code);
                     }
                     msgEl.textContent = '注册成功，正在自动登录...'; msgEl.className = 'login-msg success';
-                    try {
-                        const loginResult = await loginViaApi(name, password);
-                        await onLoginSuccess(loginResult.user, regData.email || loginResult.email);
-                    } catch(loginApiError) {
+                    if (isLocal) {
+                        try {
+                            const loginResult = await loginViaApi(name, password);
+                            await onLoginSuccess(loginResult.user, regData.email || loginResult.email);
+                        } catch(loginApiError) {
+                            const directResult = await loginDirect(name, password);
+                            await onLoginSuccess(directResult.user, regData.email || directResult.email);
+                        }
+                    } else {
                         const directResult = await loginDirect(name, password);
                         await onLoginSuccess(directResult.user, regData.email || directResult.email);
                     }
                 } else {
-                    try {
-                        const loginResult = await loginViaApi(name, password);
-                        await onLoginSuccess(loginResult.user, loginResult.email);
-                    } catch(apiError) {
+                    if (isLocal) {
+                        try {
+                            const loginResult = await loginViaApi(name, password);
+                            await onLoginSuccess(loginResult.user, loginResult.email);
+                        } catch(apiError) {
+                            const directResult = await loginDirect(name, password);
+                            await onLoginSuccess(directResult.user, directResult.email);
+                        }
+                    } else {
                         const directResult = await loginDirect(name, password);
                         await onLoginSuccess(directResult.user, directResult.email);
                     }

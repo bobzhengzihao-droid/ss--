@@ -1246,6 +1246,9 @@
                     }
                 });
 
+                // 存储数据供按需展开
+                window._adminData = filtered;
+
                 let html = '';
                 Object.values(filtered).forEach(u => {
                     const classes = Array.isArray(u.classes) ? u.classes : [];
@@ -1254,46 +1257,16 @@
                     const fbKeys = Object.keys(u.feedback || {});
                     const fbCount = fbKeys.length;
 
-                    // 构建班级详情（含各次课分数）
-                    let classDetailHtml = '';
+                    // 初始只展示班级名和学生，不渲染分数表（按需加载）
+                    let classPreviewHtml = '';
                     classes.forEach(cls => {
-                        classDetailHtml += `<div class="at-class-item"><b>${escapeHtml(cls.name)}</b> · ${(cls.students||[]).length}人：${escapeHtml((cls.students||[]).join('、'))}</div>`;
-                        // 找到该班级的所有课次
                         const clsPrefix = cls.id + '|';
-                        const clsFeedbackKeys = fbKeys.filter(k => k.startsWith(clsPrefix)).sort();
-                        if (clsFeedbackKeys.length > 0) {
-                            classDetailHtml += '<div style="margin:4px 0 8px 8px;">';
-                            clsFeedbackKeys.forEach(k => {
-                                const fb = u.feedback[k];
-                                const dateLabel = k.substring(clsPrefix.length);
-                                classDetailHtml += `<div style="margin:4px 0;font-size:11px;"><b>📅 ${escapeHtml(dateLabel)}</b>`;
-                                if (fb && fb.dateColumns) {
-                                    classDetailHtml += ` · ${escapeHtml(fb.dateColumns.join('、'))}`;
-                                }
-                                classDetailHtml += '</div>';
-                                if (fb && fb.records && fb.records.length > 0) {
-                                    classDetailHtml += '<table style="width:100%;font-size:10px;border-collapse:collapse;margin:2px 0 6px;"><tr style="background:#f8fafc;"><th style="border:1px solid #e2e8f0;padding:2px 4px;text-align:left;">学生</th>';
-                                    if (fb.dateColumns) fb.dateColumns.forEach((col, ci) => {
-                                        classDetailHtml += `<th style="border:1px solid #e2e8f0;padding:2px 4px;">${escapeHtml(col.substring(0,8))}</th>`;
-                                    });
-                                    classDetailHtml += '</tr>';
-                                    fb.records.forEach(r => {
-                                        classDetailHtml += `<tr><td style="border:1px solid #e2e8f0;padding:2px 4px;">${escapeHtml(r.name)}</td>`;
-                                        (r.values || []).forEach((v, vi) => {
-                                            const bg = (r.colors && r.colors[vi]) ? 'background:'+r.colors[vi]+';' : '';
-                                            classDetailHtml += `<td style="border:1px solid #e2e8f0;padding:2px 4px;text-align:center;${bg}">${escapeHtml(v||'')}</td>`;
-                                        });
-                                        classDetailHtml += '</tr>';
-                                    });
-                                    classDetailHtml += '</table>';
-                                }
-                            });
-                            classDetailHtml += '</div>';
-                        }
+                        const clsFbCount = fbKeys.filter(k => k.startsWith(clsPrefix)).length;
+                        classPreviewHtml += `<div class="at-class-item"><b>${escapeHtml(cls.name)}</b> · ${(cls.students||[]).length}人：${escapeHtml((cls.students||[]).join('、'))}${clsFbCount > 0 ? ' · <span style="color:var(--accent);">'+clsFbCount+'次课</span>' : ''}</div>`;
                     });
-                    if (!classDetailHtml) classDetailHtml = '<div style="font-size:11px;color:var(--text-muted);">暂无班级数据</div>';
+                    if (!classPreviewHtml) classPreviewHtml = '<div style="font-size:11px;color:var(--text-muted);">暂无班级数据</div>';
 
-                    html += `<div class="admin-teacher-card" onclick="this.querySelector('.at-detail').classList.toggle('open')">
+                    html += `<div class="admin-teacher-card" onclick="expandAdminDetail(this, '${u.id}')">
                         <div class="at-header">
                             <div>
                                 <div class="at-name">${escapeHtml(u.name || ('未知用户 ' + u.id.substring(0,8)))}</div>
@@ -1303,12 +1276,80 @@
                         </div>
                         <div class="at-detail">
                             <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">注册时间：${u.created ? new Date(u.created).toLocaleDateString('zh-CN') : '未知'} · 最后登录：${u.lastSignIn ? new Date(u.lastSignIn).toLocaleDateString('zh-CN') : '未知'}</div>
-                            ${classDetailHtml}
+                            ${classPreviewHtml}
+                            <div class="at-scores" id="adminScores-${u.id}" style="display:none;"></div>
                         </div>
                     </div>`;
                 });
                 if (!html) html = '<div class="admin-hint">暂无教师数据</div>';
                 listEl.innerHTML = html;
+
+                // 预构建分数表 HTML（存内存，展开时直接注入）
+                window._adminScoreCache = {};
+                Object.values(filtered).forEach(u => {
+                    const scoreHtml = buildAdminScoreHtml(u);
+                    if (scoreHtml) window._adminScoreCache[u.id] = scoreHtml;
+                });
+            } catch(e) {
+                listEl.innerHTML = `<div class="admin-hint">网络错误：${e.message}</div>`;
+            }
+        };
+
+        // 构建教师分数表 HTML
+        function buildAdminScoreHtml(u) {
+            const classes = Array.isArray(u.classes) ? u.classes : [];
+            const fbKeys = Object.keys(u.feedback || {});
+            let html = '';
+            classes.forEach(cls => {
+                const clsPrefix = cls.id + '|';
+                const clsFeedbackKeys = fbKeys.filter(k => k.startsWith(clsPrefix)).sort();
+                if (clsFeedbackKeys.length === 0) return;
+                html += `<div style="margin-top:8px;font-weight:600;font-size:12px;">📊 ${escapeHtml(cls.name)} 成绩明细</div>`;
+                html += '<div style="margin:4px 0 8px 8px;">';
+                clsFeedbackKeys.forEach(k => {
+                    const fb = u.feedback[k];
+                    const dateLabel = k.substring(clsPrefix.length);
+                    html += `<div style="margin:4px 0;font-size:11px;"><b>📅 ${escapeHtml(dateLabel)}</b>`;
+                    if (fb && fb.dateColumns) html += ` · ${escapeHtml(fb.dateColumns.join('、'))}`;
+                    html += '</div>';
+                    if (fb && fb.records && fb.records.length > 0) {
+                        html += '<table style="width:100%;font-size:10px;border-collapse:collapse;margin:2px 0 6px;"><tr style="background:#f8fafc;"><th style="border:1px solid #e2e8f0;padding:2px 4px;text-align:left;">学生</th>';
+                        if (fb.dateColumns) fb.dateColumns.forEach((col, ci) => {
+                            html += `<th style="border:1px solid #e2e8f0;padding:2px 4px;">${escapeHtml((col||'').substring(0,8))}</th>`;
+                        });
+                        html += '</tr>';
+                        fb.records.forEach(r => {
+                            html += `<tr><td style="border:1px solid #e2e8f0;padding:2px 4px;">${escapeHtml(r.name)}</td>`;
+                            (r.values || []).forEach((v, vi) => {
+                                const bg = (r.colors && r.colors[vi]) ? 'background:'+r.colors[vi]+';' : '';
+                                html += `<td style="border:1px solid #e2e8f0;padding:2px 4px;text-align:center;${bg}">${escapeHtml(v||'')}</td>`;
+                            });
+                            html += '</tr>';
+                        });
+                        html += '</table>';
+                    }
+                });
+                html += '</div>';
+            });
+            return html;
+        }
+
+        // 展开管理员卡片（首次展开时注入分数表）
+        window.expandAdminDetail = function(card, userId) {
+            const detail = card.querySelector('.at-detail');
+            const scoresEl = document.getElementById('adminScores-' + userId);
+            const isOpening = !detail.classList.contains('open');
+            detail.classList.toggle('open');
+            // 首次展开时注入缓存的分数表
+            if (isOpening && scoresEl && !scoresEl.dataset.loaded) {
+                const cached = window._adminScoreCache && window._adminScoreCache[userId];
+                if (cached) {
+                    scoresEl.innerHTML = cached;
+                    scoresEl.dataset.loaded = '1';
+                }
+                scoresEl.style.display = cached ? 'block' : 'none';
+            }
+        };
             } catch(e) {
                 listEl.innerHTML = `<div class="admin-hint">网络错误：${e.message}</div>`;
             }

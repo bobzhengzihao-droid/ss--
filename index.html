@@ -1190,19 +1190,35 @@
             listEl.innerHTML = '<div class="admin-hint">加载中...</div>';
 
             try {
-                // 用 service_role key 查询所有用户
-                const adminClient = window.supabase.createClient(SUPABASE_URL, sk);
-                const { data: users, error: uErr } = await adminClient.auth.admin.listUsers();
-                if (uErr) { listEl.innerHTML = `<div class="admin-hint">查询失败：${uErr.message}</div>`; return; }
+                // 直接用 fetch 调 Supabase Admin API（不依赖 SDK）
+                const authUrl = SUPABASE_URL + '/auth/v1/admin/users';
+                const restUrl = SUPABASE_URL + '/rest/v1/data_store?select=*';
 
-                // 查询所有 data_store 记录
-                const { data: allData, error: dErr } = await adminClient.from('data_store').select('*');
-                if (dErr) { listEl.innerHTML = `<div class="admin-hint">数据查询失败：${dErr.message}</div>`; return; }
+                const [usersRes, dataRes] = await Promise.all([
+                    fetch(authUrl, { headers: { 'Authorization': 'Bearer ' + sk, 'apikey': sk } }),
+                    fetch(restUrl, { headers: { 'apikey': sk, 'Authorization': 'Bearer ' + sk } })
+                ]);
+
+                if (!usersRes.ok) {
+                    const errText = await usersRes.text();
+                    listEl.innerHTML = `<div class="admin-hint">用户查询失败（${usersRes.status}）：${errText.substring(0,200)}</div>`;
+                    return;
+                }
+                if (!dataRes.ok) {
+                    const errText = await dataRes.text();
+                    listEl.innerHTML = `<div class="admin-hint">数据查询失败（${dataRes.status}）：${errText.substring(0,200)}</div>`;
+                    return;
+                }
+
+                const usersData = await usersRes.json();
+                const allData = await dataRes.json();
+
+                const users = usersData.users || usersData;
 
                 // 按 user_id 聚合
                 const userMap = {};
-                users.users.forEach(u => {
-                    userMap[u.id] = { id: u.id, email: u.email, name: u.user_metadata?.name || '', created: u.created_at, lastSignIn: u.last_sign_in_at, classes: [], feedbackKeys: [] };
+                users.forEach(u => {
+                    userMap[u.id] = { id: u.id, email: u.email, name: u.user_metadata?.name || '', created: u.created_at, lastSignIn: u.last_sign_in_at, classes: [], feedback: {} };
                 });
                 (allData || []).forEach(row => {
                     if (!userMap[row.user_id]) return;
@@ -1210,26 +1226,62 @@
                         try { userMap[row.user_id].classes = JSON.parse(row.value); } catch(e) {}
                     }
                     if (row.key === 'feedback') {
-                        try { const fb = JSON.parse(row.value); userMap[row.user_id].feedbackKeys = Object.keys(fb); } catch(e) {}
+                        try { userMap[row.user_id].feedback = JSON.parse(row.value); } catch(e) {}
                     }
                 });
 
                 let html = '';
                 Object.values(userMap).forEach(u => {
-                    const classCount = Array.isArray(u.classes) ? u.classes.length : 0;
-                    const studentCount = Array.isArray(u.classes) ? u.classes.reduce((s,c) => s + (c.students?.length || 0), 0) : 0;
-                    const fbCount = u.feedbackKeys.length;
                     const classes = Array.isArray(u.classes) ? u.classes : [];
+                    const classCount = classes.length;
+                    const studentCount = classes.reduce((s,c) => s + (c.students?.length || 0), 0);
+                    const fbKeys = Object.keys(u.feedback || {});
+                    const fbCount = fbKeys.length;
+
+                    // 构建班级详情（含各次课分数）
                     let classDetailHtml = '';
-                    classes.forEach(c => {
-                        classDetailHtml += `<div class="at-class-item"><b>${escapeHtml(c.name)}</b> · ${(c.students||[]).length}人：${escapeHtml((c.students||[]).join('、'))}</div>`;
+                    classes.forEach(cls => {
+                        classDetailHtml += `<div class="at-class-item"><b>${escapeHtml(cls.name)}</b> · ${(cls.students||[]).length}人：${escapeHtml((cls.students||[]).join('、'))}</div>`;
+                        // 找到该班级的所有课次
+                        const clsPrefix = cls.id + '|';
+                        const clsFeedbackKeys = fbKeys.filter(k => k.startsWith(clsPrefix)).sort();
+                        if (clsFeedbackKeys.length > 0) {
+                            classDetailHtml += '<div style="margin:4px 0 8px 8px;">';
+                            clsFeedbackKeys.forEach(k => {
+                                const fb = u.feedback[k];
+                                const dateLabel = k.substring(clsPrefix.length);
+                                classDetailHtml += `<div style="margin:4px 0;font-size:11px;"><b>📅 ${escapeHtml(dateLabel)}</b>`;
+                                if (fb && fb.dateColumns) {
+                                    classDetailHtml += ` · ${escapeHtml(fb.dateColumns.join('、'))}`;
+                                }
+                                classDetailHtml += '</div>';
+                                if (fb && fb.records && fb.records.length > 0) {
+                                    classDetailHtml += '<table style="width:100%;font-size:10px;border-collapse:collapse;margin:2px 0 6px;"><tr style="background:#f8fafc;"><th style="border:1px solid #e2e8f0;padding:2px 4px;text-align:left;">学生</th>';
+                                    if (fb.dateColumns) fb.dateColumns.forEach((col, ci) => {
+                                        classDetailHtml += `<th style="border:1px solid #e2e8f0;padding:2px 4px;">${escapeHtml(col.substring(0,8))}</th>`;
+                                    });
+                                    classDetailHtml += '</tr>';
+                                    fb.records.forEach(r => {
+                                        classDetailHtml += `<tr><td style="border:1px solid #e2e8f0;padding:2px 4px;">${escapeHtml(r.name)}</td>`;
+                                        (r.values || []).forEach((v, vi) => {
+                                            const bg = (r.colors && r.colors[vi]) ? 'background:'+r.colors[vi]+';' : '';
+                                            classDetailHtml += `<td style="border:1px solid #e2e8f0;padding:2px 4px;text-align:center;${bg}">${escapeHtml(v||'')}</td>`;
+                                        });
+                                        classDetailHtml += '</tr>';
+                                    });
+                                    classDetailHtml += '</table>';
+                                }
+                            });
+                            classDetailHtml += '</div>';
+                        }
                     });
                     if (!classDetailHtml) classDetailHtml = '<div style="font-size:11px;color:var(--text-muted);">暂无班级数据</div>';
+
                     html += `<div class="admin-teacher-card" onclick="this.querySelector('.at-detail').classList.toggle('open')">
                         <div class="at-header">
                             <div>
                                 <div class="at-name">${escapeHtml(u.name || u.email)}</div>
-                                <div class="at-meta">${escapeHtml(u.email)} · ${classCount}班 · ${studentCount}人 · ${fbCount}条反馈</div>
+                                <div class="at-meta">${escapeHtml(u.email)} · ${classCount}班 · ${studentCount}人 · ${fbCount}条反馈课次</div>
                             </div>
                             <button class="admin-reset-btn" onclick="event.stopPropagation();resetTeacherPassword('${u.id}', '${escapeHtml(u.name || u.email)}')" title="重置密码">🔒 重置密码</button>
                         </div>
@@ -1242,7 +1294,7 @@
                 if (!html) html = '<div class="admin-hint">暂无教师数据</div>';
                 listEl.innerHTML = html;
             } catch(e) {
-                listEl.innerHTML = `<div class="admin-hint">错误：${e.message}</div>`;
+                listEl.innerHTML = `<div class="admin-hint">网络错误：${e.message}</div>`;
             }
         };
 
@@ -1252,9 +1304,12 @@
             const sk = document.getElementById('adminServiceKey').value.trim();
             if (!sk) { alert('Service Role Key 未输入'); return; }
             try {
-                const adminClient = window.supabase.createClient(SUPABASE_URL, sk);
-                const { error } = await adminClient.auth.admin.updateUserById(userId, { password: newPwd });
-                if (error) { alert('重置失败：' + error.message); return; }
+                const res = await fetch(SUPABASE_URL + '/auth/v1/admin/users/' + userId, {
+                    method: 'PUT',
+                    headers: { 'Authorization': 'Bearer ' + sk, 'apikey': sk, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: newPwd })
+                });
+                if (!res.ok) { const err = await res.text(); alert('重置失败（' + res.status + '）：' + err.substring(0,200)); return; }
                 alert('密码已重置，请将新密码告知 ' + displayName);
             } catch(e) {
                 alert('错误：' + e.message);

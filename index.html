@@ -661,6 +661,68 @@
             .tool-popup { max-width: 92%; padding: 6px; }
         }
 
+        /* ===== 用户菜单 ===== */
+        .user-menu {
+            position: fixed; z-index: 99999;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+            display: flex; flex-direction: column;
+            overflow: hidden;
+            min-width: 130px;
+        }
+        .user-menu button {
+            padding: 10px 16px; border: none; background: none;
+            font-size: 13px; cursor: pointer; text-align: left;
+            color: var(--text); transition: background 0.15s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .user-menu button:hover { background: #f1f5f9; }
+        .user-menu button:active { background: #e2e8f0; }
+        .user-menu button + button { border-top: 1px solid var(--border); }
+
+        /* ===== 管理员面板 ===== */
+        .admin-modal {
+            position: fixed; inset: 0; z-index: 99998;
+            background: rgba(0,0,0,0.3);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .admin-panel {
+            background: var(--card-bg); border-radius: 16px;
+            width: 92%; max-width: 600px; max-height: 80vh;
+            display: flex; flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+        }
+        .admin-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 20px; border-bottom: 1px solid var(--border);
+        }
+        .admin-title { font-size: 16px; font-weight: 700; color: var(--primary); }
+        .admin-close { background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted); -webkit-tap-highlight-color: transparent; }
+        .admin-body { flex: 1; overflow-y: auto; padding: 12px 20px; }
+        .admin-teacher-card {
+            background: var(--input-bg); border-radius: 12px; padding: 12px 14px;
+            margin-bottom: 8px; cursor: pointer; transition: all 0.15s;
+            border: 1.5px solid transparent;
+        }
+        .admin-teacher-card:hover { border-color: var(--accent-light); }
+        .admin-teacher-card .at-header { display: flex; justify-content: space-between; align-items: center; }
+        .admin-teacher-card .at-name { font-weight: 600; font-size: 14px; }
+        .admin-teacher-card .at-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+        .admin-teacher-card .at-detail { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 12px; }
+        .admin-teacher-card .at-detail.open { display: block; }
+        .admin-teacher-card .at-detail .at-class-item { margin: 4px 0; padding: 4px 8px; background: #fff; border-radius: 8px; }
+        .admin-reset-btn {
+            padding: 5px 12px; border-radius: 8px; border: 1px solid var(--accent);
+            background: #fff; color: var(--accent); font-size: 11px; font-weight: 600;
+            cursor: pointer; transition: all 0.15s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .admin-reset-btn:hover { background: #eff6ff; }
+        .admin-body .admin-hint { font-size: 12px; color: var(--text-muted); text-align: center; padding: 20px; }
+        .admin-api-row { display: flex; gap: 6px; margin-bottom: 12px; }
+        .admin-api-row input { flex: 1; }
+
         /* ===== FULL TABLE WRAP ===== */
         #fullTable tbody td { white-space: normal; overflow-wrap: break-word; max-width: 300px; min-width: 120px; }
         #fullTable th { white-space: nowrap; min-width: 120px; }
@@ -780,7 +842,7 @@
     <div class="container" id="app">
         <div class="header">
             <div class="class-selector"><span>🏫</span><span class="class-name-display" id="currentClassName" onclick="switchView('classes')">未选择</span></div>
-            <span id="headerUserName" onclick="handleLogout()" style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;cursor:pointer;" title="点击退出登录"></span>
+            <span id="headerUserName" onclick="showUserMenu(event)" style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;cursor:pointer;" title="用户菜单"></span>
             <button class="btn btn-xs btn-outline" onclick="exportAllData()">💾 备份</button>
             <button class="btn btn-xs btn-outline" onclick="importAllDataPrompt()">📥 导入</button>
         </div>
@@ -963,21 +1025,27 @@
                 if (code !== REG_CODE) { msgEl.textContent = '注册码不正确'; msgEl.className = 'login-msg error'; return; }
                 if (password.length < 4) { msgEl.textContent = '密码至少4位'; msgEl.className = 'login-msg error'; return; }
 
-                const email = nameToEmail(name);
-                const { data, error } = await supabase.auth.signUp({
-                    email, password,
-                    options: { data: { name } }
-                });
-                if (error) {
+                // 同名老师自动加随机后缀
+                let email = nameToEmail(name);
+                let signUpData = null, signUpError = null;
+                for (let attempt = 0; attempt < 10; attempt++) {
+                    const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name } } });
+                    if (!error) { signUpData = data; break; }
                     if (error.message.includes('already') || error.message.includes('exists')) {
-                        msgEl.textContent = '该姓名已注册，请直接登录';
-                    } else {
-                        msgEl.textContent = '注册失败：' + error.message;
+                        const suffix = Math.random().toString(36).substring(2, 5);
+                        let normalized = name.trim().replace(/\s+/g, '');
+                        let hash = '';
+                        for (let i = 0; i < normalized.length; i++) hash += normalized.charCodeAt(i).toString();
+                        email = 't_' + hash.slice(0, 12) + '_' + suffix + '@bobo.run';
+                        continue;
                     }
-                    msgEl.className = 'login-msg error'; return;
+                    signUpError = error;
+                    break;
                 }
+                if (signUpError) { msgEl.textContent = '注册失败：' + signUpError.message; msgEl.className = 'login-msg error'; return; }
+                if (!signUpData) { msgEl.textContent = '该姓名已注册多次，请联系管理员'; msgEl.className = 'login-msg error'; return; }
                 // Auto-confirm via trigger — retry signIn after short delay
-                if (!data.session) {
+                if (!signUpData.session) {
                     msgEl.textContent = '注册成功，正在自动登录...'; msgEl.className = 'login-msg success';
                     await new Promise(r => setTimeout(r, 1500));
                     const { data: d2, error: e2 } = await supabase.auth.signInWithPassword({ email, password });
@@ -985,7 +1053,7 @@
                     await onLoginSuccess(d2.user);
                     return;
                 }
-                await onLoginSuccess(data.user);
+                await onLoginSuccess(signUpData.user);
             } else {
                 const email = nameToEmail(name);
                 const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -994,18 +1062,20 @@
             }
         };
 
+        let _isAdmin = false;
         async function onLoginSuccess(user) {
             _userId = user.id;
+            const name = user.user_metadata?.name || user.email?.split('@')[0] || '';
+            _isAdmin = (name.toLowerCase() === 'bob');
             document.body.classList.add('logged-in');
             document.getElementById('loginOverlay').style.display = 'none';
-            const name = user.user_metadata?.name || user.email?.split('@')[0] || '';
             document.getElementById('headerUserName').textContent = '👤 ' + name;
             await loadUserData();
         }
 
         window.handleLogout = async function() {
             if (supabaseReady) { try { await supabase.auth.signOut(); } catch(e) {} }
-            _userId = null;
+            _userId = null; _isAdmin = false;
             document.body.classList.remove('logged-in');
             document.getElementById('loginOverlay').style.display = '';
             document.getElementById('loginName').value = '';
@@ -1015,6 +1085,144 @@
             document.getElementById('loginMsg').textContent = '';
             document.getElementById('loginMsg').className = 'login-msg';
             switchLoginTab('login');
+        };
+
+        window.showUserMenu = function(e) {
+            e.stopPropagation();
+            const existing = document.getElementById('userMenu');
+            if (existing) { existing.remove(); return; }
+            const menu = document.createElement('div');
+            menu.id = 'userMenu';
+            menu.className = 'user-menu';
+            menu.innerHTML = `<button onclick="changeMyPassword();document.getElementById(\'userMenu\').remove();">🔒 修改密码</button><button onclick="handleLogout()">🚪 退出登录</button>`;
+            const rect = e.target.getBoundingClientRect();
+            menu.style.top = (rect.bottom + 4) + 'px';
+            menu.style.right = (window.innerWidth - rect.right) + 'px';
+            document.body.appendChild(menu);
+            setTimeout(() => document.addEventListener('click', function closeUserMenu() { if (document.getElementById('userMenu')) document.getElementById('userMenu').remove(); document.removeEventListener('click', closeUserMenu); }), 0);
+        };
+
+        window.changeMyPassword = async function() {
+            const p1 = prompt('请输入新密码（至少4位）：');
+            if (!p1 || p1.length < 4) { alert('密码至少4位'); return; }
+            const p2 = prompt('请再次输入新密码：');
+            if (p1 !== p2) { alert('两次密码不一致'); return; }
+            const { error } = await supabase.auth.updateUser({ password: p1 });
+            if (error) { alert('修改失败：' + error.message); return; }
+            alert('密码已修改，下次登录请使用新密码');
+        };
+
+        // ===== 管理员面板 =====
+        window.openAdminPanel = function() {
+            const existing = document.querySelector('.admin-modal');
+            if (existing) { existing.remove(); return; }
+            const modal = document.createElement('div');
+            modal.className = 'admin-modal';
+            modal.innerHTML = `<div class="admin-panel">
+                <div class="admin-header"><span class="admin-title">⚙ 系统管理</span><button class="admin-close" onclick="this.closest(\'.admin-modal\').remove()">✕</button></div>
+                <div class="admin-body" id="adminBody">
+                    <div class="admin-api-row"><input class="input" id="adminServiceKey" type="password" placeholder="Service Role Key（首次需输入）" style="font-size:12px;"><button class="btn btn-sm" onclick="loadAllTeachers()">🔍 查询</button></div>
+                    <div id="adminTeacherList"><div class="admin-hint">输入 Service Role Key 后点击查询</div></div>
+                </div>
+            </div>`;
+            modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+            // 尝试读取已保存的 key
+            const savedKey = localStorage.getItem('_fb_admin_sk_' + _userId);
+            if (savedKey) {
+                setTimeout(() => { const inp = document.getElementById('adminServiceKey'); if (inp) inp.value = savedKey; }, 50);
+            }
+            document.body.appendChild(modal);
+        };
+
+        window.loadAllTeachers = async function() {
+            const keyEl = document.getElementById('adminServiceKey');
+            const sk = keyEl.value.trim();
+            if (!sk) { alert('请输入 Service Role Key'); return; }
+            localStorage.setItem('_fb_admin_sk_' + _userId, sk);
+            const listEl = document.getElementById('adminTeacherList');
+            listEl.innerHTML = '<div class="admin-hint">加载中...</div>';
+
+            try {
+                // 用 service_role key 查询所有用户
+                const adminClient = window.supabase.createClient(SUPABASE_URL, sk);
+                const { data: users, error: uErr } = await adminClient.auth.admin.listUsers();
+                if (uErr) { listEl.innerHTML = `<div class="admin-hint">查询失败：${uErr.message}</div>`; return; }
+
+                // 查询所有 data_store 记录
+                const { data: allData, error: dErr } = await adminClient.from('data_store').select('*');
+                if (dErr) { listEl.innerHTML = `<div class="admin-hint">数据查询失败：${dErr.message}</div>`; return; }
+
+                // 按 user_id 聚合
+                const userMap = {};
+                users.users.forEach(u => {
+                    userMap[u.id] = { id: u.id, email: u.email, name: u.user_metadata?.name || '', created: u.created_at, lastSignIn: u.last_sign_in_at, classes: [], feedbackKeys: [] };
+                });
+                (allData || []).forEach(row => {
+                    if (!userMap[row.user_id]) return;
+                    if (row.key === 'classes') {
+                        try { userMap[row.user_id].classes = JSON.parse(row.value); } catch(e) {}
+                    }
+                    if (row.key === 'feedback') {
+                        try { const fb = JSON.parse(row.value); userMap[row.user_id].feedbackKeys = Object.keys(fb); } catch(e) {}
+                    }
+                });
+
+                let html = '';
+                Object.values(userMap).forEach(u => {
+                    const classCount = Array.isArray(u.classes) ? u.classes.length : 0;
+                    const studentCount = Array.isArray(u.classes) ? u.classes.reduce((s,c) => s + (c.students?.length || 0), 0) : 0;
+                    const fbCount = u.feedbackKeys.length;
+                    const classesJson = encodeURIComponent(JSON.stringify(u.classes));
+                    html += `<div class="admin-teacher-card" onclick="toggleAdminDetail(this, \'${u.id}\', \'${classesJson}\')">
+                        <div class="at-header">
+                            <div>
+                                <div class="at-name">${escapeHtml(u.name || u.email)}</div>
+                                <div class="at-meta">${escapeHtml(u.email)} · ${classCount}班 · ${studentCount}人 · ${fbCount}条反馈</div>
+                            </div>
+                            <button class="admin-reset-btn" onclick="event.stopPropagation();resetTeacherPassword('${u.id}', '${escapeHtml(u.name || u.email)}')" title="重置密码">🔒 重置密码</button>
+                        </div>
+                        <div class="at-detail" id="adminDetail-${u.id}">
+                            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">注册时间：${u.created ? new Date(u.created).toLocaleDateString('zh-CN') : '未知'} · 最后登录：${u.lastSignIn ? new Date(u.lastSignIn).toLocaleDateString('zh-CN') : '未知'}</div>
+                        </div>
+                    </div>`;
+                });
+                if (!html) html = '<div class="admin-hint">暂无教师数据</div>';
+                listEl.innerHTML = html;
+                // 展开详情
+                Object.values(userMap).forEach(u => {
+                    const detailEl = document.getElementById('adminDetail-' + u.id);
+                    if (!detailEl) return;
+                    const classes = Array.isArray(u.classes) ? u.classes : [];
+                    let detailHtml = `<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">注册时间：${u.created ? new Date(u.created).toLocaleDateString('zh-CN') : '未知'} · 最后登录：${u.lastSignIn ? new Date(u.lastSignIn).toLocaleDateString('zh-CN') : '未知'}</div>`;
+                    classes.forEach(c => {
+                        detailHtml += `<div class="at-class-item"><b>${escapeHtml(c.name)}</b> · ${(c.students||[]).length}人：${escapeHtml((c.students||[]).join('、'))}</div>`;
+                    });
+                    detailEl.innerHTML = detailHtml;
+                });
+            } catch(e) {
+                listEl.innerHTML = `<div class="admin-hint">错误：${e.message}</div>`;
+            }
+        };
+
+        window.toggleAdminDetail = function(card, userId, classesJson) {
+            const detail = document.getElementById('adminDetail-' + userId);
+            if (!detail) return;
+            detail.classList.toggle('open');
+        };
+
+        window.resetTeacherPassword = async function(userId, displayName) {
+            const newPwd = prompt(`为 ${displayName} 设置新密码（至少4位）：`);
+            if (!newPwd || newPwd.length < 4) { alert('密码至少4位'); return; }
+            const sk = document.getElementById('adminServiceKey').value.trim();
+            if (!sk) { alert('Service Role Key 未输入'); return; }
+            try {
+                const adminClient = window.supabase.createClient(SUPABASE_URL, sk);
+                const { error } = await adminClient.auth.admin.updateUserById(userId, { password: newPwd });
+                if (error) { alert('重置失败：' + error.message); return; }
+                alert('密码已重置，请将新密码告知 ' + displayName);
+            } catch(e) {
+                alert('错误：' + e.message);
+            }
         };
 
         async function loadUserData() {
@@ -1747,7 +1955,7 @@
 
         // ========== 页面构建 ==========
         function buildAllViews(){
-            document.getElementById('view-classes').innerHTML=`<div class="card"><div class="card-title">📚 班级管理</div><div style="display:flex;gap:6px"><input class="input" id="newClassName" placeholder="新班级名称" style="flex:1"><button class="btn" onclick="addClass()">➕ 新建</button></div><div id="classListContainer"></div></div>`;
+            document.getElementById('view-classes').innerHTML=`<div class="card"><div class="card-title">📚 班级管理${_isAdmin?'<a href="javascript:void(0)" onclick="openAdminPanel()" style="margin-left:auto;font-size:12px;font-weight:500;color:var(--text-muted);text-decoration:none;padding:4px 10px;border-radius:10px;background:#f1f5f9;">⚙ 系统管理</a>':''}</div><div style="display:flex;gap:6px"><input class="input" id="newClassName" placeholder="新班级名称" style="flex:1"><button class="btn" onclick="addClass()">➕ 新建</button></div><div id="classListContainer"></div></div>`;
             document.getElementById('view-feedback').innerHTML=`<div class="card" style="padding:10px 12px;"><div class="card-title">📝 每日反馈</div><div class="feedback-actions"><span style="font-size:13px;">新建课次：</span><input class="input" id="dateLabelInput" style="width:72px;" placeholder="Day1"><button class="btn btn-sm" onclick="goToDate()">+ 新建</button><button class="btn btn-sm" onclick="undo()" style="background:#2563eb">↩️ 撤销</button></div><div id="dateSelector" class="date-selector-row" style="margin-top:6px;"></div><div style="display:flex;justify-content:space-between;margin-top:6px;"><span id="saveStatus" class="save-indicator">✅ 已自动保存</span><button class="btn btn-outline btn-xs" onclick="switchToFullTable()">📊 完整表格</button></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">🎨 表格样式 ▼</button><div class="collapsible-content"><div class="style-row"><span>表头背景:</span><input type="color" id="styleHeaderBg" onchange="applyStyleColor('headerBg',this.value)"><span>表头文字:</span><input type="color" id="styleHeaderText" onchange="applyStyleColor('headerText',this.value)"><span>边框:</span><input type="color" id="styleBorder" onchange="applyStyleColor('border',this.value)"><span>斑马纹:</span><input type="color" id="styleRowEven" onchange="applyStyleColor('rowEven',this.value)"></div><div class="style-row"><span>行高:</span><input type="number" id="styleRowHeight" min="24" max="60" style="width:60px" onchange="applyRowHeight()"></div></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">📐 列设置 ▼</button><div class="collapsible-content"><div id="columnEditor" style="display:flex;gap:4px;flex-wrap:wrap"></div></div></div><div class="card" style="padding:6px"><div class="table-wrapper"><table id="feedbackTable"><thead id="feedbackTableHead"></thead><tbody id="feedbackTableBody"></tbody></table></div></div>`;
             document.getElementById('view-fulltable').innerHTML=`<div class="card"><div class="card-title">📄 完整反馈表</div><div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="switchView('feedback')">↩️ 返回</button><button class="btn btn-sm" onclick="printTable()">🖨️ 打印</button><button class="btn btn-sm" onclick="exportStyledExcel()">📊 Excel</button><button class="btn btn-sm" onclick="exportAsImage()">🖼️ 图片</button></div></div>
             <div class="card" style="padding:6px"><div class="table-wrapper" id="fullTableWrapper"><div class="title-wrapper"><input id="fullTableTitleInput" style="font-size:1.2rem;font-weight:700;border:none;background:transparent;text-align:center;width:100%" placeholder="标题"></div><table id="fullTable"><thead id="fullTableHead"></thead><tbody id="fullTableBody"></tbody></table></div></div>

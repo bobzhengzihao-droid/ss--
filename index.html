@@ -627,23 +627,23 @@
         .input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); background: #fff; }
 
         /* ===== STAT TABLE ===== */
+        .stat-table-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
         .stat-table {
-            table-layout: fixed !important;
-            width: 100% !important;
+            table-layout: auto !important;
+            width: auto !important;
             min-width: 100% !important;
         }
         .stat-table th,
         .stat-table td {
-            width: auto !important;
-            min-width: auto !important;
-            max-width: none !important;
+            min-width: 70px;
         }
         .stat-table th { white-space: nowrap; }
         .stat-table td { white-space: nowrap; }
         .stat-table th:first-child,
         .stat-table td:first-child {
-            width: auto !important;
-            min-width: auto !important;
             white-space: nowrap;
             position: sticky;
             left: 0;
@@ -1897,7 +1897,7 @@
             }
 
             let html = `<h3 style="text-align:center;margin-bottom:8px;">${escapeHtml(colKeyword)} 学情总结</h3>`;
-            html += '<table class="stat-table"><thead>';
+            html += '<div class="stat-table-wrap"><table class="stat-table"><thead>';
             html += '<tr><th>学生</th>';
             dates.forEach(d => html += `<th>${escapeHtml(d)}</th>`);
             html += '</tr></thead><tbody>';
@@ -1932,7 +1932,7 @@
                 });
                 html += '</tr>';
             });
-            html += '</tbody></table>';
+            html += '</tbody></table></div>';
             document.getElementById('statTableWrapper').innerHTML = html;
         }
 
@@ -1959,7 +1959,7 @@
             }
 
             let html = `<h3 style="text-align:center;margin-bottom:8px;">${escapeHtml(studentName)} 学情统计</h3>`;
-            html += '<table class="stat-table"><thead><tr><th>日期</th>';
+            html += '<div class="stat-table-wrap"><table class="stat-table"><thead><tr><th>日期</th>';
             columns.forEach(col => html += `<th>${escapeHtml(stripMaxScore(col))}</th>`);
             html += '</tr></thead><tbody>';
 
@@ -1993,7 +1993,7 @@
                 });
                 html += '</tr>';
             });
-            html += '</tbody></table>';
+            html += '</tbody></table></div>';
             document.getElementById('statTableWrapper').innerHTML = html;
         }
 

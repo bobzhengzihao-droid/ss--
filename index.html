@@ -1360,8 +1360,10 @@
 
         window.changeMyPassword = async function() {
             const p1 = await showPrompt('请输入新密码（至少4位）：', '');
+            if (p1 === null) return;
             if (!p1 || p1.length < 4) { alert('密码至少4位'); return; }
             const p2 = await showPrompt('请再次输入新密码：', '');
+            if (p2 === null) return;
             if (p1 !== p2) { alert('两次密码不一致'); return; }
             const { error } = await supabase.auth.updateUser({ password: p1 });
             if (error) { alert('修改失败：' + error.message); return; }
@@ -1376,6 +1378,7 @@
             const saved = localStorage.getItem('_fb_service_key');
             if (saved) { window._cachedServiceKey = saved; return saved; }
             const key = await showPrompt('请输入 Supabase Service Role Key（仅需一次）：\n\n可在 server.py 第23行找到，粘贴后自动保存。', '');
+            if (key === null) return null;
             if (!key || key.length < 20) { alert('Key 无效，请重新操作'); return null; }
             localStorage.setItem('_fb_service_key', key.trim());
             window._cachedServiceKey = key.trim();
@@ -1387,6 +1390,7 @@
             const remembered = localStorage.getItem('_fb_admin_pwd_ok');
             if (remembered === '1') { _adminAuthPassed = true; return true; }
             const pwd = await showPrompt('请输入管理员密码：', '');
+            if (pwd === null) return false;
             if (pwd !== ADMIN_PASSWORD) {
                 alert('密码错误，无权访问管理面板');
                 return false;
@@ -1521,6 +1525,7 @@
 
         window.resetTeacherPassword = async function(userId, displayName) {
             const newPwd = await showPrompt(`为 ${displayName} 设置新密码（至少4位）：`, '');
+            if (newPwd === null) return;
             if (!newPwd || newPwd.length < 4) { alert('密码至少4位'); return; }
 
             // Try server API first

@@ -1212,22 +1212,19 @@
         };
 
         async function loadUserData() {
-            // Batch fetch all user data in one Supabase round-trip
-            const data = await _loadAllKeys(['classes','feedback','tools','analysisSel']);
-            let storedClasses = data['classes'];
+            let storedClasses = await dbGet('classes');
             if (!storedClasses) {
                 const backup = localStorage.getItem('_fullBackup');
                 if (backup) { try { const data = JSON.parse(backup); if (data.classes && data.classes.length) { classes = data.classes; feedback = data.feedback || {}; tools = data.tools || [...DEFAULT_TOOLS]; analysisSel = data.analysisSel || {}; alert('✅ 已从本地备份自动恢复数据'); } } catch(e) {} }
                 if (!classes || !classes.length) { classes = defaultClasses(); feedback = {}; tools = [...DEFAULT_TOOLS]; analysisSel = {}; await saveAllDataNow(); }
             } else {
                 classes = storedClasses;
-                feedback = data['feedback'] || {};
-                tools = data['tools'] || [...DEFAULT_TOOLS];
-                analysisSel = data['analysisSel'] || {};
+                feedback = (await dbGet('feedback')) || {};
+                tools = (await dbGet('tools')) || [...DEFAULT_TOOLS];
+                analysisSel = (await dbGet('analysisSel')) || {};
             }
             currentClassId = classes.length ? classes[0].id : null;
             currentDateLabel = getDateList()[0] || 'Day1';
-            // Build only the class list initially; other views are lazy-built on first access
             buildAllViews();
             applyTableColors(getCurrentClass());
             switchView('classes');

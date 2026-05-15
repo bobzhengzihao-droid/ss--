@@ -985,6 +985,29 @@
             return undefined;
         }
 
+        async function _loadAllKeys(keys) {
+            // Batch fetch all keys in one Supabase query (2 requests instead of 2×N)
+            const result = {};
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    const { data, error } = await supabase.from('data_store')
+                        .select('key,value').eq('user_id', user.id).in('key', keys);
+                    if (data) data.forEach(row => { result[row.key] = row.value; });
+                }
+            } catch(e) {}
+            // Fallback: fill any missing keys from localStorage
+            keys.forEach(key => {
+                if (!(key in result)) {
+                    try {
+                        const raw = localStorage.getItem(_cacheKey(key));
+                        if (raw) result[key] = JSON.parse(raw);
+                    } catch(e) {}
+                }
+            });
+            return result;
+        }
+
         async function dbGet(key) { return await _loadKey(key); }
         async function dbSet(key, value) {
             await _saveKey(key, value);
@@ -1189,19 +1212,22 @@
         };
 
         async function loadUserData() {
-            let storedClasses = await dbGet('classes');
+            // Batch fetch all user data in one Supabase round-trip
+            const data = await _loadAllKeys(['classes','feedback','tools','analysisSel']);
+            let storedClasses = data['classes'];
             if (!storedClasses) {
                 const backup = localStorage.getItem('_fullBackup');
                 if (backup) { try { const data = JSON.parse(backup); if (data.classes && data.classes.length) { classes = data.classes; feedback = data.feedback || {}; tools = data.tools || [...DEFAULT_TOOLS]; analysisSel = data.analysisSel || {}; alert('✅ 已从本地备份自动恢复数据'); } } catch(e) {} }
                 if (!classes || !classes.length) { classes = defaultClasses(); feedback = {}; tools = [...DEFAULT_TOOLS]; analysisSel = {}; await saveAllDataNow(); }
             } else {
                 classes = storedClasses;
-                feedback = (await dbGet('feedback')) || {};
-                tools = (await dbGet('tools')) || [...DEFAULT_TOOLS];
-                analysisSel = (await dbGet('analysisSel')) || {};
+                feedback = data['feedback'] || {};
+                tools = data['tools'] || [...DEFAULT_TOOLS];
+                analysisSel = data['analysisSel'] || {};
             }
             currentClassId = classes.length ? classes[0].id : null;
             currentDateLabel = getDateList()[0] || 'Day1';
+            // Build only the class list initially; other views are lazy-built on first access
             buildAllViews();
             applyTableColors(getCurrentClass());
             switchView('classes');
@@ -1917,35 +1943,34 @@
         window.closePopup=function(){var popup=document.getElementById('toolPopup');popup.classList.remove('open');document.getElementById('toolEditPanel').style.display='none';document.getElementById('btnSaveTools').style.display='none';};
 
         // ========== 页面构建 ==========
+        const _VIEW_SCAFFOLDS = {
+            'feedback': `<div class="card" style="padding:10px 12px;"><div class="card-title">📝 每日反馈</div><div class="feedback-actions"><span style="font-size:13px;">新建课次：</span><input class="input" id="dateLabelInput" style="width:72px;" placeholder="Day1"><button class="btn btn-sm" onclick="goToDate()">+ 新建</button><button class="btn btn-sm" onclick="undo()" style="background:#2563eb">↩️ 撤销</button></div><div id="dateSelector" class="date-selector-row" style="margin-top:6px;"></div><div style="display:flex;justify-content:space-between;margin-top:6px;"><span id="saveStatus" class="save-indicator">✅ 已自动保存</span><button class="btn btn-outline btn-xs" onclick="switchToFullTable()">📊 完整表格</button></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">🎨 表格样式 ▼</button><div class="collapsible-content"><div class="style-row"><span>表头背景:</span><input type="color" id="styleHeaderBg" onchange="applyStyleColor('headerBg',this.value)"><span>表头文字:</span><input type="color" id="styleHeaderText" onchange="applyStyleColor('headerText',this.value)"><span>边框:</span><input type="color" id="styleBorder" onchange="applyStyleColor('border',this.value)"><span>斑马纹:</span><input type="color" id="styleRowEven" onchange="applyStyleColor('rowEven',this.value)"></div><div class="style-row"><span>行高:</span><input type="number" id="styleRowHeight" min="24" max="60" style="width:60px" onchange="applyRowHeight()"></div></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">📐 列设置 ▼</button><div class="collapsible-content"><div id="columnEditor" style="display:flex;gap:4px;flex-wrap:wrap"></div></div></div><div class="card" style="padding:6px"><div class="table-wrapper"><table id="feedbackTable"><thead id="feedbackTableHead"></thead><tbody id="feedbackTableBody"></tbody></table></div></div>`,
+            'fulltable': `<div class="card"><div class="card-title">📄 完整反馈表</div><div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="switchView('feedback')">↩️ 返回</button><button class="btn btn-sm" onclick="printTable()">🖨️ 打印</button><button class="btn btn-sm" onclick="exportStyledExcel()">📊 Excel</button><button class="btn btn-sm" onclick="exportAsImage()">🖼️ 图片</button></div></div>\n            <div class="card" style="padding:6px"><div class="table-wrapper" id="fullTableWrapper"><div class="title-wrapper"><input id="fullTableTitleInput" style="font-size:1.2rem;font-weight:700;border:none;background:transparent;text-align:center;width:100%" placeholder="标题"></div><table id="fullTable"><thead id="fullTableHead"></thead><tbody id="fullTableBody"></tbody></table></div></div>\n            <div class="card" style="margin-top:12px">\n                <div class="card-title">📊 统计表\n                    <div style="display:flex; gap:6px; margin-left:auto;">\n                        <button class="btn btn-sm btn-outline" onclick="exportStatExcel()">📊 Excel</button>\n                        <button class="btn btn-sm btn-outline" onclick="exportStatImage()">🖼️ 图片</button>\n                    </div>\n                </div>\n                <div style="display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;">\n                    <select id="statType" class="input" onchange="switchStatType()">\n                        <option value="byColumn">按板块统计（多日期一览）</option>\n                        <option value="byStudent">按学生统计（多板块一览）</option>\n                    </select>\n                    <select id="statTarget" class="input" onchange="renderStatTable()"></select>\n                </div>\n                <div class="table-wrapper" id="statTableWrapper"></div>\n            </div>`,
+            'analysis': `<div class="card"><div class="card-title">📈 汇总分析</div><div style="display:flex;gap:8px"><span>学生：</span><select id="analysisStudentSelect" class="input" style="padding:8px;border-radius:12px;flex:1" onchange="refreshAnalysis()"><option value="">-- 请选择 --</option></select></div><div class="check-group" id="analysisDateCheckGroup"></div><div class="check-group" id="analysisColumnCheckGroup"></div></div><div class="card" id="analysisChartsArea"><div id="analysisReportTitle" style="text-align:center;font-size:1.1rem;font-weight:700;margin-bottom:12px">学习分析报告</div><div id="lineChartsContainer"></div><div id="radarSection" style="margin-top:16px;"><div class="check-group" style="margin-bottom:8px"><span>雷达图课次：</span><select id="radarDateSelect" class="input" style="width:120px;padding:6px;border-radius:12px" onchange="refreshRadarColumns();saveRadarCols()"></select></div><div class="check-group" id="radarColumnCheckGroup" style="margin:8px 0"></div><div style="height:320px"><canvas id="radarChartCanvas" height="320"></canvas></div></div><div style="margin-top:16px"><input type="password" id="apiKeyInput" class="input" placeholder="DeepSeek API Key（备选，Edge Function 失效时使用）" style="width:100%;padding:6px;margin-bottom:6px;font-size:11px"><textarea id="examDescTextarea" class="ai-textarea" placeholder="手动输入试卷描述或题型知识点（可选）" rows="3"></textarea><div style="display:flex; gap:6px; align-items: center; margin:8px 0;"><label class="btn btn-outline btn-sm" style="cursor:pointer;">📎 上传试卷文件<input type="file" id="examFileInput" accept=".txt,.docx,.pdf" style="display:none" onchange="document.getElementById('fileNameDisplay').textContent = this.files[0]?.name || ''"></label><span id="fileNameDisplay" style="font-size:12px; color:var(--text-light);"></span></div><button class="btn btn-sm" onclick="runAIAnalysis()">🤖 测试分析</button></div><div id="aiResult" style="margin-top:12px;padding:12px;background:var(--input-bg);border-radius:12px;font-size:14px;white-space:pre-wrap;"></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-sm" onclick="downloadPDFReport()">📥 下载PDF报告</button></div></div><div id="analysisTablesContainer"></div>`
+        };
+        let _viewsBuilt = {};
+        function _ensureViewBuilt(viewName) {
+            if (_viewsBuilt[viewName]) return;
+            const map = {'feedback':'view-feedback','fulltable':'view-fulltable','analysis':'view-analysis'};
+            const elId = map[viewName];
+            const html = _VIEW_SCAFFOLDS[viewName];
+            if (elId && html) {
+                document.getElementById(elId).innerHTML = html;
+            }
+            _viewsBuilt[viewName] = true;
+        }
+
         function buildAllViews(){
+            // Only build the initial classes view; others lazy-built on first access
             document.getElementById('view-classes').innerHTML=`<div class="card"><div class="card-title">📚 班级管理</div><div style="display:flex;gap:6px"><input class="input" id="newClassName" placeholder="新班级名称" style="flex:1"><button class="btn" onclick="addClass()">➕ 新建</button></div><div id="classListContainer"></div></div>`;
-            document.getElementById('view-feedback').innerHTML=`<div class="card" style="padding:10px 12px;"><div class="card-title">📝 每日反馈</div><div class="feedback-actions"><span style="font-size:13px;">新建课次：</span><input class="input" id="dateLabelInput" style="width:72px;" placeholder="Day1"><button class="btn btn-sm" onclick="goToDate()">+ 新建</button><button class="btn btn-sm" onclick="undo()" style="background:#2563eb">↩️ 撤销</button></div><div id="dateSelector" class="date-selector-row" style="margin-top:6px;"></div><div style="display:flex;justify-content:space-between;margin-top:6px;"><span id="saveStatus" class="save-indicator">✅ 已自动保存</span><button class="btn btn-outline btn-xs" onclick="switchToFullTable()">📊 完整表格</button></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">🎨 表格样式 ▼</button><div class="collapsible-content"><div class="style-row"><span>表头背景:</span><input type="color" id="styleHeaderBg" onchange="applyStyleColor('headerBg',this.value)"><span>表头文字:</span><input type="color" id="styleHeaderText" onchange="applyStyleColor('headerText',this.value)"><span>边框:</span><input type="color" id="styleBorder" onchange="applyStyleColor('border',this.value)"><span>斑马纹:</span><input type="color" id="styleRowEven" onchange="applyStyleColor('rowEven',this.value)"></div><div class="style-row"><span>行高:</span><input type="number" id="styleRowHeight" min="24" max="60" style="width:60px" onchange="applyRowHeight()"></div></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">📐 列设置 ▼</button><div class="collapsible-content"><div id="columnEditor" style="display:flex;gap:4px;flex-wrap:wrap"></div></div></div><div class="card" style="padding:6px"><div class="table-wrapper"><table id="feedbackTable"><thead id="feedbackTableHead"></thead><tbody id="feedbackTableBody"></tbody></table></div></div>`;
-            document.getElementById('view-fulltable').innerHTML=`<div class="card"><div class="card-title">📄 完整反馈表</div><div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="switchView('feedback')">↩️ 返回</button><button class="btn btn-sm" onclick="printTable()">🖨️ 打印</button><button class="btn btn-sm" onclick="exportStyledExcel()">📊 Excel</button><button class="btn btn-sm" onclick="exportAsImage()">🖼️ 图片</button></div></div>
-            <div class="card" style="padding:6px"><div class="table-wrapper" id="fullTableWrapper"><div class="title-wrapper"><input id="fullTableTitleInput" style="font-size:1.2rem;font-weight:700;border:none;background:transparent;text-align:center;width:100%" placeholder="标题"></div><table id="fullTable"><thead id="fullTableHead"></thead><tbody id="fullTableBody"></tbody></table></div></div>
-            <div class="card" style="margin-top:12px">
-                <div class="card-title">📊 统计表
-                    <div style="display:flex; gap:6px; margin-left:auto;">
-                        <button class="btn btn-sm btn-outline" onclick="exportStatExcel()">📊 Excel</button>
-                        <button class="btn btn-sm btn-outline" onclick="exportStatImage()">🖼️ 图片</button>
-                    </div>
-                </div>
-                <div style="display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
-                    <select id="statType" class="input" onchange="switchStatType()">
-                        <option value="byColumn">按板块统计（多日期一览）</option>
-                        <option value="byStudent">按学生统计（多板块一览）</option>
-                    </select>
-                    <select id="statTarget" class="input" onchange="renderStatTable()"></select>
-                </div>
-                <div class="table-wrapper" id="statTableWrapper"></div>
-            </div>`;
-            document.getElementById('view-analysis').innerHTML=`<div class="card"><div class="card-title">📈 汇总分析</div><div style="display:flex;gap:8px"><span>学生：</span><select id="analysisStudentSelect" class="input" style="padding:8px;border-radius:12px;flex:1" onchange="refreshAnalysis()"><option value="">-- 请选择 --</option></select></div><div class="check-group" id="analysisDateCheckGroup"></div><div class="check-group" id="analysisColumnCheckGroup"></div></div><div class="card" id="analysisChartsArea"><div id="analysisReportTitle" style="text-align:center;font-size:1.1rem;font-weight:700;margin-bottom:12px">学习分析报告</div><div id="lineChartsContainer"></div><div id="radarSection" style="margin-top:16px;"><div class="check-group" style="margin-bottom:8px"><span>雷达图课次：</span><select id="radarDateSelect" class="input" style="width:120px;padding:6px;border-radius:12px" onchange="refreshRadarColumns();saveRadarCols()"></select></div><div class="check-group" id="radarColumnCheckGroup" style="margin:8px 0"></div><div style="height:320px"><canvas id="radarChartCanvas" height="320"></canvas></div></div><div style="margin-top:16px"><input type="password" id="apiKeyInput" class="input" placeholder="DeepSeek API Key（备选，Edge Function 失效时使用）" style="width:100%;padding:6px;margin-bottom:6px;font-size:11px"><textarea id="examDescTextarea" class="ai-textarea" placeholder="手动输入试卷描述或题型知识点（可选）" rows="3"></textarea><div style="display:flex; gap:6px; align-items: center; margin:8px 0;"><label class="btn btn-outline btn-sm" style="cursor:pointer;">📎 上传试卷文件<input type="file" id="examFileInput" accept=".txt,.docx,.pdf" style="display:none" onchange="document.getElementById('fileNameDisplay').textContent = this.files[0]?.name || ''"></label><span id="fileNameDisplay" style="font-size:12px; color:var(--text-light);"></span></div><button class="btn btn-sm" onclick="runAIAnalysis()">🤖 测试分析</button></div><div id="aiResult" style="margin-top:12px;padding:12px;background:var(--input-bg);border-radius:12px;font-size:14px;white-space:pre-wrap;"></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-sm" onclick="downloadPDFReport()">📥 下载PDF报告</button></div></div><div id="analysisTablesContainer"></div>`;
+            _viewsBuilt = {};
         }
 
         async function switchView(viewName){
             activeCell=null; document.querySelectorAll('.view').forEach(v=>v.style.display='none');
             document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
             const map={'classes':'view-classes','feedback':'view-feedback','fulltable':'view-fulltable','analysis':'view-analysis'};
-            if(map[viewName])document.getElementById(map[viewName]).style.display='block';
+            if(map[viewName]){ _ensureViewBuilt(viewName); document.getElementById(map[viewName]).style.display='block'; }
             const nav=document.querySelector(`.nav-tab[data-view="${viewName}"]`);if(nav)nav.classList.add('active');
             const floatBtn=document.getElementById('floatBtn');floatBtn.style.display=viewName==='feedback'?'flex':'none';
             if(viewName!=='feedback')closePopup();

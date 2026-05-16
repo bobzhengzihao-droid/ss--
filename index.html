@@ -1228,7 +1228,8 @@
             console.log('[DATA] 所有 feedback keys:', Object.keys(feedback).sort());
             console.log('[DATA] 所有班级:', classes.map(c => c.id + ':' + c.name));
             currentClassId = classes.length ? classes[0].id : null;
-            currentDateLabel = getDateList()[0] || 'Day1';
+            const savedDate = localStorage.getItem('_fb_last_date_' + currentClassId);
+            currentDateLabel = (savedDate && getDateList().includes(savedDate)) ? savedDate : (getDateList()[0] || 'Day1');
             buildAllViews();
             applyTableColors(getCurrentClass());
             switchView('classes');
@@ -1409,11 +1410,11 @@
                 <button class="date-action-btn danger" onclick="deleteCurrentDate()" title="删除当前课次">🗑️</button>
             `;
         }
-        window.selectDate=function(d){pushUndo();saveCurrentDay();currentDateLabel=d;renderDateSelector();renderFeedbackTable();renderColumnEditor();activeCell=null;};
-        window.deleteDate=async function(d){if(!await showConfirm(`删除日期"${d}"？`))return;delete feedback[feedbackKey(currentClassId,d)];saveFeedbackDebounced();const dates=getDateList();currentDateLabel=dates.length?dates.includes(currentDateLabel)?currentDateLabel:dates[0]:'Day1';renderDateSelector();renderFeedbackTable();renderColumnEditor();};
+        window.selectDate=function(d){pushUndo();saveCurrentDay();currentDateLabel=d;localStorage.setItem('_fb_last_date_'+currentClassId,d);renderDateSelector();renderFeedbackTable();renderColumnEditor();activeCell=null;};
+        window.deleteDate=async function(d){if(!await showConfirm(`删除日期"${d}"？`))return;delete feedback[feedbackKey(currentClassId,d)];saveFeedbackDebounced();const dates=getDateList();currentDateLabel=dates.length?dates.includes(currentDateLabel)?currentDateLabel:dates[0]:'Day1';localStorage.setItem('_fb_last_date_'+currentClassId,currentDateLabel);renderDateSelector();renderFeedbackTable();renderColumnEditor();};
         window.deleteCurrentDate=()=>window.deleteDate(currentDateLabel);
-        window.renameCurrentDate=async function(){const old=currentDateLabel;const n=await showPrompt('新标签',old);if(!n||!n.trim()||n.trim()===old)return;const t=n.trim();const ok=feedbackKey(currentClassId,old),nk=feedbackKey(currentClassId,t);if(feedback[nk]&&!await showConfirm('覆盖？'))return;feedback[nk]=feedback[ok];delete feedback[ok];saveFeedbackDebounced();currentDateLabel=t;renderDateSelector();renderFeedbackTable();};
-        window.goToDate=function(){const v=document.getElementById('dateLabelInput').value.trim();if(!v)return alert('请输入课次名称');if(getDateList().includes(v))return alert('该课次已存在，请直接从下拉框选择');if(currentDateLabel&&getEntry(currentClassId,currentDateLabel)){pushUndo();saveCurrentDay();}currentDateLabel=v;initFeedbackEntry(currentDateLabel);document.getElementById('dateLabelInput').value='';renderDateSelector();renderFeedbackTable();renderColumnEditor();activeCell=null;};
+        window.renameCurrentDate=async function(){const old=currentDateLabel;const n=await showPrompt('新标签',old);if(!n||!n.trim()||n.trim()===old)return;const t=n.trim();const ok=feedbackKey(currentClassId,old),nk=feedbackKey(currentClassId,t);if(feedback[nk]&&!await showConfirm('覆盖？'))return;feedback[nk]=feedback[ok];delete feedback[ok];saveFeedbackDebounced();currentDateLabel=t;localStorage.setItem('_fb_last_date_'+currentClassId,t);renderDateSelector();renderFeedbackTable();};
+        window.goToDate=function(){const v=document.getElementById('dateLabelInput').value.trim();if(!v)return alert('请输入课次名称');if(getDateList().includes(v))return alert('该课次已存在，请直接从下拉框选择');if(currentDateLabel&&getEntry(currentClassId,currentDateLabel)){pushUndo();saveCurrentDay();}currentDateLabel=v;localStorage.setItem('_fb_last_date_'+currentClassId,v);initFeedbackEntry(currentDateLabel);document.getElementById('dateLabelInput').value='';renderDateSelector();renderFeedbackTable();renderColumnEditor();activeCell=null;};
 
         function renderColumnEditor(){
             const cls=getCurrentClass();if(!cls)return;
@@ -1524,7 +1525,7 @@
             }
             classDragData = null;
         }
-        window.enterFeedbackForClass=function(classId){if(dragSuppressClick){dragSuppressClick=false;return;}currentClassId=classId;const dates=getDateList();currentDateLabel=dates.length?dates[0]:'Day1';switchView('feedback');};
+        window.enterFeedbackForClass=function(classId){if(dragSuppressClick){dragSuppressClick=false;return;}currentClassId=classId;const dates=getDateList();const savedDate=localStorage.getItem('_fb_last_date_'+classId);currentDateLabel=(savedDate&&dates.includes(savedDate))?savedDate:(dates.length?dates[0]:'Day1');switchView('feedback');};
         window.toggleStudentModal=function(classId){const modal=document.getElementById(`studentModal-${classId}`);if(!modal)return;if(activeStudentModal===classId){modal.classList.remove('open');activeStudentModal=null;}else{document.querySelectorAll('.student-modal').forEach(m=>m.classList.remove('open'));modal.classList.add('open');activeStudentModal=classId;renderStudentListInModal(classId);}};
         function renderStudentListInModal(classId){const cls=classes.find(c=>c.id===classId);if(!cls)return;const students=cls.students||[];document.getElementById(`studentModal-${classId}`).innerHTML=`
             <div style="display:flex;flex-wrap:wrap;gap:6px">

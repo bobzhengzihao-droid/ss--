@@ -174,7 +174,6 @@
         const COLORS = ['#2563eb','#3b82f6','#60a5fa','#818cf8','#6366f1','#93c5fd','#a5b4fc'];
 
         let supabase;
-        let supabaseAdmin;
         let currentUser = null;
         let isAdmin = false;
         let allTeachers = {};
@@ -280,7 +279,6 @@
         // ========== Init ==========
         async function init() {
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            supabaseAdmin = window.supabase.createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) { showLoginForm(); return; }
             currentUser = session.user;
@@ -346,9 +344,16 @@
         // ========== Data ==========
         async function loadAllData() {
             allTeachers = {};
-            const { data: allRows, error } = await supabaseAdmin.from('data_store').select('*');
-            // supabaseAdmin uses service_role key → bypasses RLS, admin sees all teachers' data
-            if (error) { console.error('Load error:', error); return; }
+            // Use raw fetch with service_role key → bypasses RLS reliably
+            const url = SUPABASE_URL + '/rest/v1/data_store?select=*';
+            const resp = await fetch(url, {
+                headers: {
+                    'apikey': SERVICE_ROLE_KEY,
+                    'Authorization': 'Bearer ' + SERVICE_ROLE_KEY
+                }
+            });
+            if (!resp.ok) { console.error('Load error:', resp.status); return; }
+            const allRows = await resp.json();
             const userMap = {};
             (allRows || []).forEach(row => {
                 if (!userMap[row.user_id]) userMap[row.user_id] = { id: row.user_id, name: '', email: '', classes: [], feedback: {}, lastActive: '' };

@@ -1213,7 +1213,7 @@
         async function loadUserData() {
             let storedClasses = await dbGet('classes');
             if (!storedClasses) {
-                const backup = localStorage.getItem('_fullBackup');
+                const backup = localStorage.getItem(_cacheKey('_fullBackup'));
                 if (backup) { try { const data = JSON.parse(backup); if (data.classes && data.classes.length) { classes = data.classes; feedback = data.feedback || {}; tools = data.tools || [...DEFAULT_TOOLS]; analysisSel = data.analysisSel || {}; alert('✅ 已从本地备份自动恢复数据'); } } catch(e) {} }
                 if (!classes || !classes.length) { classes = defaultClasses(); feedback = {}; tools = [...DEFAULT_TOOLS]; analysisSel = {}; await saveAllDataNow(); }
             } else {

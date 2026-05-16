@@ -158,19 +158,6 @@
         .admin-reset-btn:hover { background: #eff6ff; }
 
         /* ===== Score Tables ===== */
-        .admin-score-edit-table {
-            width: 100%; font-size: 11px; border-collapse: collapse; margin-top: 6px;
-        }
-        .admin-score-edit-table th, .admin-score-edit-table td {
-            border: 1px solid var(--border); padding: 4px 6px; text-align: center; white-space: nowrap;
-        }
-        .admin-score-edit-table th { background: var(--table-header-bg); color: var(--table-header-text); }
-        .admin-score-edit-table input {
-            width: 60px; padding: 2px 4px; font-size: 11px;
-            text-align: center; border: 1px solid var(--border); border-radius: 4px; outline: none;
-        }
-        .admin-score-edit-table input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
-
         .admin-analysis-row {
             display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; align-items: center;
         }
@@ -215,8 +202,8 @@
         // ========== Constants ==========
         const SUPABASE_URL = 'https://furpcqytmgxqkxlbselj.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1cnBjcXl0bWd4cWt4bGJzZWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MjYyNTYsImV4cCI6MjA5NDIwMjI1Nn0.522KmI4GJrghlteeQiRVMGJdytu3R4pf7E1NLyTByzE';
-        const API_BASE = 'http://127.0.0.1:8765';
         const ADMIN_PASSWORD = 'admin888';
+        const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1cnBjcXl0bWd4cWt4bGJzZWxqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODYyNjI1NiwiZXhwIjoyMDk0MjAyMjU2fQ.HvYQfSGt953HwESXNtAj5vptIBBlxtQXouXPiiUHXR8';
         const COLORS=['#2563eb','#3b82f6','#60a5fa','#818cf8','#6366f1','#93c5fd','#a5b4fc'];
 
         let supabase, supabaseReady = false;
@@ -224,7 +211,6 @@
         let _adminCurrentSub = 'dashboard';
         window._adminData = null;
         window._adminScoreCache = {};
-        window._adminCorrContext = null;
 
         // ========== Utilities ==========
         function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
@@ -249,35 +235,14 @@
             if (pwd === null) return false;
             if (pwd !== ADMIN_PASSWORD) { alert('密码错误'); return false; }
             _adminAuthPassed = true;
+            localStorage.setItem('_fb_admin_pwd_ok', '1');
             return true;
-        }
-
-        async function getServiceKey() {
-            if (window._cachedServiceKey) return window._cachedServiceKey;
-            const saved = localStorage.getItem('_fb_service_key');
-            if (saved) { window._cachedServiceKey = saved; return saved; }
-            const key = await showPrompt('请输入 Supabase Service Role Key（仅需一次）：\n\n可在 server.py 第23行找到，粘贴后自动保存。', '');
-            if (key === null) return null;
-            if (!key || key.length < 20) { alert('Key 无效'); return null; }
-            localStorage.setItem('_fb_service_key', key.trim());
-            window._cachedServiceKey = key.trim();
-            return key.trim();
         }
 
         // ========== Data Loading ==========
         async function loadAllTeachersSilent() {
             try {
-                const resp = await fetch(API_BASE + '/api/admin/all-teachers', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ admin_password: ADMIN_PASSWORD })
-                });
-                if (resp.ok) { window._adminData = await resp.json(); return; }
-            } catch(e) { console.warn('Server API unreachable, falling back to direct Supabase'); }
-
-            const sk = await getServiceKey();
-            if (!sk) return;
-            try {
-                const adminClient = supabase.createClient(SUPABASE_URL, sk, { auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } });
+                const adminClient = supabase.createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } });
                 const { data: allData, error: dErr } = await adminClient.from('data_store').select('*');
                 if (dErr) { console.error('Admin data fetch error:', dErr); return; }
                 const userMap = {};
@@ -346,19 +311,10 @@
             if (newPwd === null) return;
             if (!newPwd || newPwd.length < 4) { alert('密码至少4位'); return; }
             try {
-                const resp = await fetch(API_BASE + '/api/admin/reset-password', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ admin_password: ADMIN_PASSWORD, name: displayName, new_password: newPwd })
-                });
-                if (resp.ok) { alert('密码已重置'); return; }
-            } catch(e) { console.warn('Server API unreachable, falling back'); }
-            const sk = await getServiceKey();
-            if (!sk) return;
-            try {
-                const adminClient = supabase.createClient(SUPABASE_URL, sk, { auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } });
+                const adminClient = supabase.createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } });
                 const { error } = await adminClient.auth.admin.updateUserById(userId, { password: newPwd });
                 if (error) { alert('重置失败：' + error.message); return; }
-                alert('密码已重置');
+                alert('密码已重置，请将新密码告知 ' + displayName);
             } catch(e) { alert('错误：' + e.message); }
         };
 
@@ -400,23 +356,21 @@
             _adminCurrentSub = subName;
             document.querySelectorAll('.admin-subview').forEach(v => v.classList.remove('active'));
             document.querySelectorAll('.admin-subtab').forEach(t => t.classList.remove('active'));
-            const subMap = { 'dashboard':'adminSubDashboard', 'teachers':'adminSubTeachers', 'analysis':'adminSubAnalysis', 'correction':'adminSubCorrection' };
+            const subMap = { 'dashboard':'adminSubDashboard', 'teachers':'adminSubTeachers', 'analysis':'adminSubAnalysis' };
             const target = document.getElementById(subMap[subName]);
             if (target) target.classList.add('active');
             const tab = document.querySelector(`.admin-subtab[data-sub="${subName}"]`);
             if (tab) tab.classList.add('active');
             if (subName === 'dashboard') renderAdminDashboard();
             else if (subName === 'teachers') renderAdminTeachers();
-            else if (subName === 'analysis') renderAdminAnalysis((document.getElementById('adminSearchInput')?.value || '').toLowerCase());
-            else if (subName === 'correction') renderAdminCorrection((document.getElementById('adminSearchInput')?.value || '').toLowerCase());
+            else if (subName === 'analysis') renderAdminAnalysis();
         };
 
         window.adminApplySearch = function() {
             const query = (document.getElementById('adminSearchInput')?.value || '').toLowerCase();
             if (_adminCurrentSub === 'dashboard') renderAdminDashboard(query);
             else if (_adminCurrentSub === 'teachers') renderAdminTeachers(query);
-            else if (_adminCurrentSub === 'analysis') renderAdminAnalysis(query);
-            else if (_adminCurrentSub === 'correction') renderAdminCorrection(query);
+            else if (_adminCurrentSub === 'analysis') renderAdminAnalysis();
         };
 
         // ===== Dashboard =====
@@ -603,106 +557,6 @@
             }
         };
 
-        // ===== Correction =====
-        function renderAdminCorrection(searchQuery) {
-            const container = document.getElementById('adminSubCorrection');
-            const data = window._adminData || {};
-            const teacherOptions = Object.values(data).filter(u => u.name && Array.isArray(u.classes) && u.classes.length > 0).map(u => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
-            container.innerHTML = `<div class="card">
-                <div class="card-title">✏️ 数据修正</div>
-                <div class="admin-analysis-row"><select id="adminCorrTeacher" onchange="adminCorrLoadClasses()"><option value="">-- 选择教师 --</option>${teacherOptions}</select><select id="adminCorrClass" onchange="adminCorrLoadDates()"><option value="">-- 选择班级 --</option></select><select id="adminCorrDate" onchange="adminCorrLoadTable()"><option value="">-- 选择日期 --</option></select><button class="btn btn-sm" id="adminCorrSaveBtn" onclick="adminCorrSave()" style="display:none;">💾 保存修改</button><span id="adminCorrStatus" style="font-size:12px;color:var(--success);"></span></div>
-                <div id="adminCorrTableArea" style="overflow-x:auto;"></div></div>`;
-        }
-
-        window.adminCorrLoadClasses = function() {
-            const data = window._adminData || {};
-            const teacherId = document.getElementById('adminCorrTeacher')?.value;
-            const classSelect = document.getElementById('adminCorrClass');
-            if (!teacherId || !classSelect) return;
-            const u = data[teacherId]; if (!u) return;
-            const classes = Array.isArray(u.classes) ? u.classes : [];
-            classSelect.innerHTML = '<option value="">-- 选择班级 --</option>' + classes.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
-            document.getElementById('adminCorrDate').innerHTML = '<option value="">-- 选择日期 --</option>';
-            document.getElementById('adminCorrTableArea').innerHTML = '';
-            document.getElementById('adminCorrSaveBtn').style.display = 'none';
-        };
-
-        window.adminCorrLoadDates = function() {
-            const data = window._adminData || {};
-            const teacherId = document.getElementById('adminCorrTeacher')?.value;
-            const classId = document.getElementById('adminCorrClass')?.value;
-            const dateSelect = document.getElementById('adminCorrDate');
-            if (!teacherId || !classId || !dateSelect) return;
-            const u = data[teacherId]; if (!u) return;
-            const prefix = classId + '|';
-            const dates = Object.keys(u.feedback || {}).filter(k => k.startsWith(prefix)).map(k => k.substring(prefix.length)).sort(naturalSort);
-            dateSelect.innerHTML = '<option value="">-- 选择日期 --</option>' + dates.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
-            document.getElementById('adminCorrTableArea').innerHTML = '';
-            document.getElementById('adminCorrSaveBtn').style.display = 'none';
-        };
-
-        window.adminCorrLoadTable = function() {
-            const data = window._adminData || {};
-            const teacherId = document.getElementById('adminCorrTeacher')?.value;
-            const classId = document.getElementById('adminCorrClass')?.value;
-            const date = document.getElementById('adminCorrDate')?.value;
-            if (!teacherId || !classId || !date) return;
-            const u = data[teacherId]; if (!u) return;
-            const key = classId + '|' + date;
-            const fb = u.feedback && u.feedback[key];
-            if (!fb) { document.getElementById('adminCorrTableArea').innerHTML = '<div class="empty-state">该课次无反馈数据</div>'; return; }
-            const columns = fb.dateColumns || [];
-            const records = fb.records || [];
-            const cls = (Array.isArray(u.classes) ? u.classes : []).find(c => c.id === classId);
-            const students = cls ? cls.students : records.map(r => r.name);
-            let html = '<table class="admin-score-edit-table"><thead><tr><th>学生</th>';
-            columns.forEach(c => html += `<th>${escapeHtml(stripMaxScore(c))}</th>`);
-            html += '</tr></thead><tbody>';
-            students.forEach(name => {
-                const rec = records.find(r => r.name === name) || { values: columns.map(() => ''), colors: columns.map(() => '') };
-                html += `<tr><td>${escapeHtml(name)}</td>`;
-                columns.forEach((col, ci) => {
-                    const val = (rec.values && rec.values[ci]) || '';
-                    const bg = (rec.colors && rec.colors[ci]) ? rec.colors[ci] : '';
-                    html += `<td style="background:${bg}"><input data-student="${escapeHtml(name)}" data-col="${ci}" value="${escapeHtml(val)}"></td>`;
-                });
-                html += '</tr>';
-            });
-            html += '</tbody></table>';
-            document.getElementById('adminCorrTableArea').innerHTML = html;
-            document.getElementById('adminCorrSaveBtn').style.display = '';
-            window._adminCorrContext = { teacherId, classId, date };
-        };
-
-        window.adminCorrSave = async function() {
-            const ctx = window._adminCorrContext; if (!ctx) return;
-            const data = window._adminData || {};
-            const u = data[ctx.teacherId]; if (!u) return;
-            const key = ctx.classId + '|' + ctx.date;
-            const fb = u.feedback && u.feedback[key]; if (!fb) return;
-            const inputs = document.querySelectorAll('#adminCorrTableArea input');
-            inputs.forEach(inp => {
-                const name = inp.dataset.student; const col = parseInt(inp.dataset.col);
-                const rec = fb.records.find(r => r.name === name);
-                if (rec) { if (!rec.values) rec.values = []; rec.values[col] = inp.value.trim(); }
-            });
-            try {
-                const resp = await fetch(API_BASE + '/api/admin/save-correction', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ admin_password: ADMIN_PASSWORD, user_id: ctx.teacherId, feedback: u.feedback })
-                });
-                if (resp.ok) { document.getElementById('adminCorrStatus').textContent = '✅ 已保存'; setTimeout(() => { document.getElementById('adminCorrStatus').textContent = ''; }, 2000); return; }
-            } catch(e) { console.warn('Server API unreachable, falling back'); }
-            const sk = await getServiceKey(); if (!sk) return;
-            try {
-                const adminClient = supabase.createClient(SUPABASE_URL, sk, { auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } });
-                const { error } = await adminClient.from('data_store').upsert({ user_id: ctx.teacherId, key: 'feedback', value: u.feedback, updated_at: new Date().toISOString() }, { onConflict: 'user_id,key' });
-                if (error) { alert('保存失败：' + error.message); return; }
-                document.getElementById('adminCorrStatus').textContent = '✅ 已保存';
-                setTimeout(() => { document.getElementById('adminCorrStatus').textContent = ''; }, 2000);
-            } catch(e) { alert('保存错误：' + e.message); }
-        };
-
         // ========== Init ==========
         async function init() {
             // Init Supabase
@@ -732,7 +586,7 @@
             }
 
             // Load data and render
-            document.getElementById('app').innerHTML = `<div class="admin-topbar"><button class="btn btn-outline btn-sm" onclick="window.location.href='/'">← 返回</button><span class="admin-topbar-title">⚙ 系统管理</span><input class="admin-search-input" id="adminSearchInput" type="text" placeholder="🔍 搜索教师/班级/学生..." oninput="adminApplySearch()"><button class="btn btn-xs" onclick="loadAllTeachersSilent().then(()=>{if(_adminCurrentSub==='dashboard')renderAdminDashboard();else if(_adminCurrentSub==='teachers')renderAdminTeachers();})">🔄 刷新</button><button class="btn btn-xs" onclick="exportAdminExcel()">📊 导出Excel</button></div><div class="admin-subtabs" id="adminSubtabs"><button class="admin-subtab active" data-sub="dashboard" onclick="switchAdminSub('dashboard')">📊 概览</button><button class="admin-subtab" data-sub="teachers" onclick="switchAdminSub('teachers')">👥 教师</button><button class="admin-subtab" data-sub="analysis" onclick="switchAdminSub('analysis')">📈 成绩单</button><button class="admin-subtab" data-sub="correction" onclick="switchAdminSub('correction')">✏️ 修正</button></div><div id="adminSubDashboard" class="admin-subview active"></div><div id="adminSubTeachers" class="admin-subview"></div><div id="adminSubAnalysis" class="admin-subview"></div><div id="adminSubCorrection" class="admin-subview"></div>`;
+            document.getElementById('app').innerHTML = `<div class="admin-topbar"><button class="btn btn-outline btn-sm" onclick="window.location.href='/'">← 返回</button><span class="admin-topbar-title">⚙ 系统管理</span><input class="admin-search-input" id="adminSearchInput" type="text" placeholder="🔍 搜索教师/班级/学生..." oninput="adminApplySearch()"><button class="btn btn-xs" onclick="loadAllTeachersSilent().then(()=>{if(_adminCurrentSub==='dashboard')renderAdminDashboard();else if(_adminCurrentSub==='teachers')renderAdminTeachers();})">🔄 刷新</button><button class="btn btn-xs" onclick="exportAdminExcel()">📊 导出Excel</button></div><div class="admin-subtabs" id="adminSubtabs"><button class="admin-subtab active" data-sub="dashboard" onclick="switchAdminSub('dashboard')">📊 概览</button><button class="admin-subtab" data-sub="teachers" onclick="switchAdminSub('teachers')">👥 教师</button><button class="admin-subtab" data-sub="analysis" onclick="switchAdminSub('analysis')">📈 成绩单</button></div><div id="adminSubDashboard" class="admin-subview active"></div><div id="adminSubTeachers" class="admin-subview"></div><div id="adminSubAnalysis" class="admin-subview"></div>`;
 
             await loadAllTeachersSilent();
             switchAdminSub('dashboard');

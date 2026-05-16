@@ -174,6 +174,7 @@
         const COLORS = ['#2563eb','#3b82f6','#60a5fa','#818cf8','#6366f1','#93c5fd','#a5b4fc'];
 
         let supabase;
+        let supabaseAdmin;
         let currentUser = null;
         let isAdmin = false;
         let allTeachers = {};
@@ -279,6 +280,7 @@
         // ========== Init ==========
         async function init() {
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            supabaseAdmin = window.supabase.createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) { showLoginForm(); return; }
             currentUser = session.user;
@@ -344,7 +346,8 @@
         // ========== Data ==========
         async function loadAllData() {
             allTeachers = {};
-            const { data: allRows, error } = await supabase.from('data_store').select('*');
+            const { data: allRows, error } = await supabaseAdmin.from('data_store').select('*');
+            // supabaseAdmin uses service_role key → bypasses RLS, admin sees all teachers' data
             if (error) { console.error('Load error:', error); return; }
             const userMap = {};
             (allRows || []).forEach(row => {
@@ -401,7 +404,7 @@
                     <span class="topbar-title">⚙ 管理者后台</span>
                     <input class="search-input" id="searchInput" type="text" placeholder="🔍 搜索教师..." oninput="onSearch(this.value)">
                     <button class="btn btn-sm" onclick="refresh()">🔄 刷新</button>
-                    <button class="btn btn-sm btn-outline" onclick="exportExcel()">📊 导出</button>
+                    <button class="btn btn-sm btn-outline" id="exportBtn" onclick="smartExport()">📊 导出</button>
                     <button class="btn btn-sm" style="background:#1e293b" onclick="logout()">🚪 退出</button>
                 </div>
                 <div class="subtabs">
@@ -429,6 +432,7 @@
             else if (view === 'teachers') renderTeachers();
             else if (view === 'data') renderDataBrowser();
             else if (view === 'analysis') renderAnalysis();
+            updateExportLabel();
         };
 
         window.onSearch = function(q) { searchQuery = q.toLowerCase(); if (currentView === 'teachers') renderTeachers(); };
@@ -558,6 +562,7 @@
                 html += '</div>';
             }
             document.getElementById('view-data').innerHTML = html;
+            updateExportLabel();
         }
 
         // ========== Analysis ==========
@@ -637,6 +642,7 @@
             html += '</div>';
 
             document.getElementById('view-analysis').innerHTML = html;
+            updateExportLabel();
             if (analysisSelStudent && dates.length >= 2) setTimeout(() => refreshAnalysisChart(), 100);
         }
 
@@ -751,23 +757,155 @@
         };
 
         // ========== Export ==========
-        window.exportExcel = function() {
+        window.smartExport = function() {
+            // Context-aware export: what can we export right now?
+            if (currentView === 'data' && currentTeacherId && currentClassId && currentLesson) {
+                exportLesson(currentTeacherId, currentClassId, currentLesson);
+            } else if (currentView === 'data' && currentTeacherId && currentClassId) {
+                exportClass(currentTeacherId, currentClassId);
+            } else if (currentView === 'data' && currentTeacherId) {
+                exportTeacher(currentTeacherId);
+            } else if (currentView === 'analysis' && analysisTeacherId && analysisClassId) {
+                exportClass(analysisTeacherId, analysisClassId);
+            } else if (currentView === 'teachers') {
+                exportDashboard();
+            } else {
+                exportDashboard();
+            }
+        };
+
+        function updateExportLabel() {
+            const btn = document.getElementById('exportBtn');
+            if (!btn) return;
+            if (currentView === 'data' && currentTeacherId && currentClassId && currentLesson) {
+                btn.textContent = '📊 导出此课次';
+            } else if (currentView === 'data' && currentTeacherId && currentClassId) {
+                btn.textContent = '📊 导出此班级';
+            } else if (currentView === 'data' && currentTeacherId) {
+                btn.textContent = '📊 导出此教师';
+            } else if (currentView === 'analysis' && analysisTeacherId && analysisClassId) {
+                btn.textContent = '📊 导出此班级';
+            } else {
+                btn.textContent = '📊 导出汇总';
+            }
+        }
+
+        function exportDashboard() {
             const rows = [['教师', '班级', '学生数', '课次数', '最后活跃']];
             Object.values(allTeachers).forEach(t => {
                 const classes = Array.isArray(t.classes) ? t.classes : [];
                 const lessons = Object.keys(t.feedback || {}).length;
                 if (classes.length) {
-                    classes.forEach(c => { rows.push([t.name || '', c.name || '', String(c.students ? c.students.length : 0), '', t.lastActive || '']); });
-                    const clsLessons = Object.keys(t.feedback || {}).filter(k => classes.some(c => k.startsWith(c.id + '|'))).length;
-                    rows[rows.length - 1][3] = String(clsLessons);
+                    classes.forEach(c => {
+                        const clsLessons = Object.keys(t.feedback || {}).filter(k => k.startsWith(c.id + '|')).length;
+                        rows.push([t.name || '', c.name || '', String(c.students ? c.students.length : 0), String(clsLessons), t.lastActive || '']);
+                    });
                 } else {
                     rows.push([t.name || '', '-', '0', String(lessons), t.lastActive || '']);
                 }
             });
             const ws = XLSX.utils.aoa_to_sheet(rows);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, '教师数据');
-            XLSX.writeFile(wb, '管理者数据_' + new Date().toISOString().slice(0,10) + '.xlsx');
+            XLSX.utils.book_append_sheet(wb, ws, '教师汇总');
+            XLSX.writeFile(wb, '教师汇总_' + new Date().toISOString().slice(0,10) + '.xlsx');
+        }
+
+        function exportTeacher(teacherId) {
+            const t = allTeachers[teacherId];
+            if (!t) return;
+            const classes = Array.isArray(t.classes) ? t.classes : [];
+            const rows = [['教师', '班级', '学生数', '课次数']];
+            classes.forEach(c => {
+                const clsLessons = Object.keys(t.feedback || {}).filter(k => k.startsWith(c.id + '|')).length;
+                rows.push([t.name || '', c.name || '', String(c.students ? c.students.length : 0), String(clsLessons)]);
+            });
+            if (!classes.length) {
+                rows.push([t.name || '', '-', '0', String(Object.keys(t.feedback || {}).length)]);
+            }
+            const ws = XLSX.utils.aoa_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, (t.name || '教师') + '_班级汇总');
+            XLSX.writeFile(wb, (t.name || '教师') + '_班级汇总_' + new Date().toISOString().slice(0,10) + '.xlsx');
+        }
+
+        function exportClass(teacherId, classId) {
+            const t = allTeachers[teacherId];
+            if (!t) return;
+            const classes = Array.isArray(t.classes) ? t.classes : [];
+            const cls = classes.find(c => c.id === classId);
+            if (!cls) return;
+
+            // Collect all columns across all lessons
+            const fbKeys = Object.keys(t.feedback || {}).filter(k => k.startsWith(classId + '|')).sort(naturalSort);
+            const allCols = new Set();
+            fbKeys.forEach(k => {
+                const fb = t.feedback[k];
+                const cols = (fb && fb.dateColumns) ? fb.dateColumns : [];
+                cols.forEach(c => allCols.add(stripMaxScore(c)));
+            });
+            const columns = Array.from(allCols).sort(naturalSort);
+
+            if (!fbKeys.length) {
+                // No feedback data: export just student list
+                const rows = [['学生']];
+                (cls.students || []).forEach(s => rows.push([s]));
+                const ws = XLSX.utils.aoa_to_sheet(rows);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, cls.name);
+                XLSX.writeFile(wb, (t.name || '') + '_' + cls.name + '_学生名单_' + new Date().toISOString().slice(0,10) + '.xlsx');
+                return;
+            }
+
+            // Long-table format: each row = student + lesson + score
+            const rows = [['学生', '课次'].concat(columns)];
+            (cls.students || []).forEach(student => {
+                fbKeys.forEach(k => {
+                    const dateLabel = k.substring(classId.length + 1);
+                    const fb = t.feedback[k];
+                    const row = [student, dateLabel];
+                    columns.forEach(colName => {
+                        let val = '';
+                        if (fb && fb.dateColumns) {
+                            const idx = fb.dateColumns.findIndex(c => columnContainsKeyword(c, colName));
+                            if (idx !== -1) {
+                                const rec = (fb.records || []).find(r => r.name === student);
+                                if (rec && rec.values) val = rec.values[idx] || '';
+                            }
+                        }
+                        row.push(val);
+                    });
+                    rows.push(row);
+                });
+            });
+            const ws = XLSX.utils.aoa_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, cls.name);
+            XLSX.writeFile(wb, (t.name || '') + '_' + cls.name + '_反馈明细_' + new Date().toISOString().slice(0,10) + '.xlsx');
+        }
+
+        function exportLesson(teacherId, classId, lessonKey) {
+            const t = allTeachers[teacherId];
+            if (!t) return;
+            const classes = Array.isArray(t.classes) ? t.classes : [];
+            const cls = classes.find(c => c.id === classId);
+            if (!cls) return;
+            const fbKey = classId + '|' + lessonKey;
+            const fb = t.feedback[fbKey];
+            const columns = (fb && fb.dateColumns) ? fb.dateColumns.map(c => stripMaxScore(c)) : [];
+
+            const rows = [['学生'].concat(columns)];
+            (cls.students || []).forEach(student => {
+                const rec = (fb && fb.records) ? fb.records.find(r => r.name === student) : null;
+                const row = [student];
+                columns.forEach((_, ci) => {
+                    row.push(rec && rec.values ? (rec.values[ci] || '') : '');
+                });
+                rows.push(row);
+            });
+            const ws = XLSX.utils.aoa_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, lessonKey);
+            XLSX.writeFile(wb, (t.name || '') + '_' + cls.name + '_' + lessonKey + '_' + new Date().toISOString().slice(0,10) + '.xlsx');
         };
 
         init();

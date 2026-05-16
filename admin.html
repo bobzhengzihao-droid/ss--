@@ -242,7 +242,7 @@
         // ========== Data Loading ==========
         async function loadAllTeachersSilent() {
             try {
-                const adminClient = supabase.createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } });
+                const adminClient = window.supabase.createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } });
                 const { data: allData, error: dErr } = await adminClient.from('data_store').select('*');
                 if (dErr) { console.error('Admin data fetch error:', dErr); return; }
                 const userMap = {};
@@ -311,7 +311,7 @@
             if (newPwd === null) return;
             if (!newPwd || newPwd.length < 4) { alert('密码至少4位'); return; }
             try {
-                const adminClient = supabase.createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } });
+                const adminClient = window.supabase.createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } });
                 const { error } = await adminClient.auth.admin.updateUserById(userId, { password: newPwd });
                 if (error) { alert('重置失败：' + error.message); return; }
                 alert('密码已重置，请将新密码告知 ' + displayName);

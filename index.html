@@ -2239,35 +2239,20 @@
             wrapper.parentNode.style.maxHeight = 'none';
             wrapper.style.overflow = 'visible';
             wrapper.style.maxHeight = 'none';
-            wrapper.style.width = 'auto';
+            wrapper.style.width = 'fit-content';
             wrapper.style.maxWidth = 'none';
             wrapper.style.borderRadius = '0';
-            wrapper.style.margin = '0';
+            wrapper.style.margin = '0 auto';
             if (wrapDiv) {
                 wrapDiv.style.overflow = 'visible';
                 wrapDiv.style.maxHeight = 'none';
             }
             if (table) {
-                table.style.tableLayout = 'auto';
                 table.style.width = 'auto';
                 table.style.minWidth = 'auto';
             }
 
-            setTimeout(() => {
-                let w = wrapper.scrollWidth;
-                let h = wrapper.scrollHeight;
-                wrapper.style.width = (w + 4) + 'px';
-                w = wrapper.scrollWidth;
-                h = wrapper.scrollHeight;
-
-                html2canvas(wrapper, {
-                    scale: 2,
-                    backgroundColor: '#ffffff',
-                    width: w + 8,
-                    height: h + 24,
-                    windowWidth: w + 8,
-                    windowHeight: h + 24
-                }).then(canvas => {
+            html2canvas(wrapper, { scale: 2, backgroundColor: '#ffffff' }).then(canvas => {
                     wrapper.setAttribute('style', origStyle);
                     if (table) table.setAttribute('style', origTblStyle);
                     if (wrapDiv) wrapDiv.setAttribute('style', origWrapStyle);
@@ -2283,7 +2268,7 @@
                         a.click();
                     });
                 });
-            }, 50);
+            });
         };
 
         // 启动：检查 Supabase 会话

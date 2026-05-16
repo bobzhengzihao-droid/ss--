@@ -215,6 +215,7 @@
             if (str === '✗' || str === '×' || str === '✘' || str === '❌' || str === '未完成') return 0;
             const num = parseInt(str, 10); return isNaN(num) ? 0 : num;
         }
+        function sanitizeSheetName(name) { return String(name).replace(/[:\\\/?*\[\]]/g, '-').replace(/^['']/g, '').replace(/['']$/g, '').substring(0, 31); }
         function getAutoBackground(val, maxScore) {
             if (val === '' || val === null || val === undefined) return '';
             const str = String(val).trim();
@@ -569,6 +570,7 @@
             document.getElementById('view-data').innerHTML = html;
             updateExportLabel();
         }
+        window.renderDataBrowser = renderDataBrowser;
 
         // ========== Analysis ==========
         function getAnalysisFeedbackEntry(classId, dateLabel) {
@@ -650,6 +652,7 @@
             updateExportLabel();
             if (analysisSelStudent && dates.length >= 2) setTimeout(() => refreshAnalysisChart(), 100);
         }
+        window.renderAnalysis = renderAnalysis;
 
         function buildAnalysisStatTable(cls, dates, columns) {
             if (!analysisSelCols.length) return '<div class="empty-state">请选择至少一个分析板块</div>';
@@ -829,8 +832,9 @@
             }
             const ws = XLSX.utils.aoa_to_sheet(rows);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, (t.name || '教师') + '_班级汇总');
-            XLSX.writeFile(wb, (t.name || '教师') + '_班级汇总_' + new Date().toISOString().slice(0,10) + '.xlsx');
+            var sheetName = sanitizeSheetName((t.name || '教师') + '_班级汇总');
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            XLSX.writeFile(wb, (sanitizeSheetName(t.name || '教师')) + '_班级汇总_' + new Date().toISOString().slice(0,10) + '.xlsx');
         }
 
         function exportClass(teacherId, classId) {
@@ -856,8 +860,8 @@
                 (cls.students || []).forEach(s => rows.push([s]));
                 const ws = XLSX.utils.aoa_to_sheet(rows);
                 const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, cls.name);
-                XLSX.writeFile(wb, (t.name || '') + '_' + cls.name + '_学生名单_' + new Date().toISOString().slice(0,10) + '.xlsx');
+                XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(cls.name));
+                XLSX.writeFile(wb, sanitizeSheetName(t.name || '') + '_' + sanitizeSheetName(cls.name) + '_学生名单_' + new Date().toISOString().slice(0,10) + '.xlsx');
                 return;
             }
 
@@ -884,8 +888,8 @@
             });
             const ws = XLSX.utils.aoa_to_sheet(rows);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, cls.name);
-            XLSX.writeFile(wb, (t.name || '') + '_' + cls.name + '_反馈明细_' + new Date().toISOString().slice(0,10) + '.xlsx');
+            XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(cls.name));
+            XLSX.writeFile(wb, sanitizeSheetName(t.name || '') + '_' + sanitizeSheetName(cls.name) + '_反馈明细_' + new Date().toISOString().slice(0,10) + '.xlsx');
         }
 
         function exportLesson(teacherId, classId, lessonKey) {
@@ -909,9 +913,30 @@
             });
             const ws = XLSX.utils.aoa_to_sheet(rows);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, lessonKey);
-            XLSX.writeFile(wb, (t.name || '') + '_' + cls.name + '_' + lessonKey + '_' + new Date().toISOString().slice(0,10) + '.xlsx');
+            XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(lessonKey));
+            XLSX.writeFile(wb, sanitizeSheetName(t.name || '') + '_' + sanitizeSheetName(cls.name) + '_' + sanitizeSheetName(lessonKey) + '_' + new Date().toISOString().slice(0,10) + '.xlsx');
         };
+
+        // Expose state for inline onclick handlers
+        (function() {
+            var _vars = {
+                get currentTeacherId() { return currentTeacherId; },
+                set currentTeacherId(v) { currentTeacherId = v; },
+                get currentClassId() { return currentClassId; },
+                set currentClassId(v) { currentClassId = v; },
+                get currentLesson() { return currentLesson; },
+                set currentLesson(v) { currentLesson = v; },
+                get analysisTeacherId() { return analysisTeacherId; },
+                set analysisTeacherId(v) { analysisTeacherId = v; },
+                get analysisClassId() { return analysisClassId; },
+                set analysisClassId(v) { analysisClassId = v; },
+                get analysisSelCols() { return analysisSelCols; },
+                set analysisSelCols(v) { analysisSelCols = v; },
+                get analysisSelStudent() { return analysisSelStudent; },
+                set analysisSelStudent(v) { analysisSelStudent = v; }
+            };
+            Object.defineProperties(window, Object.getOwnPropertyDescriptors(_vars));
+        })();
 
         init();
     })();

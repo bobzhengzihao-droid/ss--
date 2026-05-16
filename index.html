@@ -2232,7 +2232,7 @@
                 origCellStyles.push({ el: cell, ws: cell.style.whiteSpace, mw: cell.style.maxWidth });
                 cell.style.whiteSpace = 'nowrap';
                 cell.style.maxWidth = 'none';
-            };
+            });
 
             // 解除所有限制，让表格完全展开
             wrapper.parentNode.style.overflow = 'visible';

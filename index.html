@@ -803,7 +803,6 @@
             <span id="headerUserName" onclick="showUserMenu(event)" style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;cursor:pointer;" title="用户菜单"></span>
             <button class="btn btn-xs btn-outline" onclick="exportAllData()">💾 备份</button>
             <button class="btn btn-xs btn-outline" onclick="importAllDataPrompt()">📥 导入</button>
-            <a href="/admin.html" class="btn btn-xs" style="background:#1e293b;display:none;" id="adminPageLink">⚙ 管理</a>
         </div>
         <div id="view-classes" class="view"></div>
         <div id="view-feedback" class="view" style="display:none;"></div>
@@ -1135,13 +1134,6 @@
             }
         };
 
-        let _isAdmin = false;
-        function updateAdminStatus() {
-            const name = (document.getElementById('headerUserName').textContent || '').replace('👤 ', '');
-            _isAdmin = name.toLowerCase() === 'bob';
-            const link = document.getElementById('adminPageLink');
-            if (link) link.style.display = _isAdmin ? '' : 'none';
-        }
         async function onLoginSuccess(user, actualEmail) {
             _userId = user.id;
             const name = user.user_metadata?.name || user.email?.split('@')[0] || '';
@@ -1168,7 +1160,7 @@
 
         window.handleLogout = async function() {
             if (supabaseReady) { try { await supabase.auth.signOut(); } catch(e) {} }
-            _userId = null; _isAdmin = false;
+            _userId = null;
             document.body.classList.remove('logged-in');
             document.getElementById('loginOverlay').style.display = '';
             document.getElementById('loginName').value = '';
@@ -1206,10 +1198,6 @@
         };
 
         // 管理员入口 → 独立页面
-        window.openAdminPage = function() {
-            window.location.href = '/admin.html';
-        };
-
         async function loadUserData() {
             let storedClasses = await dbGet('classes');
             if (!storedClasses) {
@@ -1242,7 +1230,6 @@
             currentClassId = classes.length ? classes[0].id : null;
             currentDateLabel = getDateList()[0] || 'Day1';
             buildAllViews();
-            updateAdminStatus();
             applyTableColors(getCurrentClass());
             switchView('classes');
             const floatBtn = document.getElementById('floatBtn');
@@ -1996,10 +1983,6 @@
                 switchStatType();
             }
             else if(viewName==='analysis')renderAnalysisOptions();
-            else if(viewName==='admin'){
-                window.location.href = '/admin.html';
-                return;
-            }
             updateCurrentClassDisplay(); document.querySelectorAll('.student-modal').forEach(m=>m.classList.remove('open'));activeStudentModal=null;
         }
         window.switchView=switchView;window.switchToFullTable=()=>switchView('fulltable');

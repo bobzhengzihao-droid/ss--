@@ -1267,7 +1267,7 @@
             if (localClasses && localClasses.length) {
                 classes = localClasses;
                 feedback = localFeedback || {};
-                tools = localTools || [...DEFAULT_TOOLS];
+                if (localTools) tools = localTools;
                 analysisSel = localAnalysis || {};
                 try { buildAllViews(); } catch(e) {}
                 localRendered = true;

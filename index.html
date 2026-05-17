@@ -971,6 +971,8 @@
                         supabaseOk = true;
                         _hideSyncWarning();
                     }
+                } else {
+                    _showSyncWarning('未登录，请刷新页面重新登录');
                 }
             } catch(e) {
                 console.error('[SAVE] Supabase exception:', key, e.message);
@@ -982,6 +984,7 @@
             if (key === 'feedback' || key === 'classes') {
                 try { localStorage.setItem(_cacheKey('_fullBackup'), JSON.stringify({classes, feedback, tools, analysisSel, time: Date.now()})); } catch(e) {}
             }
+            return supabaseOk;
         }
 
         let _syncWarnEl = null;
@@ -1017,8 +1020,9 @@
 
         async function dbGet(key) { return await _loadKey(key); }
         async function dbSet(key, value) {
-            await _saveKey(key, value);
+            const ok = await _saveKey(key, value);
             try { localStorage.setItem(_cacheKey(key), JSON.stringify(value)); } catch(e) {}
+            return ok;
         }
 
         // ========== 默认数据 ==========
@@ -1070,14 +1074,35 @@
         function setEntry(cid,date,entry){feedback[feedbackKey(cid,date)]=entry; saveFeedbackDebounced();}
         let saveFeedbackTimeout;
         function saveFeedbackDebounced() {
-            // 立即写 localStorage（防止关页面时 300ms 防抖还没触发导致数据丢失）
+            // 立即写 localStorage（防止关页面时防抖还没触发导致数据丢失）
             try { localStorage.setItem(_cacheKey('feedback'), JSON.stringify(feedback)); } catch(e) {}
             try { localStorage.setItem(_cacheKey('_fullBackup'), JSON.stringify({classes, feedback, tools, analysisSel, time: Date.now()})); } catch(e) {}
-            // 防抖后同步到云端
+            // 显示同步中
+            updateSaveStatus('⏳ 同步中...');
+            // 150ms 防抖后同步到云端
             clearTimeout(saveFeedbackTimeout);
-            saveFeedbackTimeout = setTimeout(() => { dbSet('feedback', feedback); }, 300);
+            saveFeedbackTimeout = setTimeout(async () => {
+                const ok = await dbSet('feedback', feedback);
+                if (ok) {
+                    updateSaveStatus('☁️ 已同步至云端');
+                    // 3 秒后文字淡出
+                    setTimeout(() => {
+                        const el = document.getElementById('saveStatus');
+                        if (el && el.textContent === '☁️ 已同步至云端') { el.textContent = ''; el.style.color = ''; }
+                    }, 3000);
+                } else {
+                    updateSaveStatus('⚠️ 未同步');
+                    showManualSyncBtn();
+                }
+            }, 150);
         }
-        async function saveAllDataNow(){await dbSet('classes',classes);await dbSet('feedback',feedback);await dbSet('tools',tools);await dbSet('analysisSel',analysisSel);_hideSyncWarning();try{localStorage.setItem(_cacheKey('_fullBackup'),JSON.stringify({classes,feedback,tools,analysisSel,time:Date.now()}));}catch(e){}}
+        async function saveAllDataNow(){
+            const r1=await dbSet('classes',classes),r2=await dbSet('feedback',feedback),r3=await dbSet('tools',tools),r4=await dbSet('analysisSel',analysisSel);
+            const allOk=r1&&r2&&r3&&r4;
+            if(allOk){_hideSyncWarning();hideManualSyncBtn();updateSaveStatus('☁️ 已同步至云端');setTimeout(()=>{const el=document.getElementById('saveStatus');if(el&&el.textContent==='☁️ 已同步至云端'){el.textContent='';el.style.color='';}},3000);}
+            try{localStorage.setItem(_cacheKey('_fullBackup'),JSON.stringify({classes,feedback,tools,analysisSel,time:Date.now()}));}catch(e){}
+            return allOk;
+        }
 
         // ========== 认证 ==========
         window.switchLoginTab = function(tab) {
@@ -1375,10 +1400,9 @@
             if(!records.length){tb.innerHTML=`<tr><td colspan="${2+dateColumns.length}" class="empty-state">无学生</td></tr>`;return;}
             tb.innerHTML=records.map((r,idx)=>`<tr style="height:${cls.rowHeight}px;"><td>${idx+1}</td><td>${escapeHtml(r.name)}</td>${r.values.map((v,i)=>`<td style="background-color:${(r.colors&&r.colors[i])||''};"><input class="cell-input" data-row="${idx}" data-col="${i}" value="${escapeHtml(v)}" onfocus="selectCell(this)" oninput="autoResizeInput(this)" onkeydown="handleKeyDown(event)"></td>`).join('')}</tr>`).join('');
             tb.querySelectorAll('.cell-input').forEach(inp => {
-                inp.addEventListener('input',()=>{clearTimeout(saveTimer);saveTimer=setTimeout(()=>{pushUndo();saveCurrentDay();updateSaveStatus('✅ 已自动保存');},600);});
+                inp.addEventListener('input',()=>{clearTimeout(saveTimer);saveTimer=setTimeout(()=>{pushUndo();saveCurrentDay();},600);});
                 autoResizeInput(inp);
             });
-            updateSaveStatus('✅ 已自动保存');
             if(activeCell){const nr=tb.querySelector(`.cell-input[data-row="${activeCell.dataset.row}"][data-col="${activeCell.dataset.col}"]`);if(nr){nr.classList.add('active-cell-highlight');activeCell=nr;}}
         }
         function scrollCellIntoView(el) {
@@ -1414,7 +1438,24 @@
                 if (target) { target.focus(); activeCell = target; target.classList.add('active-cell-highlight'); }
             }
         };
-        function updateSaveStatus(t){document.getElementById('saveStatus').textContent=t;}
+        function updateSaveStatus(t){
+            const el=document.getElementById('saveStatus');if(!el)return;
+            el.textContent=t;el.style.color='';
+            if(t.startsWith('☁️'))el.style.color='#16a34a';
+            else if(t.startsWith('⚠️'))el.style.color='#d97706';
+            else if(t.startsWith('⏳'))el.style.color='#6b7280';
+        }
+        function showManualSyncBtn(){
+            const el=document.getElementById('manualSyncBtn');if(el)el.style.display='';
+        }
+        function hideManualSyncBtn(){
+            const el=document.getElementById('manualSyncBtn');if(el)el.style.display='none';
+        }
+        window.manualSync = async function() {
+            updateSaveStatus('⏳ 同步中...');
+            const ok = await saveAllDataNow();
+            if (!ok) updateSaveStatus('⚠️ 未同步');
+        };
         function autoResizeInput(inp){if(!inp)return;const span=document.createElement('span');span.style.visibility='hidden';span.style.position='absolute';span.style.fontSize=getComputedStyle(inp).fontSize;span.style.fontWeight=getComputedStyle(inp).fontWeight;span.textContent=inp.value||' ';document.body.appendChild(span);const w=Math.min(Math.max(span.offsetWidth+16,100),400);document.body.removeChild(span);inp.style.width=w+'px';}window.autoResizeInput=autoResizeInput;
 
         function renderFullTable(){
@@ -1977,7 +2018,7 @@
             ).join('');
             document.getElementById('toolItems').innerHTML = html;
         }
-        window.quickFill=function(value){if(!activeCell)return;pushUndo();if(value==='清空'){activeCell.value='';const td=activeCell.closest('td');if(td)td.style.backgroundColor='';saveCurrentDay();}else{activeCell.value=value;activeCell.dispatchEvent(new Event('input'));saveCurrentDay();}updateSaveStatus('✅ 已应用');setTimeout(()=>updateSaveStatus('✅ 已自动保存'),1000);};
+        window.quickFill=function(value){if(!activeCell)return;pushUndo();if(value==='清空'){activeCell.value='';const td=activeCell.closest('td');if(td)td.style.backgroundColor='';saveCurrentDay();}else{activeCell.value=value;activeCell.dispatchEvent(new Event('input'));saveCurrentDay();}};
         window.setCellColor=function(color){if(!activeCell)return;pushUndo();const td=activeCell.closest('td');if(td){td.style.backgroundColor=color||'';const row=parseInt(activeCell.dataset.row),col=parseInt(activeCell.dataset.col);const records=getCurrentDayData();if(records[row]){if(!records[row].colors)records[row].colors=getCurrentClass().columns.map(()=>'');records[row].colors[col]=color;saveCurrentDay();}}};
         window.openToolEditor=function(){const panel=document.getElementById('toolEditPanel');panel.style.display='flex';let html='';tools.forEach((tool,i)=>{if(tool.type==='text'){const rawBg=(tool.style.match(/background:([^;]+)/)||[])[1]||'';const isGradient=rawBg.trim().startsWith('linear-gradient');const bgColor=isGradient?(rawBg.match(/#[0-9a-fA-F]{3,6}/)||['#93c5fd'])[0]:rawBg.trim()||'#ffffff';const textColor=(tool.style.match(/color:([^;]+)/)||[])[1]||'#000000';html+=`<div class="tool-edit-row" data-tool-idx="${i}"><input type="text" value="${escapeHtml(tool.label)}" data-index="${i}" data-field="label"><input type="color" value="${bgColor}" data-index="${i}" data-field="bg" data-has-gradient="${isGradient?1:0}"><input type="color" value="${textColor.trim()}" data-index="${i}" data-field="textColor"><button class="btn btn-xs" onclick="deleteTool(${i})">🗑️</button></div>`;}else{html+=`<div class="tool-edit-row"><span>●</span><input type="color" value="${tool.color||'#ffffff'}" data-index="${i}" data-field="color"><input type="text" value="${escapeHtml(tool.label||'')}" data-index="${i}" data-field="label"><button class="btn btn-xs" onclick="deleteTool(${i})">🗑️</button></div>`;}});html+=`<div style="display:flex;gap:4px;"><button class="btn btn-xs" onclick="addTool()">+ 文字</button><button class="btn btn-xs" onclick="addColorTool()">+ 颜色</button></div>`;panel.innerHTML=html;document.getElementById('btnSaveTools').style.display='inline-flex';};
         window.saveToolChanges=function(){const panel=document.getElementById('toolEditPanel');const inputs=panel.querySelectorAll('input');inputs.forEach(inp=>{const idx=parseInt(inp.dataset.index);if(isNaN(idx)||!tools[idx])return;const field=inp.dataset.field;if(tools[idx].type==='text'){if(field==='label')tools[idx].label=inp.value.trim();else if(field==='bg'){const hasGrad=inp.dataset.hasGradient==='1';const curBg=(tools[idx].style.match(/background:([^;]+)/)||[])[1]||'';if(hasGrad&&curBg.includes('linear-gradient')){const newBg=curBg.replace(/#[0-9a-fA-F]{3,6}/g,inp.value);tools[idx].style=tools[idx].style.replace(/background:[^;]+;?/,`background:${newBg};`);}else{tools[idx].style=tools[idx].style.replace(/background:[^;]+;?/,`background:${inp.value};`);}}else if(field==='textColor')tools[idx].style=tools[idx].style.replace(/color:[^;]+;?/,`color:${inp.value};`);}else{if(field==='color')tools[idx].color=inp.value;else if(field==='label')tools[idx].label=inp.value.trim();}});dbSet('tools',tools);renderToolItems();panel.style.display='none';panel.innerHTML='';document.getElementById('btnSaveTools').style.display='none';};
@@ -1990,7 +2031,7 @@
         // ========== 页面构建 ==========
         function buildAllViews(){
             document.getElementById('view-classes').innerHTML=`<div class="card"><div class="card-title">📚 班级管理</div><div style="display:flex;gap:6px"><input class="input" id="newClassName" placeholder="新班级名称" style="flex:1"><button class="btn" onclick="addClass()">➕ 新建</button></div><div id="classListContainer"></div></div>`;
-            document.getElementById('view-feedback').innerHTML=`<div class="card" style="padding:10px 12px;"><div class="card-title">📝 每日反馈</div><div class="feedback-actions"><span style="font-size:13px;">新建课次：</span><input class="input" id="dateLabelInput" style="width:72px;" placeholder="Day1"><button class="btn btn-sm" onclick="goToDate()">+ 新建</button><button class="btn btn-sm" onclick="undo()" style="background:#2563eb">↩️ 撤销</button></div><div id="dateSelector" class="date-selector-row" style="margin-top:6px;"></div><div style="display:flex;justify-content:space-between;margin-top:6px;"><span id="saveStatus" class="save-indicator">✅ 已自动保存</span><button class="btn btn-outline btn-xs" onclick="switchToFullTable()">📊 完整表格</button></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">🎨 表格样式 ▼</button><div class="collapsible-content"><div class="style-row"><span>表头背景:</span><input type="color" id="styleHeaderBg" onchange="applyStyleColor('headerBg',this.value)"><span>表头文字:</span><input type="color" id="styleHeaderText" onchange="applyStyleColor('headerText',this.value)"><span>边框:</span><input type="color" id="styleBorder" onchange="applyStyleColor('border',this.value)"><span>斑马纹:</span><input type="color" id="styleRowEven" onchange="applyStyleColor('rowEven',this.value)"></div><div class="style-row"><span>行高:</span><input type="number" id="styleRowHeight" min="24" max="60" style="width:60px" onchange="applyRowHeight()"></div></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">📐 列设置 ▼</button><div class="collapsible-content"><div id="columnEditor" style="display:flex;gap:4px;flex-wrap:wrap"></div></div></div><div class="card" style="padding:6px"><div class="table-wrapper"><table id="feedbackTable"><thead id="feedbackTableHead"></thead><tbody id="feedbackTableBody"></tbody></table></div></div>`;
+            document.getElementById('view-feedback').innerHTML=`<div class="card" style="padding:10px 12px;"><div class="card-title">📝 每日反馈</div><div class="feedback-actions"><span style="font-size:13px;">新建课次：</span><input class="input" id="dateLabelInput" style="width:72px;" placeholder="Day1"><button class="btn btn-sm" onclick="goToDate()">+ 新建</button><button class="btn btn-sm" onclick="undo()" style="background:#2563eb">↩️ 撤销</button></div><div id="dateSelector" class="date-selector-row" style="margin-top:6px;"></div><div style="display:flex;justify-content:space-between;margin-top:6px;"><span id="saveStatus" class="save-indicator"></span><button id="manualSyncBtn" class="btn btn-outline btn-xs" style="display:none;color:#d97706;border-color:#d97706;" onclick="manualSync()">🔄 手动同步</button><button class="btn btn-outline btn-xs" onclick="switchToFullTable()">📊 完整表格</button></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">🎨 表格样式 ▼</button><div class="collapsible-content"><div class="style-row"><span>表头背景:</span><input type="color" id="styleHeaderBg" onchange="applyStyleColor('headerBg',this.value)"><span>表头文字:</span><input type="color" id="styleHeaderText" onchange="applyStyleColor('headerText',this.value)"><span>边框:</span><input type="color" id="styleBorder" onchange="applyStyleColor('border',this.value)"><span>斑马纹:</span><input type="color" id="styleRowEven" onchange="applyStyleColor('rowEven',this.value)"></div><div class="style-row"><span>行高:</span><input type="number" id="styleRowHeight" min="24" max="60" style="width:60px" onchange="applyRowHeight()"></div></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">📐 列设置 ▼</button><div class="collapsible-content"><div id="columnEditor" style="display:flex;gap:4px;flex-wrap:wrap"></div></div></div><div class="card" style="padding:6px"><div class="table-wrapper"><table id="feedbackTable"><thead id="feedbackTableHead"></thead><tbody id="feedbackTableBody"></tbody></table></div></div>`;
             document.getElementById('view-fulltable').innerHTML=`<div class="card"><div class="card-title">📄 完整反馈表</div><div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="switchView('feedback')">↩️ 返回</button><button class="btn btn-sm" onclick="printTable()">🖨️ 打印</button><button class="btn btn-sm" onclick="exportStyledExcel()">📊 Excel</button><button class="btn btn-sm" onclick="exportAsImage()">🖼️ 图片</button></div></div>
             <div class="card" style="padding:6px"><div class="table-wrapper" id="fullTableWrapper"><div class="title-wrapper"><input id="fullTableTitleInput" style="font-size:1.2rem;font-weight:700;border:none;background:transparent;text-align:center;width:100%" placeholder="标题"></div><table id="fullTable"><thead id="fullTableHead"></thead><tbody id="fullTableBody"></tbody></table></div></div>
             <div class="card" style="margin-top:12px">

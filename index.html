@@ -1300,24 +1300,26 @@
 
             // 合并 feedback：云端为基础，本地逐 key 比较时间戳决定取舍
             const mergedFb = Object.assign({}, cloudFeedback || {});
+            // 云端是否有数据——有说明不是首次同步，以云端为准判断 key 存在性（删除不会被复活）
+            const cloudHasData = cloudFeedback && Object.keys(cloudFeedback).length > 0;
             if (localFeedback) {
                 let localWin = 0, cloudWin = 0, gapFill = 0;
                 Object.keys(localFeedback).forEach(k => {
                     const localEntry = localFeedback[k];
                     const cloudEntry = mergedFb[k];
                     if (!cloudEntry) {
-                        // 云端没有 → 用本地（未同步的孤数据）
-                        mergedFb[k] = localEntry; gapFill++;
+                        // 云端没有这个 key。如果云端完全为空（首次同步），从本地补漏；
+                        // 如果云端已有数据，说明这个 key 是被有意删除的，不复生。
+                        if (!cloudHasData) {
+                            mergedFb[k] = localEntry; gapFill++;
+                        }
                     } else {
                         // 两边都有 → 比较时间戳
                         const localTs = localEntry._updatedAt || 0;
                         const cloudTs = cloudEntry._updatedAt || 0;
                         if (localTs > cloudTs) {
-                            // 本地更新 → 覆盖云端（竞态恢复 / 未成功同步的编辑）
                             mergedFb[k] = localEntry; localWin++;
-                        }
-                        // 否则云端更新或相等 → 保留云端（其他设备同步了更新）
-                        else if (cloudTs > localTs) { cloudWin++; }
+                        } else if (cloudTs > localTs) { cloudWin++; }
                     }
                 });
                 const total = localWin + cloudWin + gapFill;

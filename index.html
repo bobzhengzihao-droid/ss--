@@ -952,7 +952,7 @@
         }
 
         // ========== 数据库封装（Supabase 优先 + localStorage 备份）==========
-        let _userId = null;
+        let _userId = null, _lastAccessToken = null;
         function _cacheKey(k) { return '_fb_' + (_userId || 'anon') + '_' + k; }
 
         async function _saveKey(key, value) {
@@ -1161,6 +1161,8 @@
 
         async function onLoginSuccess(user, actualEmail) {
             _userId = user.id;
+            // 存下 access_token 用于 beforeunload 时的 keepalive 发送
+            try { const { data: { session } } = await supabase.auth.getSession(); if (session) _lastAccessToken = session.access_token; } catch(e) {}
             const name = user.user_metadata?.name || user.email?.split('@')[0] || '';
             // 记住本设备的实际邮箱，解决同名登录问题
             if (actualEmail) {
@@ -1185,7 +1187,7 @@
 
         window.handleLogout = async function() {
             if (supabaseReady) { try { await supabase.auth.signOut(); } catch(e) {} }
-            _userId = null;
+            _userId = null; _lastAccessToken = null;
             document.body.classList.remove('logged-in');
             document.getElementById('loginOverlay').style.display = '';
             document.getElementById('loginName').value = '';
@@ -2305,11 +2307,40 @@
             });
             window.addEventListener('beforeunload', () => {
                 if (_userId) {
-                    // beforeunload 中异步可能来不及，至少确保 localStorage 是最新的
+                    // 立即写 localStorage
                     try { localStorage.setItem(_cacheKey('feedback'), JSON.stringify(feedback)); } catch(e) {}
                     try { localStorage.setItem(_cacheKey('_fullBackup'), JSON.stringify({classes, feedback, tools, analysisSel, time: Date.now()})); } catch(e) {}
+                    // fetch keepalive: 浏览器保证页面关闭后也会完成请求
+                    _beaconSave();
                 }
             });
+            window.addEventListener('pagehide', () => {
+                // Safari 等浏览器中 pagehide 比 beforeunload 更可靠
+                if (_userId) _beaconSave();
+            });
+            function _beaconSave() {
+                if (!_lastAccessToken || !_userId) return;
+                var body = JSON.stringify([
+                    { user_id: _userId, key: 'feedback', value: feedback, updated_at: new Date().toISOString() },
+                    { user_id: _userId, key: 'classes', value: classes, updated_at: new Date().toISOString() }
+                ]);
+                if (body.length > 60000) {
+                    body = JSON.stringify([
+                        { user_id: _userId, key: 'feedback', value: feedback, updated_at: new Date().toISOString() }
+                    ]);
+                }
+                fetch(SUPABASE_URL + '/rest/v1/data_store?on_conflict=user_id,key', {
+                    method: 'POST',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': 'Bearer ' + _lastAccessToken,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'resolution=merge-duplicates'
+                    },
+                    body: body,
+                    keepalive: true
+                }).catch(function(){});
+            }
 
             // 检查是否已有 Supabase 会话
             try {

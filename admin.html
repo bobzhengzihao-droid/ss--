@@ -345,16 +345,23 @@
         // ========== Data ==========
         async function loadAllData() {
             allTeachers = {};
-            // Use raw fetch with service_role key → bypasses RLS reliably
-            const url = SUPABASE_URL + '/rest/v1/data_store?select=*';
-            const resp = await fetch(url, {
-                headers: {
-                    'apikey': SERVICE_ROLE_KEY,
-                    'Authorization': 'Bearer ' + SERVICE_ROLE_KEY
+            const hdrs = { 'apikey': SERVICE_ROLE_KEY, 'Authorization': 'Bearer ' + SERVICE_ROLE_KEY };
+
+            // 1. Load data_store (bypasses RLS via service_role)
+            const dsResp = await fetch(SUPABASE_URL + '/rest/v1/data_store?select=*', { headers: hdrs });
+            if (!dsResp.ok) { console.error('data_store load error:', dsResp.status); return; }
+            const allRows = await dsResp.json();
+
+            // 2. Load teacher_profiles for name/email lookup
+            let profiles = {};
+            try {
+                const tpResp = await fetch(SUPABASE_URL + '/rest/v1/teacher_profiles?select=user_id,name,is_admin', { headers: hdrs });
+                if (tpResp.ok) {
+                    const tpRows = await tpResp.json();
+                    (tpRows || []).forEach(p => { if (p.user_id) profiles[p.user_id] = p.name || ''; });
                 }
-            });
-            if (!resp.ok) { console.error('Load error:', resp.status); return; }
-            const allRows = await resp.json();
+            } catch(e) { /* non-critical */ }
+
             const userMap = {};
             (allRows || []).forEach(row => {
                 if (!userMap[row.user_id]) userMap[row.user_id] = { id: row.user_id, name: '', email: '', classes: [], feedback: {}, lastActive: '' };
@@ -366,6 +373,12 @@
                 if (row.key === 'classes') { try { u.classes = JSON.parse(typeof row.value === 'string' ? row.value : JSON.stringify(row.value)); } catch(e) {} }
                 if (row.key === 'feedback') { try { u.feedback = JSON.parse(typeof row.value === 'string' ? row.value : JSON.stringify(row.value)); } catch(e) {} }
             });
+
+            // Fill missing names from teacher_profiles
+            Object.values(userMap).forEach(u => {
+                if (!u.name && profiles[u.id]) u.name = profiles[u.id];
+            });
+
             Object.entries(userMap).forEach(([id, u]) => {
                 if (u.classes.length > 0 || Object.keys(u.feedback).length > 0 || u.name) allTeachers[id] = u;
             });

@@ -966,17 +966,35 @@
                     }, { onConflict: 'user_id,key' });
                     if (error) {
                         console.error('[SAVE] Supabase error:', key, error.message);
+                        _showSyncWarning('云端保存失败: ' + error.message);
                     } else {
                         supabaseOk = true;
+                        _hideSyncWarning();
                     }
                 }
             } catch(e) {
                 console.error('[SAVE] Supabase exception:', key, e.message);
+                _showSyncWarning('云端连接失败，数据仅保存在本地');
             }
-            if (!supabaseOk) {
-                console.warn('[SAVE] 云端保存失败，已降级到本地:', key);
-            }
+            // 始终写 localStorage（以防云端失败数据丢失）
             try { localStorage.setItem(_cacheKey(key), JSON.stringify(value)); } catch(e) {}
+            // 也更新全量备份
+            if (key === 'feedback' || key === 'classes') {
+                try { localStorage.setItem(_cacheKey('_fullBackup'), JSON.stringify({classes, feedback, tools, analysisSel, time: Date.now()})); } catch(e) {}
+            }
+        }
+
+        let _syncWarnEl = null;
+        function _showSyncWarning(msg) {
+            if (_syncWarnEl) { _syncWarnEl.textContent = '⚠️ ' + msg; return; }
+            _syncWarnEl = document.createElement('div');
+            _syncWarnEl.id = 'syncWarning';
+            _syncWarnEl.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#fef3c7;color:#92400e;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;z-index:999;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.15);';
+            _syncWarnEl.textContent = '⚠️ ' + msg;
+            document.body.appendChild(_syncWarnEl);
+        }
+        function _hideSyncWarning() {
+            if (_syncWarnEl) { _syncWarnEl.remove(); _syncWarnEl = null; }
         }
 
         async function _loadKey(key) {
@@ -1052,7 +1070,7 @@
         function setEntry(cid,date,entry){feedback[feedbackKey(cid,date)]=entry; saveFeedbackDebounced();}
         let saveFeedbackTimeout;
         function saveFeedbackDebounced(){clearTimeout(saveFeedbackTimeout);saveFeedbackTimeout=setTimeout(()=>{dbSet('feedback',feedback);try{localStorage.setItem(_cacheKey('feedback'),JSON.stringify(feedback));}catch(e){}},300);}
-        async function saveAllDataNow(){await dbSet('classes',classes);await dbSet('feedback',feedback);await dbSet('tools',tools);await dbSet('analysisSel',analysisSel);try{localStorage.setItem(_cacheKey('_fullBackup'),JSON.stringify({classes,feedback,tools,analysisSel,time:Date.now()}));}catch(e){}}
+        async function saveAllDataNow(){await dbSet('classes',classes);await dbSet('feedback',feedback);await dbSet('tools',tools);await dbSet('analysisSel',analysisSel);_hideSyncWarning();try{localStorage.setItem(_cacheKey('_fullBackup'),JSON.stringify({classes,feedback,tools,analysisSel,time:Date.now()}));}catch(e){}}
 
         // ========== 认证 ==========
         window.switchLoginTab = function(tab) {
@@ -1199,31 +1217,41 @@
 
         // 管理员入口 → 独立页面
         async function loadUserData() {
+            // 同时拉云端和本地数据
             let storedClasses = await dbGet('classes');
-            if (!storedClasses) {
-                const backup = localStorage.getItem(_cacheKey('_fullBackup'));
-                if (backup) { try { const data = JSON.parse(backup); if (data.classes && data.classes.length) { classes = data.classes; feedback = data.feedback || {}; tools = data.tools || [...DEFAULT_TOOLS]; analysisSel = data.analysisSel || {}; alert('✅ 已从本地备份自动恢复数据'); } } catch(e) {} }
+            let localClasses = null, localFeedback = null, localTools = null, localAnalysis = null;
+            try {
+                const raw = localStorage.getItem(_cacheKey('_fullBackup'));
+                if (raw) { const bk = JSON.parse(raw); localClasses = bk.classes; localFeedback = bk.feedback; localTools = bk.tools; localAnalysis = bk.analysisSel; }
+                if (!localClasses) { const v = localStorage.getItem(_cacheKey('classes')); if (v) localClasses = JSON.parse(v); }
+                if (!localFeedback) { const v = localStorage.getItem(_cacheKey('feedback')); if (v) localFeedback = JSON.parse(v); }
+                if (!localTools) { const v = localStorage.getItem(_cacheKey('tools')); if (v) localTools = JSON.parse(v); }
+                if (!localAnalysis) { const v = localStorage.getItem(_cacheKey('analysisSel')); if (v) localAnalysis = JSON.parse(v); }
+            } catch(e) {}
+
+            if (!storedClasses && !localClasses) {
+                // 完全没有数据
                 if (!classes || !classes.length) { classes = defaultClasses(); feedback = {}; tools = [...DEFAULT_TOOLS]; analysisSel = {}; await saveAllDataNow(); }
             } else {
-                classes = storedClasses;
-                feedback = (await dbGet('feedback')) || {};
-                // 修复：如果云端 feedback 为空，尝试从本地恢复（防止云端保存失败导致数据丢失）
-                if (!feedback || Object.keys(feedback).length === 0) {
-                    try {
-                        const localFb = localStorage.getItem(_cacheKey('feedback'));
-                        if (localFb) {
-                            const parsed = JSON.parse(localFb);
-                            if (parsed && Object.keys(parsed).length > 0) {
-                                feedback = parsed;
-                                console.log('[DATA] 从本地恢复 feedback');
-                                // 异步补同步回云端
-                                dbSet('feedback', feedback);
-                            }
-                        }
-                    } catch(e) {}
+                // 基础用云端数据，本地数据合并覆盖（本地优先，因为可能包含未同步的最新编辑）
+                classes = storedClasses || localClasses;
+
+                const cloudFeedback = (await dbGet('feedback')) || {};
+                const mergedFb = Object.assign({}, cloudFeedback);
+                if (localFeedback) {
+                    // 本地 feedback 覆盖云端同 key（本地往往更新）
+                    Object.assign(mergedFb, localFeedback);
+                    // 如果本地比云端多出了 key，异步补同步
+                    const localOnlyKeys = Object.keys(localFeedback).filter(k => !(k in cloudFeedback));
+                    if (localOnlyKeys.length > 0) {
+                        console.log('[DATA] 本地发现 ' + localOnlyKeys.length + ' 条未同步反馈，正在补同步...');
+                        dbSet('feedback', mergedFb);
+                    }
                 }
-                tools = (await dbGet('tools')) || [...DEFAULT_TOOLS];
-                analysisSel = (await dbGet('analysisSel')) || {};
+                feedback = mergedFb;
+
+                tools = localTools || (await dbGet('tools')) || [...DEFAULT_TOOLS];
+                analysisSel = localAnalysis || (await dbGet('analysisSel')) || {};
             }
             console.log('[DATA] 所有 feedback keys:', Object.keys(feedback).sort());
             console.log('[DATA] 所有班级:', classes.map(c => c.id + ':' + c.name));

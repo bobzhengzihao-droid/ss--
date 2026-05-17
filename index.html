@@ -432,8 +432,7 @@
             gap: 2px;
             max-width: 260px;
             width: 80%;
-            max-height: 380px;
-            max-height: min(48dvh, 380px);
+            max-height: 360px;
             overflow-y: auto;
             touch-action: none;
             user-select: none;
@@ -468,7 +467,7 @@
         }
         .color-dot:hover { transform: scale(1.15); border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
         .color-dot:active { transform: scale(0.85); opacity: 0.7; }
-        .tool-edit-panel { display: none; flex-direction: column; gap: 6px; max-height: 40vh; overflow-y: auto; }
+        .tool-edit-panel { display: none; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; }
         .tool-edit-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; background: var(--input-bg); padding: 6px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-light); }
         .tool-edit-row input[type="text"] { flex: 1; min-width: 50px; padding: 3px 6px; font-size: 11px; border: 1px solid var(--border); border-radius: var(--input-radius); outline: none; background: var(--card-bg); }
         .tool-edit-row input[type="text"]:focus { border-color: var(--accent); }
@@ -659,7 +658,7 @@
             .table-wrapper {
                 -webkit-overflow-scrolling: touch;
             }
-            .tool-popup { max-width: 92%; padding: 6px; max-height: min(48dvh, 380px); }
+            .tool-popup { max-width: 92%; padding: 6px; max-height: 320px; }
         }
 
         /* ===== 用户菜单 ===== */

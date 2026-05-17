@@ -1243,8 +1243,10 @@
 
         window.changeMyPassword = async function() {
             const p1 = await showPrompt('请输入新密码（至少4位）：', '');
-            if (!p1 || p1.length < 4) { await showConfirm('密码至少4位'); return; }
+            if (p1 === null) return; // 用户取消
+            if (p1.length < 4) { await showConfirm('密码至少4位'); return; }
             const p2 = await showPrompt('请再次输入新密码：', '');
+            if (p2 === null) return;
             if (p1 !== p2) { await showConfirm('两次密码不一致'); return; }
             const { error } = await supabase.auth.updateUser({ password: p1 });
             if (error) { await showConfirm('修改失败：' + error.message); return; }

@@ -1069,7 +1069,14 @@
         function getEntry(cid,date){return feedback[feedbackKey(cid,date)];}
         function setEntry(cid,date,entry){feedback[feedbackKey(cid,date)]=entry; saveFeedbackDebounced();}
         let saveFeedbackTimeout;
-        function saveFeedbackDebounced(){clearTimeout(saveFeedbackTimeout);saveFeedbackTimeout=setTimeout(()=>{dbSet('feedback',feedback);try{localStorage.setItem(_cacheKey('feedback'),JSON.stringify(feedback));}catch(e){}},300);}
+        function saveFeedbackDebounced() {
+            // 立即写 localStorage（防止关页面时 300ms 防抖还没触发导致数据丢失）
+            try { localStorage.setItem(_cacheKey('feedback'), JSON.stringify(feedback)); } catch(e) {}
+            try { localStorage.setItem(_cacheKey('_fullBackup'), JSON.stringify({classes, feedback, tools, analysisSel, time: Date.now()})); } catch(e) {}
+            // 防抖后同步到云端
+            clearTimeout(saveFeedbackTimeout);
+            saveFeedbackTimeout = setTimeout(() => { dbSet('feedback', feedback); }, 300);
+        }
         async function saveAllDataNow(){await dbSet('classes',classes);await dbSet('feedback',feedback);await dbSet('tools',tools);await dbSet('analysisSel',analysisSel);_hideSyncWarning();try{localStorage.setItem(_cacheKey('_fullBackup'),JSON.stringify({classes,feedback,tools,analysisSel,time:Date.now()}));}catch(e){}}
 
         // ========== 认证 ==========
@@ -2289,6 +2296,20 @@
             if (navigator.storage && navigator.storage.persist) {
                 navigator.storage.persist().then(granted => { if (granted) console.log('持久存储已启用'); });
             }
+
+            // 切后台 / 关页面时强制同步到云端
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden && _userId) {
+                    saveAllDataNow();
+                }
+            });
+            window.addEventListener('beforeunload', () => {
+                if (_userId) {
+                    // beforeunload 中异步可能来不及，至少确保 localStorage 是最新的
+                    try { localStorage.setItem(_cacheKey('feedback'), JSON.stringify(feedback)); } catch(e) {}
+                    try { localStorage.setItem(_cacheKey('_fullBackup'), JSON.stringify({classes, feedback, tools, analysisSel, time: Date.now()})); } catch(e) {}
+                }
+            });
 
             // 检查是否已有 Supabase 会话
             try {

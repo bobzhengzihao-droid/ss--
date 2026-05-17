@@ -432,7 +432,8 @@
             gap: 2px;
             max-width: 260px;
             width: 80%;
-            max-height: 48vh;
+            max-height: 380px;
+            max-height: min(48dvh, 380px);
             overflow-y: auto;
             touch-action: none;
             user-select: none;
@@ -658,7 +659,7 @@
             .table-wrapper {
                 -webkit-overflow-scrolling: touch;
             }
-            .tool-popup { max-width: 92%; padding: 6px; }
+            .tool-popup { max-width: 92%; padding: 6px; max-height: min(48dvh, 380px); }
         }
 
         /* ===== 用户菜单 ===== */

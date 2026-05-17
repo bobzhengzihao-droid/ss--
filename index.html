@@ -958,7 +958,8 @@
         async function _saveKey(key, value) {
             let supabaseOk = false;
             try {
-                const { data: { user } } = await supabase.auth.getUser();
+                const { data: { session } } = await supabase.auth.getSession();
+                const user = session && session.user;
                 if (user) {
                     const { error } = await supabase.from('data_store').upsert({
                         user_id: user.id, key: key, value: value,
@@ -1002,7 +1003,8 @@
 
         async function _loadKey(key) {
             try {
-                const { data: { user } } = await supabase.auth.getUser();
+                const { data: { session } } = await supabase.auth.getSession();
+                const user = session && session.user;
                 if (user) {
                     const { data, error } = await supabase.from('data_store')
                         .select('value').eq('user_id', user.id).eq('key', key).maybeSingle();
@@ -1276,7 +1278,8 @@
             // 2. 一次查询拉取全部云端数据（4 次查询 → 1 次）
             let cloudClasses = null, cloudFeedback = null, cloudTools = null, cloudAnalysis = null;
             try {
-                const { data: { user } } = await supabase.auth.getUser();
+                const { data: { session } } = await supabase.auth.getSession();
+                const user = session && session.user;
                 if (user) {
                     const { data: allRows, error } = await supabase.from('data_store')
                         .select('key,value').eq('user_id', user.id);

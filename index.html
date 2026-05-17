@@ -1263,13 +1263,14 @@
             } catch(e) {}
 
             // 1. 如果有本地数据先用本地渲染（秒开），云端异步补全
+            let localRendered = false;
             if (localClasses && localClasses.length) {
                 classes = localClasses;
                 feedback = localFeedback || {};
                 tools = localTools || [...DEFAULT_TOOLS];
                 analysisSel = localAnalysis || {};
-                // 先用本地数据渲染界面
-                try { buildAllViews(); switchView('classes'); } catch(e) {}
+                try { buildAllViews(); } catch(e) {}
+                localRendered = true;
             }
 
             // 2. 一次查询拉取全部云端数据（4 次查询 → 1 次）

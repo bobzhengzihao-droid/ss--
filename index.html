@@ -1246,21 +1246,26 @@
                 classes = storedClasses || localClasses;
 
                 const cloudFeedback = (await dbGet('feedback')) || {};
+                // 以云端为主（云端是各设备同步后的最新版本），本地只补漏
                 const mergedFb = Object.assign({}, cloudFeedback);
                 if (localFeedback) {
-                    // 本地 feedback 覆盖云端同 key（本地往往更新）
-                    Object.assign(mergedFb, localFeedback);
-                    // 如果本地比云端多出了 key，异步补同步
-                    const localOnlyKeys = Object.keys(localFeedback).filter(k => !(k in cloudFeedback));
-                    if (localOnlyKeys.length > 0) {
-                        console.log('[DATA] 本地发现 ' + localOnlyKeys.length + ' 条未同步反馈，正在补同步...');
+                    // 只合并本地有但云端没有的 key（这些是未成功同步的孤数据）
+                    let addedCount = 0;
+                    Object.keys(localFeedback).forEach(k => {
+                        if (!(k in cloudFeedback)) {
+                            mergedFb[k] = localFeedback[k];
+                            addedCount++;
+                        }
+                    });
+                    if (addedCount > 0) {
+                        console.log('[DATA] 本地发现 ' + addedCount + ' 条未同步反馈，已合并并补同步...');
                         dbSet('feedback', mergedFb);
                     }
                 }
                 feedback = mergedFb;
 
-                tools = localTools || (await dbGet('tools')) || [...DEFAULT_TOOLS];
-                analysisSel = localAnalysis || (await dbGet('analysisSel')) || {};
+                tools = (await dbGet('tools')) || localTools || [...DEFAULT_TOOLS];
+                analysisSel = (await dbGet('analysisSel')) || localAnalysis || {};
             }
             console.log('[DATA] 所有 feedback keys:', Object.keys(feedback).sort());
             console.log('[DATA] 所有班级:', classes.map(c => c.id + ':' + c.name));

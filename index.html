@@ -1251,8 +1251,7 @@
 
         // 管理员入口 → 独立页面
         async function loadUserData() {
-            // 同时拉云端和本地数据
-            let storedClasses = await dbGet('classes');
+            // 0. 先读本地数据（毫秒级），马上渲染界面
             let localClasses = null, localFeedback = null, localTools = null, localAnalysis = null;
             try {
                 const raw = localStorage.getItem(_cacheKey('_fullBackup'));
@@ -1263,35 +1262,52 @@
                 if (!localAnalysis) { const v = localStorage.getItem(_cacheKey('analysisSel')); if (v) localAnalysis = JSON.parse(v); }
             } catch(e) {}
 
-            if (!storedClasses && !localClasses) {
-                // 完全没有数据
-                if (!classes || !classes.length) { classes = defaultClasses(); feedback = {}; tools = [...DEFAULT_TOOLS]; analysisSel = {}; await saveAllDataNow(); }
-            } else {
-                // 基础用云端数据，本地数据合并覆盖（本地优先，因为可能包含未同步的最新编辑）
-                classes = storedClasses || localClasses;
+            // 1. 如果有本地数据先用本地渲染（秒开），云端异步补全
+            if (localClasses && localClasses.length) {
+                classes = localClasses;
+                feedback = localFeedback || {};
+                tools = localTools || [...DEFAULT_TOOLS];
+                analysisSel = localAnalysis || {};
+                // 先用本地数据渲染界面
+                try { buildAllViews(); switchView('classes'); } catch(e) {}
+            }
 
-                const cloudFeedback = (await dbGet('feedback')) || {};
-                // 以云端为主（云端是各设备同步后的最新版本），本地只补漏
-                const mergedFb = Object.assign({}, cloudFeedback);
-                if (localFeedback) {
-                    // 只合并本地有但云端没有的 key（这些是未成功同步的孤数据）
-                    let addedCount = 0;
-                    Object.keys(localFeedback).forEach(k => {
-                        if (!(k in cloudFeedback)) {
-                            mergedFb[k] = localFeedback[k];
-                            addedCount++;
-                        }
-                    });
-                    if (addedCount > 0) {
-                        console.log('[DATA] 本地发现 ' + addedCount + ' 条未同步反馈，已合并并补同步...');
-                        dbSet('feedback', mergedFb);
+            // 2. 一次查询拉取全部云端数据（4 次查询 → 1 次）
+            let cloudClasses = null, cloudFeedback = null, cloudTools = null, cloudAnalysis = null;
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    const { data: allRows, error } = await supabase.from('data_store')
+                        .select('key,value').eq('user_id', user.id);
+                    if (!error && allRows) {
+                        allRows.forEach(row => {
+                            if (row.key === 'classes') cloudClasses = row.value;
+                            else if (row.key === 'feedback') cloudFeedback = row.value;
+                            else if (row.key === 'tools') cloudTools = row.value;
+                            else if (row.key === 'analysisSel') cloudAnalysis = row.value;
+                        });
                     }
                 }
-                feedback = mergedFb;
+            } catch(e) { console.warn('[DATA] Cloud fetch failed:', e.message); }
 
-                tools = (await dbGet('tools')) || localTools || [...DEFAULT_TOOLS];
-                analysisSel = (await dbGet('analysisSel')) || localAnalysis || {};
+            // 3. 合并：云端为主，本地补漏
+            if (cloudClasses && cloudClasses.length) classes = cloudClasses;
+            else if (!classes || !classes.length) classes = defaultClasses();
+
+            const mergedFb = Object.assign({}, cloudFeedback || {});
+            if (localFeedback) {
+                let addedCount = 0;
+                Object.keys(localFeedback).forEach(k => {
+                    if (!(k in mergedFb)) { mergedFb[k] = localFeedback[k]; addedCount++; }
+                });
+                if (addedCount > 0) { console.log('[DATA] 本地发现 ' + addedCount + ' 条未同步反馈，已合并并补同步...'); dbSet('feedback', mergedFb); }
             }
+            feedback = mergedFb;
+
+            tools = cloudTools || localTools || [...DEFAULT_TOOLS];
+            analysisSel = cloudAnalysis || localAnalysis || {};
+
+            if (!classes || !classes.length) { classes = defaultClasses(); feedback = {}; tools = [...DEFAULT_TOOLS]; analysisSel = {}; await saveAllDataNow(); }
             console.log('[DATA] 所有 feedback keys:', Object.keys(feedback).sort());
             console.log('[DATA] 所有班级:', classes.map(c => c.id + ':' + c.name));
             currentClassId = classes.length ? classes[0].id : null;

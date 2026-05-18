@@ -209,6 +209,12 @@
         let analysisSelStudent = '';
         let analysisChart = null;
 
+        // Awards state
+        let awardsTeacherId = null;
+        let awardsClassId = null;
+        let awardsRange = 'all'; // 'all' | 'recent10'
+        let awardsResults = null;
+
         // ========== Utilities ==========
         function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
         function naturalSort(a,b) { const re=/(\d+)/g, aP=a.split(re).filter(Boolean), bP=b.split(re).filter(Boolean); for(let i=0;i<Math.max(aP.length,bP.length);i++){const av=aP[i]||'',bv=bP[i]||'',an=parseInt(av,10),bn=parseInt(bv,10); if(!isNaN(an)&&!isNaN(bn)){if(an!==bn)return an-bn;} else if(av!==bv)return av.localeCompare(bv);} return 0; }
@@ -469,11 +475,13 @@
                     <button class="subtab" data-view="teachers" onclick="switchView('teachers')"><i class="iconfont icon-user-group"></i> 教师</button>
                     <button class="subtab" data-view="data" onclick="switchView('data')"><i class="iconfont icon-table"></i> 数据</button>
                     <button class="subtab" data-view="analysis" onclick="switchView('analysis')"><i class="iconfont icon-chart"></i> 分析</button>
+                    <button class="subtab" data-view="awards" onclick="switchView('awards')">🏆 评优</button>
                 </div>
                 <div id="view-dashboard" class="subview active"></div>
                 <div id="view-teachers" class="subview"></div>
                 <div id="view-data" class="subview"></div>
                 <div id="view-analysis" class="subview"></div>
+                <div id="view-awards" class="subview"></div>
             `;
         }
 
@@ -489,6 +497,7 @@
             else if (view === 'teachers') renderTeachers();
             else if (view === 'data') renderDataBrowser();
             else if (view === 'analysis') renderAnalysis();
+            else if (view === 'awards') renderAwards();
             updateExportLabel();
         };
 
@@ -704,6 +713,7 @@
             if (analysisSelStudent && dates.length >= 2) setTimeout(() => refreshAnalysisChart(), 100);
         }
         window.renderAnalysis = renderAnalysis;
+        window.renderAwards = renderAwards;
 
         function buildAnalysisStatTable(cls, dates, columns) {
             if (!analysisSelCols.length) return '<div class="empty-state">请选择至少一个分析板块</div>';
@@ -815,6 +825,244 @@
             });
         };
 
+        // ========== Awards ==========
+        function renderAwards() {
+            awardsResults = null;
+            if (!awardsTeacherId) {
+                var teachers = Object.values(allTeachers).filter(function(u) { return (Array.isArray(u.classes) ? u.classes.length : 0) > 0; });
+                var html = '<div class="card"><div class="card-title">🏆 选择教师</div>';
+                html += teachers.length ? teachers.map(function(u) {
+                    return (Array.isArray(u.classes) ? u.classes : []).map(function(cls) {
+                        return '<div class="t-class-item" onclick="awardsTeacherId=\'' + u.id + '\';awardsClassId=\'' + cls.id + '\';renderAwards()">👤 ' + escapeHtml(u.name || u.email || '未命名') + ' → 📋 ' + escapeHtml(cls.name) + '</div>';
+                    }).join('');
+                }).join('') : '<div class="empty-state">暂无数据</div>';
+                html += '</div>';
+                document.getElementById('view-awards').innerHTML = html; return;
+            }
+            var t = allTeachers[awardsTeacherId];
+            if (!t) { awardsTeacherId = null; renderAwards(); return; }
+            var classes = Array.isArray(t.classes) ? t.classes : [];
+            if (!awardsClassId) {
+                var html = '<div class="breadcrumb"><span onclick="awardsTeacherId=null;awardsClassId=null;renderAwards()">教师列表</span> › ' + escapeHtml(t.name || '未命名') + '</div>';
+                html += '<div class="card"><div class="card-title">选择班级</div>';
+                html += classes.map(function(c) { return '<div class="t-class-item" onclick="awardsClassId=\'' + c.id + '\';renderAwards()">📋 ' + escapeHtml(c.name) + ' — ' + (c.students ? c.students.length : 0) + ' 学生</div>'; }).join('');
+                html += '</div>';
+                document.getElementById('view-awards').innerHTML = html; return;
+            }
+            var cls = classes.find(function(c) { return c.id === awardsClassId; });
+            if (!cls) { awardsClassId = null; renderAwards(); return; }
+
+            // Compute
+            awardsResults = computeAwards(t, cls);
+            var r = awardsResults;
+
+            var html = '<div class="breadcrumb">';
+            html += '<span onclick="awardsTeacherId=null;awardsClassId=null;renderAwards()">教师列表</span> › ';
+            html += '<span onclick="awardsClassId=null;renderAwards()">' + escapeHtml(t.name || '') + '</span> › ';
+            html += escapeHtml(cls.name);
+            html += '</div>';
+
+            // Range selector
+            html += '<div class="card" style="padding:8px 14px;display:flex;align-items:center;gap:10px;font-size:12px;">';
+            html += '<span>课次范围：</span>';
+            html += '<select onchange="awardsRange=this.value;renderAwards()" style="padding:4px 8px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
+            html += '<option value="all" ' + (awardsRange === 'all' ? 'selected' : '') + '>全部课次 (' + r.totalLessons + ')</option>';
+            html += '<option value="recent10" ' + (awardsRange === 'recent10' ? 'selected' : '') + '>最近 10 次</option>';
+            html += '</select>';
+            html += '<span style="color:var(--text-muted)">| 学生 ' + r.studentCount + ' 人</span>';
+            html += '</div>';
+
+            // Overview cards
+            html += '<div class="stat-grid">';
+            html += '<div class="stat-card"><div class="stat-icon" style="background:#f0fdf4">🏅</div><div><div class="stat-value">' + r.fullAttendance.length + '</div><div class="stat-label">全勤学生</div></div></div>';
+            html += '<div class="stat-card"><div class="stat-icon" style="background:#eff6ff">🚀</div><div><div class="stat-value">' + Math.min(3, r.progressStars.length) + '</div><div class="stat-label">进步之星</div></div></div>';
+            html += '<div class="stat-card"><div class="stat-icon" style="background:#fef3c7">📝</div><div><div class="stat-value">' + r.dictationPerfect.length + '</div><div class="stat-label">听写满分达人</div></div></div>';
+            html += '<div class="stat-card"><div class="stat-icon" style="background:#fce7f3">📋</div><div><div class="stat-value">' + r.quizPerfect.length + '</div><div class="stat-label">小测满分达人</div></div></div>';
+            html += '</div>';
+
+            // Full Attendance
+            html += buildAwardCard('🏅 全勤学生（出勤率 100%）', r.fullAttendance, 'attendance', cls);
+            // Progress Stars
+            var top3 = r.progressStars.slice(0, 3);
+            html += buildAwardCard('🚀 进步之星（均分涨幅前三）', top3, 'progress', cls);
+            // Dictation Perfect
+            html += buildAwardCard('📝 听写满分达人', r.dictationPerfect, 'dictation', cls);
+            // Quiz Perfect
+            html += buildAwardCard('📋 小测满分达人', r.quizPerfect, 'quiz', cls);
+            // Xiaoshutong Perfect
+            html += buildAwardCard('📖 小书童满分达人', r.xstPerfect, 'xst', cls);
+
+            document.getElementById('view-awards').innerHTML = html;
+        }
+
+        function buildAwardCard(title, list, type, cls) {
+            var html = '<div class="card"><div class="card-title" style="justify-content:space-between">';
+            html += '<span>' + title + '（' + list.length + ' 人）</span>';
+            html += '<button class="btn btn-sm btn-outline" onclick="exportAward(\'' + type + '\')" style="font-size:10px;padding:3px 10px;"><i class="iconfont icon-download"></i> 导出</button>';
+            html += '</div>';
+            if (!list.length) {
+                html += '<div class="empty-state">暂无数据</div>';
+            } else {
+                html += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+                list.forEach(function(item) {
+                    var badge = '';
+                    if (item.rank === 1) badge = '🥇';
+                    else if (item.rank === 2) badge = '🥈';
+                    else if (item.rank === 3) badge = '🥉';
+                    html += '<div style="background:var(--bg);border-radius:10px;padding:8px 12px;font-size:12px;display:flex;align-items:center;gap:4px;">';
+                    if (badge) html += '<span style="font-size:16px;">' + badge + '</span>';
+                    html += '<span style="font-weight:600;">' + escapeHtml(item.name) + '</span>';
+                    if (item.rate) html += '<span style="color:var(--success);font-weight:600;">' + item.rate + '</span>';
+                    if (item.count) html += '<span style="color:var(--accent);font-weight:600;">' + item.count + '次</span>';
+                    if (item.change) html += '<span style="color:' + (item.change > 0 ? 'var(--success)' : 'var(--danger)') + ';font-weight:600;">' + (item.change > 0 ? '+' : '') + item.change + '%</span>';
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            html += '</div>';
+            return html;
+        }
+
+        function computeAwards(t, cls) {
+            var students = cls.students || [];
+            var columns = cls.columns || [];
+            // Get all fb keys for this class
+            var fb = t.feedback || {};
+            var prefix = cls.id + '|';
+            var allKeys = Object.keys(fb).filter(function(k) { return k.indexOf(prefix) === 0; }).sort(naturalSort);
+            // Apply range filter
+            var keys = awardsRange === 'recent10' ? allKeys.slice(-10) : allKeys;
+            if (!keys.length) return { totalLessons: 0, studentCount: students.length, fullAttendance: [], progressStars: [], dictationPerfect: [], quizPerfect: [], xstPerfect: [] };
+
+            // Find column indices by keyword
+            function findColIdx(entry, keyword) {
+                if (!entry || !entry.dateColumns) return -1;
+                for (var i = 0; i < entry.dateColumns.length; i++) {
+                    if (columnContainsKeyword(entry.dateColumns[i], keyword)) return i;
+                }
+                return -1;
+            }
+
+            // === Full Attendance ===
+            var attendance = {};
+            students.forEach(function(s) { attendance[s] = 0; });
+            keys.forEach(function(k) {
+                var entry = fb[k];
+                var recs = entry && entry.records ? entry.records : (Array.isArray(entry) ? entry : []);
+                students.forEach(function(s) {
+                    var rec = recs.find(function(r) { return r.name === s; });
+                    if (rec && rec.values && rec.values.some(function(v) { return v !== '' && v !== null && v !== undefined; })) {
+                        attendance[s]++;
+                    }
+                });
+            });
+            var fullAttendance = students.filter(function(s) { return attendance[s] === keys.length; }).map(function(s) { return { name: s, rate: '100%' }; });
+
+            // === Progress Stars ===
+            var progressList = [];
+            if (keys.length >= 4) {
+                var half = Math.floor(keys.length / 2);
+                var firstHalf = keys.slice(0, half);
+                var secondHalf = keys.slice(half);
+                students.forEach(function(s) {
+                    function avgScore(ks) {
+                        var sum = 0, cnt = 0;
+                        ks.forEach(function(k) {
+                            var entry = fb[k];
+                            if (!entry) return;
+                            var recs = entry.records || [];
+                            var rec = recs.find(function(r) { return r.name === s; });
+                            if (!rec || !rec.values) return;
+                            entry.dateColumns.forEach(function(col, ci) {
+                                var maxS = extractMaxScore(col);
+                                if (maxS > 0 && rec.values[ci] !== '' && rec.values[ci] !== null) {
+                                    var score = convertToNumber(rec.values[ci], maxS);
+                                    sum += Math.round(score / maxS * 100);
+                                    cnt++;
+                                }
+                            });
+                        });
+                        return cnt > 0 ? Math.round(sum / cnt) : 0;
+                    }
+                    var firstAvg = avgScore(firstHalf);
+                    var secondAvg = avgScore(secondHalf);
+                    if (firstAvg > 0 && secondAvg > 0 && secondAvg > firstAvg) {
+                        progressList.push({ name: s, change: secondAvg - firstAvg, firstAvg: firstAvg, secondAvg: secondAvg });
+                    }
+                });
+            }
+            progressList.sort(function(a, b) { return b.change - a.change; });
+            progressList.forEach(function(p, i) { p.rank = i + 1; });
+
+            // === Perfect Score Categories ===
+            function countPerfect(keyword) {
+                var results = {};
+                students.forEach(function(s) { results[s] = 0; });
+                keys.forEach(function(k) {
+                    var entry = fb[k];
+                    if (!entry || !entry.dateColumns) return;
+                    var ci = findColIdx(entry, keyword);
+                    if (ci === -1) return;
+                    var maxS = extractMaxScore(entry.dateColumns[ci]);
+                    if (maxS <= 0) return;
+                    var recs = entry.records || [];
+                    students.forEach(function(s) {
+                        var rec = recs.find(function(r) { return r.name === s; });
+                        if (!rec || !rec.values || rec.values[ci] === '' || rec.values[ci] === null) return;
+                        var score = convertToNumber(rec.values[ci], maxS);
+                        if (score >= maxS) results[s]++;
+                    });
+                });
+                var list = [];
+                Object.keys(results).forEach(function(name) {
+                    if (results[name] > 0) list.push({ name: name, count: results[name] });
+                });
+                list.sort(function(a, b) { return b.count - a.count; });
+                list.forEach(function(p, i) { p.rank = i + 1; });
+                return list;
+            }
+
+            var dictationPerfect = countPerfect('听写');
+            var quizPerfect = countPerfect('小测');
+            var xstPerfect = countPerfect('小书童');
+
+            return {
+                totalLessons: keys.length,
+                studentCount: students.length,
+                fullAttendance: fullAttendance,
+                progressStars: progressList,
+                dictationPerfect: dictationPerfect,
+                quizPerfect: quizPerfect,
+                xstPerfect: xstPerfect
+            };
+        }
+
+        window.exportAward = function(type) {
+            if (!awardsResults) return;
+            var t = allTeachers[awardsTeacherId];
+            var cls = (Array.isArray(t.classes) ? t.classes : []).find(function(c) { return c.id === awardsClassId; });
+            if (!cls) return;
+            var list, title;
+            if (type === 'attendance') { list = awardsResults.fullAttendance; title = '全勤学生'; }
+            else if (type === 'progress') { list = awardsResults.progressStars.slice(0, 3); title = '进步之星'; }
+            else if (type === 'dictation') { list = awardsResults.dictationPerfect; title = '听写满分达人'; }
+            else if (type === 'quiz') { list = awardsResults.quizPerfect; title = '小测满分达人'; }
+            else if (type === 'xst') { list = awardsResults.xstPerfect; title = '小书童满分达人'; }
+            else return;
+            var rows = [['排名', '姓名'].concat(type === 'attendance' ? ['出勤率'] : (type === 'progress' ? ['前半均分(%)', '后半均分(%)', '涨幅(%)'] : ['满分次数']))];
+            list.forEach(function(item, i) {
+                var row = [String(i + 1), item.name];
+                if (type === 'attendance') row.push(item.rate);
+                else if (type === 'progress') row.push(String(item.firstAvg), String(item.secondAvg), String(item.change));
+                else row.push(String(item.count));
+                rows.push(row);
+            });
+            var ws = XLSX.utils.aoa_to_sheet(rows);
+            var wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(title));
+            XLSX.writeFile(wb, sanitizeSheetName(t.name || '') + '_' + sanitizeSheetName(cls.name) + '_' + title + '_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+        };
+
         // ========== Export ==========
         window.smartExport = function() {
             // Context-aware export: what can we export right now?
@@ -845,6 +1093,8 @@
                 btn.innerHTML = icon + '导出此教师';
             } else if (currentView === 'analysis' && analysisTeacherId && analysisClassId) {
                 btn.innerHTML = icon + '导出此班级';
+            } else if (currentView === 'awards' && awardsTeacherId && awardsClassId) {
+                btn.innerHTML = icon + '导出汇总';
             } else {
                 btn.innerHTML = icon + '导出汇总';
             }
@@ -985,7 +1235,13 @@
                 get analysisSelCols() { return analysisSelCols; },
                 set analysisSelCols(v) { analysisSelCols = v; },
                 get analysisSelStudent() { return analysisSelStudent; },
-                set analysisSelStudent(v) { analysisSelStudent = v; }
+                set analysisSelStudent(v) { analysisSelStudent = v; },
+                get awardsTeacherId() { return awardsTeacherId; },
+                set awardsTeacherId(v) { awardsTeacherId = v; },
+                get awardsClassId() { return awardsClassId; },
+                set awardsClassId(v) { awardsClassId = v; },
+                get awardsRange() { return awardsRange; },
+                set awardsRange(v) { awardsRange = v; }
             };
             Object.defineProperties(window, Object.getOwnPropertyDescriptors(_vars));
         })();

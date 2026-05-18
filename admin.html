@@ -249,7 +249,7 @@
         function showPrompt(msg, defaultVal) {
             return new Promise(resolve => {
                 const overlay = document.createElement('div'); overlay.className = 'custom-dialog-overlay';
-                overlay.innerHTML = `<div class="custom-dialog"><div class="custom-dialog-msg">${escapeHtml(msg)}</div><input class="custom-dialog-input" value="${escapeHtml(defaultVal||'')}"><div class="custom-dialog-btns"><button class="custom-dialog-btn-cancel">取消</button><button class="custom-dialog-btn-ok">确定</button></div></div>`;
+                overlay.innerHTML = `<div class="custom-dialog"><div class="custom-dialog-msg">${escapeHtml(msg)}</div><input class="custom-dialog-input" type="text" autocomplete="off" inputmode="text" value="${escapeHtml(defaultVal||'')}"><div class="custom-dialog-btns"><button class="custom-dialog-btn-cancel">取消</button><button class="custom-dialog-btn-ok">确定</button></div></div>`;
                 const input = overlay.querySelector('.custom-dialog-input');
                 const ok = () => { overlay.remove(); resolve(input.value); };
                 const cancel = () => { overlay.remove(); resolve(null); };
@@ -371,7 +371,25 @@
                         u.name = p.name || ''; u.email = p.email || ''; u.lastActive = p.updated || ''; } catch(e) {}
                 }
                 if (row.key === 'classes') { try { u.classes = JSON.parse(typeof row.value === 'string' ? row.value : JSON.stringify(row.value)); } catch(e) {} }
-                if (row.key === 'feedback') { try { u.feedback = JSON.parse(typeof row.value === 'string' ? row.value : JSON.stringify(row.value)); } catch(e) {} }
+                // 新格式：fb|classId|dateLabel（每课次独立 key）
+                if (row.key && row.key.indexOf('fb|') === 0) {
+                    try {
+                        var fbKey = row.key.substring(3);
+                        var entry = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+                        u.feedback[fbKey] = entry;
+                    } catch(e) {}
+                }
+                // 旧格式：feedback 大 JSON（兼容）
+                if (row.key === 'feedback') {
+                    try {
+                        var legacy = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+                        if (legacy && typeof legacy === 'object' && !Array.isArray(legacy)) {
+                            Object.keys(legacy).forEach(function(k) {
+                                if (!(k in u.feedback)) u.feedback[k] = legacy[k];
+                            });
+                        }
+                    } catch(e) {}
+                }
             });
 
             // Fill missing names from teacher_profiles
@@ -389,13 +407,15 @@
             const t = allTeachers[teacherId];
             if (!t) return;
             const newPwd = await showPrompt('请输入新密码（至少4位）：', '');
-            if (!newPwd || newPwd.length < 4) { alert('密码至少4位'); return; }
+            if (newPwd === null) return;
+            if (newPwd.length < 4) { await showConfirm('密码至少4位'); return; }
             const confirmPwd = await showPrompt('请再次输入新密码：', '');
-            if (newPwd !== confirmPwd) { alert('两次密码不一致'); return; }
+            if (confirmPwd === null) return;
+            if (newPwd !== confirmPwd) { await showConfirm('两次密码不一致'); return; }
             try {
                 await callAuthAdmin('PUT', '/users/' + teacherId, { password: newPwd });
-                alert('✅ 密码已重置，请将新密码告知 ' + (t.name || teacherId));
-            } catch(e) { alert('重置失败：' + e.message); }
+                await showConfirm('✅ 密码已重置，请将新密码告知 ' + (t.name || teacherId));
+            } catch(e) { await showConfirm('重置失败：' + e.message); }
         };
 
         window.deleteTeacherAccount = async function(teacherId) {
@@ -410,9 +430,9 @@
                 await supabase.from('teacher_profiles').delete().eq('user_id', teacherId);
                 delete allTeachers[teacherId];
                 document.getElementById('tdetail-' + teacherId)?.classList.remove('open');
-                alert('✅ 已删除');
+                await showConfirm('✅ 已删除');
                 refresh();
-            } catch(e) { alert('删除失败：' + e.message); }
+            } catch(e) { await showConfirm('删除失败：' + e.message); }
         };
 
         // ========== Render ==========

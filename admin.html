@@ -755,16 +755,23 @@
                 if (!fb || (!fb.records && !Array.isArray(fb))) { html += '<div class="empty-state">该课次无数据</div>'; }
                 else {
                     const records = fb.records || fb; const columns = fb.dateColumns || cls.columns || [];
-                    html += '<div class="table-wrap"><table><thead><tr><th>学生</th>';
-                    columns.forEach(c => html += `<th>${escapeHtml(c)}</th>`);
+                    const tc = cls.tableColors || {};
+                    const hBg = tc.headerBg || '#eff6ff';
+                    const hTxt = tc.headerText || '#1e40af';
+                    const tBorder = tc.border || '#bfdbfe';
+                    const rowEvenBg = tc.rowEven || '#f8fafc';
+                    html += '<div class="table-wrap"><table style="border-collapse:collapse;">';
+                    html += '<thead><tr><th style="background:' + hBg + ';color:' + hTxt + ';border:1px solid ' + tBorder + ';padding:8px 10px;text-align:center;font-weight:600;">学生</th>';
+                    columns.forEach(c => html += '<th style="background:' + hBg + ';color:' + hTxt + ';border:1px solid ' + tBorder + ';padding:8px 10px;text-align:center;font-weight:600;">' + escapeHtml(c) + '</th>');
                     html += '</tr></thead><tbody>';
-                    (cls.students || []).forEach(name => {
+                    (cls.students || []).forEach((name, ri) => {
                         const rec = Array.isArray(records) ? records.find(r => r.name === name) : null;
-                        html += `<tr><td>${escapeHtml(name)}</td>`;
+                        const rowBg = (ri % 2 === 0) ? '' : rowEvenBg;
+                        html += '<tr><td style="border:1px solid ' + tBorder + ';padding:6px 8px;text-align:center;background:' + rowBg + ';">' + escapeHtml(name) + '</td>';
                         columns.forEach((col, ci) => {
                             const val = rec && rec.values ? (rec.values[ci] || '') : '';
                             const bg = rec && rec.colors ? (rec.colors[ci] || '') : '';
-                            html += `<td style="background:${bg}">${escapeHtml(String(val))}</td>`;
+                            html += '<td style="border:1px solid ' + tBorder + ';padding:6px 8px;text-align:center;background:' + (bg || rowBg) + ';">' + escapeHtml(String(val)) + '</td>';
                         });
                         html += '</tr>';
                     });

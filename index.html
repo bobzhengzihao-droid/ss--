@@ -951,7 +951,60 @@
             return { email, name, user: signUpData.user };
         }
 
-        // ========== 数据库封装（Supabase 优先 + localStorage 备份）==========
+        // ========== IndexedDB 封装（替代 localStorage）==========
+        const _idb = (function() {
+            let _db = null;
+            function _open() {
+                if (_db) return Promise.resolve(_db);
+                return new Promise(function(resolve, reject) {
+                    var req = indexedDB.open('FeedbackDB', 1);
+                    req.onupgradeneeded = function() { req.result.createObjectStore('kv'); };
+                    req.onsuccess = function() { _db = req.result; resolve(_db); };
+                    req.onerror = function() { reject(req.error); };
+                });
+            }
+            return {
+                get: async function(key) {
+                    try { var db = await _open(); } catch(e) { return null; }
+                    return new Promise(function(resolve) {
+                        var tx = db.transaction('kv', 'readonly');
+                        var req = tx.objectStore('kv').get(key);
+                        req.onsuccess = function() { resolve(req.result != null ? req.result : null); };
+                        req.onerror = function() { resolve(null); };
+                    });
+                },
+                set: async function(key, value) {
+                    try { var db = await _open(); } catch(e) { return; }
+                    return new Promise(function(resolve) {
+                        var tx = db.transaction('kv', 'readwrite');
+                        tx.objectStore('kv').put(value, key);
+                        tx.oncomplete = function() { resolve(); };
+                        tx.onerror = function() { resolve(); };
+                    });
+                },
+                _migrate: async function() {
+                    if (!localStorage) return;
+                    var keys = [];
+                    for (var i = 0; i < localStorage.length; i++) {
+                        var k = localStorage.key(i);
+                        if (k && k.indexOf('_fb_') === 0) keys.push(k);
+                    }
+                    if (!keys.length) return;
+                    // Check if IDB already has data
+                    var existing = await this.get(keys[0]);
+                    if (existing != null) return; // Already migrated
+                    for (var j = 0; j < keys.length; j++) {
+                        try {
+                            var raw = localStorage.getItem(keys[j]);
+                            if (raw != null) await this.set(keys[j], JSON.parse(raw));
+                        } catch(e) {}
+                    }
+                    console.log('[IDB] 已从 localStorage 迁移 ' + keys.length + ' 条数据');
+                }
+            };
+        })();
+
+        // ========== 数据库封装（Supabase 优先 + IndexedDB 备份）==========
         let _userId = null, _lastAccessToken = null;
         function _cacheKey(k) { return '_fb_' + (_userId || 'anon') + '_' + k; }
 
@@ -979,11 +1032,11 @@
                 console.error('[SAVE] Supabase exception:', key, e.message);
                 _showSyncWarning('云端连接失败，数据仅保存在本地');
             }
-            // 始终写 localStorage（以防云端失败数据丢失）
-            try { localStorage.setItem(_cacheKey(key), JSON.stringify(value)); } catch(e) {}
+            // 始终写 IndexedDB（以防云端失败数据丢失）
+            try { _idb.set(_cacheKey(key), value); } catch(e) {}
             // 也更新全量备份
             if (key === 'feedback' || key === 'classes') {
-                try { localStorage.setItem(_cacheKey('_fullBackup'), JSON.stringify({classes, feedback, tools, analysisSel, time: Date.now()})); } catch(e) {}
+                try { _idb.set(_cacheKey('_fullBackup'), {classes: classes, feedback: feedback, tools: tools, analysisSel: analysisSel, time: Date.now()}); } catch(e) {}
             }
             return supabaseOk;
         }
@@ -1013,9 +1066,9 @@
                 }
             } catch(e) { console.log('[LOAD]', key, '-> Supabase error:', e.message); }
             try {
-                const raw = localStorage.getItem(_cacheKey(key));
-                console.log('[LOAD]', key, '-> localStorage:', raw ? 'found' : 'null');
-                if (raw) return JSON.parse(raw);
+                const raw = await _idb.get(_cacheKey(key));
+                console.log('[LOAD]', key, '-> IndexedDB:', raw ? 'found' : 'null');
+                if (raw) return raw;
             } catch(e) {}
             return undefined;
         }
@@ -1023,7 +1076,7 @@
         async function dbGet(key) { return await _loadKey(key); }
         async function dbSet(key, value) {
             const ok = await _saveKey(key, value);
-            try { localStorage.setItem(_cacheKey(key), JSON.stringify(value)); } catch(e) {}
+            try { await _idb.set(_cacheKey(key), value); } catch(e) {}
             return ok;
         }
 
@@ -1076,9 +1129,9 @@
         function setEntry(cid,date,entry){entry._updatedAt=Date.now();feedback[feedbackKey(cid,date)]=entry; saveFeedbackDebounced();}
         let saveFeedbackTimeout;
         function saveFeedbackDebounced() {
-            // 立即写 localStorage（防止关页面时防抖还没触发导致数据丢失）
-            try { localStorage.setItem(_cacheKey('feedback'), JSON.stringify(feedback)); } catch(e) {}
-            try { localStorage.setItem(_cacheKey('_fullBackup'), JSON.stringify({classes, feedback, tools, analysisSel, time: Date.now()})); } catch(e) {}
+            // 立即写 IndexedDB（防止关页面时防抖还没触发导致数据丢失）
+            _idb.set(_cacheKey('feedback'), feedback).catch(function(){});
+            _idb.set(_cacheKey('_fullBackup'), {classes: classes, feedback: feedback, tools: tools, analysisSel: analysisSel, time: Date.now()}).catch(function(){});
             // 显示同步中
             updateSaveStatus('⏳ 同步中...');
             // 150ms 防抖后同步到云端
@@ -1102,7 +1155,7 @@
             const r1=await dbSet('classes',classes),r2=await dbSet('feedback',feedback),r3=await dbSet('tools',tools),r4=await dbSet('analysisSel',analysisSel);
             const allOk=r1&&r2&&r3&&r4;
             if(allOk){_hideSyncWarning();hideManualSyncBtn();updateSaveStatus('☁️ 已同步至云端');setTimeout(()=>{const el=document.getElementById('saveStatus');if(el&&el.textContent==='☁️ 已同步至云端'){el.textContent='';el.style.color='';}},3000);}
-            try{localStorage.setItem(_cacheKey('_fullBackup'),JSON.stringify({classes,feedback,tools,analysisSel,time:Date.now()}));}catch(e){}
+            try{_idb.set(_cacheKey('_fullBackup'),{classes:classes,feedback:feedback,tools:tools,analysisSel:analysisSel,time:Date.now()});}catch(e){}
             return allOk;
         }
 
@@ -1258,12 +1311,12 @@
             // 0. 先读本地数据（毫秒级），马上渲染界面
             let localClasses = null, localFeedback = null, localTools = null, localAnalysis = null;
             try {
-                const raw = localStorage.getItem(_cacheKey('_fullBackup'));
-                if (raw) { const bk = JSON.parse(raw); localClasses = bk.classes; localFeedback = bk.feedback; localTools = bk.tools; localAnalysis = bk.analysisSel; }
-                if (!localClasses) { const v = localStorage.getItem(_cacheKey('classes')); if (v) localClasses = JSON.parse(v); }
-                if (!localFeedback) { const v = localStorage.getItem(_cacheKey('feedback')); if (v) localFeedback = JSON.parse(v); }
-                if (!localTools) { const v = localStorage.getItem(_cacheKey('tools')); if (v) localTools = JSON.parse(v); }
-                if (!localAnalysis) { const v = localStorage.getItem(_cacheKey('analysisSel')); if (v) localAnalysis = JSON.parse(v); }
+                const bk = await _idb.get(_cacheKey('_fullBackup'));
+                if (bk) { localClasses = bk.classes; localFeedback = bk.feedback; localTools = bk.tools; localAnalysis = bk.analysisSel; }
+                if (!localClasses) { const v = await _idb.get(_cacheKey('classes')); if (v) localClasses = v; }
+                if (!localFeedback) { const v = await _idb.get(_cacheKey('feedback')); if (v) localFeedback = v; }
+                if (!localTools) { const v = await _idb.get(_cacheKey('tools')); if (v) localTools = v; }
+                if (!localAnalysis) { const v = await _idb.get(_cacheKey('analysisSel')); if (v) localAnalysis = v; }
             } catch(e) {}
 
             // 1. 如果有本地数据先用本地渲染（秒开），云端异步补全
@@ -2390,6 +2443,9 @@
             if (navigator.storage && navigator.storage.persist) {
                 navigator.storage.persist().then(granted => { if (granted) console.log('持久存储已启用'); });
             }
+
+            // 迁移 localStorage → IndexedDB（仅首次）
+            _idb._migrate().catch(function(){});
 
             // 切后台 / 关页面时强制同步到云端
             document.addEventListener('visibilitychange', () => {

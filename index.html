@@ -1371,26 +1371,31 @@
                     const { data: allRows, error } = await supabase.from('data_store')
                         .select('key,value').eq('user_id', user.id);
                     if (!error && allRows) {
+                        var fbKeyCount = 0, hasLegacyFeedback = false, legacyEntryCount = 0;
                         cloudFeedback = {};
                         allRows.forEach(row => {
                             if (row.key === 'classes') cloudClasses = row.value;
                             else if (row.key === 'tools') cloudTools = row.value;
                             else if (row.key === 'analysisSel') cloudAnalysis = row.value;
                             else if (row.key && row.key.indexOf('fb|')===0) {
-                                // 拆分格式：fb|classId|dateLabel
-                                var fbKey=row.key.substring(3); // 去掉 'fb|'
-                                cloudFeedback[fbKey]=row.value;
+                                var fbKey=row.key.substring(3);
+                                cloudFeedback[fbKey]=row.value; fbKeyCount++;
                             }
                             else if (row.key === 'feedback') {
-                                // 兼容旧格式：只补漏，不覆盖 fb|* 的新数据
+                                hasLegacyFeedback = true;
                                 var legacy=row.value;
                                 if(legacy && typeof legacy==='object' && !Array.isArray(legacy)){
+                                    legacyEntryCount = Object.keys(legacy).length;
                                     Object.keys(legacy).forEach(function(k){
                                         if(!(k in cloudFeedback))cloudFeedback[k]=legacy[k];
                                     });
                                 }
                             }
                         });
+                        // 新格式数据完整 → 删掉旧 feedback 大 key（省带宽）
+                        if (hasLegacyFeedback && fbKeyCount >= legacyEntryCount && fbKeyCount > 0) {
+                            try { await supabase.from('data_store').delete().eq('user_id', user.id).eq('key', 'feedback'); } catch(e) {}
+                        }
                     }
                 }
             } catch(e) { console.warn('[DATA] Cloud fetch failed:', e.message); }

@@ -292,7 +292,7 @@
             background: #fff !important;
             box-shadow: 0 0 0 3px rgba(37,99,235,0.15) !important;
         }
-        .save-indicator { font-size: 11px; color: var(--success); font-weight: 600; }
+        .save-indicator { font-size: 13px; color: var(--success); font-weight: 600; }
         .empty-state { text-align: center; padding: 30px; color: var(--text-muted); font-size: 13px; }
         .th-input { width: 100%; border: none; background: transparent; font-weight: 600; text-align: center; color: inherit; font-size: inherit; outline: none; padding: 2px; }
         .th-input:focus { background: rgba(255,255,255,0.9); border-radius: 6px; outline: 2px solid var(--accent-light); }
@@ -1140,11 +1140,6 @@
                 const ok = await dbSet('feedback', feedback);
                 if (ok) {
                     updateSaveStatus('☁️ 已同步至云端');
-                    // 3 秒后文字淡出
-                    setTimeout(() => {
-                        const el = document.getElementById('saveStatus');
-                        if (el && el.textContent === '☁️ 已同步至云端') { el.textContent = ''; el.style.color = ''; }
-                    }, 3000);
                 } else {
                     updateSaveStatus('⚠️ 未同步');
                     showManualSyncBtn();
@@ -1154,7 +1149,7 @@
         async function saveAllDataNow(){
             const r1=await dbSet('classes',classes),r2=await dbSet('feedback',feedback),r3=await dbSet('tools',tools),r4=await dbSet('analysisSel',analysisSel);
             const allOk=r1&&r2&&r3&&r4;
-            if(allOk){_hideSyncWarning();hideManualSyncBtn();updateSaveStatus('☁️ 已同步至云端');setTimeout(()=>{const el=document.getElementById('saveStatus');if(el&&el.textContent==='☁️ 已同步至云端'){el.textContent='';el.style.color='';}},3000);}
+            if(allOk){_hideSyncWarning();hideManualSyncBtn();updateSaveStatus('☁️ 已同步至云端');}
             try{_idb.set(_cacheKey('_fullBackup'),{classes:classes,feedback:feedback,tools:tools,analysisSel:analysisSel,time:Date.now()});}catch(e){}
             return allOk;
         }

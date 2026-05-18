@@ -50,6 +50,7 @@
         }
         .sidebar-bottom a:hover { color: var(--accent); }
         .sidebar-bottom a .iconfont { font-size: 16px; }
+        .sidebar-bottom a .icon-settings { font-size: 17px; }
         .admin-badge { margin-left: auto; font-size: 10px; background: var(--bg); color: var(--text-muted); padding: 2px 8px; border-radius: 10px; }
         .main-area { flex: 1; margin-left: var(--sidebar-w); display: flex; flex-direction: column; min-height: 100vh; }
         .topbar {
@@ -592,7 +593,7 @@
                     <div class="mobile-nav" id="mobileNav">
                         <div class="mobile-nav-inner">
                             <a onclick="switchView('dashboard')" class="active" data-mnav="dashboard"><i class="iconfont icon-dashboard"></i>看板</a>
-                            <a onclick="switchView('awards')" data-mnav="awards">🏆荣誉</a>
+                            <a onclick="switchView('awards')" data-mnav="awards"><span class="sidebar-emoji">🏆</span>评优</a>
                             <a onclick="switchView('teachers')" data-mnav="teachers"><i class="iconfont icon-user-group"></i>教师</a>
                             <a onclick="switchView('data')" data-mnav="data"><i class="iconfont icon-table"></i>数据</a>
                         </div>

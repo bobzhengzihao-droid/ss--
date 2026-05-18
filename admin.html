@@ -576,7 +576,7 @@
                             <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()">☰</button>
                             <span class="topbar-title"><i class="iconfont icon-settings"></i> 管理者后台</span>
                             <input class="search-input" id="searchInput" type="text" placeholder="🔍 搜索教师..." oninput="onSearch(this.value)">
-                            <button class="btn btn-sm" onclick="refresh()"><i class="iconfont icon-refresh"></i> 刷新</button>
+                            <button class="btn btn-sm" id="refreshBtn" onclick="refresh()"><i class="iconfont icon-refresh"></i> 刷新</button>
                             <button class="btn btn-sm btn-outline" id="exportBtn" onclick="smartExport()"><i class="iconfont icon-download"></i> 导出</button>
                         </div>
                         <div class="content-area">
@@ -647,9 +647,12 @@
         };
 
         window.refresh = async function() {
+            var btn = document.getElementById('refreshBtn');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="iconfont icon-refresh"></i> 刷新中...'; }
             document.getElementById('searchInput').value = ''; searchQuery = '';
             await loadAllData();
             switchView(currentView);
+            if (btn) { btn.innerHTML = '✅ 已刷新'; setTimeout(function() { btn.innerHTML = '<i class="iconfont icon-refresh"></i> 刷新'; btn.disabled = false; }, 1200); }
         };
 
         window.logout = async function() { await supabase.auth.signOut(); window.location.href = '/'; };

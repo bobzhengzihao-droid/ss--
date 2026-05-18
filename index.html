@@ -1139,7 +1139,7 @@
             saveFeedbackTimeout = setTimeout(async () => {
                 const ok = await dbSet('feedback', feedback);
                 if (ok) {
-                    updateSaveStatus('☁️ 已同步至云端');
+                    updateSaveStatus('☁️ 已同步');
                 } else {
                     updateSaveStatus('⚠️ 未同步');
                     showManualSyncBtn();
@@ -1149,7 +1149,7 @@
         async function saveAllDataNow(){
             const r1=await dbSet('classes',classes),r2=await dbSet('feedback',feedback),r3=await dbSet('tools',tools),r4=await dbSet('analysisSel',analysisSel);
             const allOk=r1&&r2&&r3&&r4;
-            if(allOk){_hideSyncWarning();hideManualSyncBtn();updateSaveStatus('☁️ 已同步至云端');}
+            if(allOk){_hideSyncWarning();hideManualSyncBtn();updateSaveStatus('☁️ 已同步');}
             try{_idb.set(_cacheKey('_fullBackup'),{classes:classes,feedback:feedback,tools:tools,analysisSel:analysisSel,time:Date.now()});}catch(e){}
             return allOk;
         }
@@ -1535,7 +1535,7 @@
         function updateSaveStatus(t){
             const el=document.getElementById('saveStatus');if(!el)return;
             el.textContent=t;el.style.color='';
-            if(t.startsWith('☁️'))el.style.color='#16a34a';
+            if(t.startsWith('☁️'))el.style.color='#64748b';
             else if(t.startsWith('⚠️'))el.style.color='#d97706';
             else if(t.startsWith('⏳'))el.style.color='#6b7280';
         }

@@ -258,6 +258,7 @@
         let supabase;
         let currentUser = null;
         let isAdmin = false;
+        let isSuperAdmin = false;
         let allTeachers = {};
         let searchQuery = '';
         let currentView = 'dashboard';
@@ -395,6 +396,14 @@
                 return;
             }
             await loadAllData();
+            // Init super admin
+            var storedSuper = localStorage.getItem('_fb_super_admin_id');
+            if (storedSuper) {
+                var superStillAdmin = Object.values(allTeachers).some(function(u) { return u.id === storedSuper && u.isAdmin; });
+                if (!superStillAdmin) { localStorage.removeItem('_fb_super_admin_id'); storedSuper = null; }
+            }
+            if (!storedSuper) { localStorage.setItem('_fb_super_admin_id', currentUser.id); storedSuper = currentUser.id; }
+            isSuperAdmin = (storedSuper === currentUser.id);
             renderApp();
             switchView('dashboard');
         }
@@ -621,6 +630,7 @@
         window.onSearch = function(q) { searchQuery = q.toLowerCase(); switchView('teachers'); };
 
         window.toggleAdmin = async function(teacherId) {
+            if (!isSuperAdmin) { await showConfirm('仅超级管理员可管理权限'); return; }
             const t = allTeachers[teacherId];
             if (!t) return;
             const newVal = !t.isAdmin;
@@ -714,7 +724,7 @@
             if (!classes.length) html = '<div class="empty-state">暂无班级</div>';
             html += `<div class="t-actions">
                 <button class="btn btn-sm btn-outline" onclick="event.stopPropagation();resetTeacherPassword('${id}')">🔒 重置密码</button>
-                <button class="btn btn-sm btn-outline" onclick="event.stopPropagation();toggleAdmin('${id}')" style="${t.isAdmin ? 'color:#f59e0b;border-color:#f59e0b;' : ''}">${t.isAdmin ? '👑 取消管理者' : '👑 设为管理者'}</button>
+                ${isSuperAdmin ? '<button class="btn btn-sm btn-outline" onclick="event.stopPropagation();toggleAdmin(\'' + id + '\')" style="' + (t.isAdmin ? 'color:#f59e0b;border-color:#f59e0b;' : '') + '">' + (t.isAdmin ? '👑 取消管理者' : '👑 设为管理者') + '</button>' : ''}
                 <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteTeacherAccount('${id}')">🗑️ 删除账号</button>
             </div>`;
             document.getElementById('tdetail-' + id).innerHTML = html;
@@ -885,7 +895,7 @@
             html += '<div style="display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:13px;">';
             html += '<span style="color:var(--text-muted);">姓名：</span><span style="font-weight:600;">' + escapeHtml(currentUser.user_metadata?.name || currentUser.email || '') + '</span>';
             html += '<span style="color:var(--text-muted);">邮箱：</span><span>' + escapeHtml(currentUser.email || '') + '</span>';
-            html += '<span style="color:var(--text-muted);">角色：</span><span style="font-weight:600;color:var(--accent);">' + (isAdmin ? '管理者 👑' : '教师') + '</span>';
+            html += '<span style="color:var(--text-muted);">角色：</span><span style="font-weight:600;color:var(--accent);">' + (isSuperAdmin ? '超级管理员 👑' : isAdmin ? '管理者' : '教师') + '</span>';
             html += '</div></div>';
             // Change password
             html += '<button class="btn btn-sm btn-outline" onclick="changeMyPassword()" style="margin-bottom:14px;">🔒 修改密码</button>';
@@ -896,7 +906,7 @@
                 var isMe = u.id === currentUser.id;
                 html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-light);font-size:13px;">';
                 html += '<span>' + escapeHtml(u.name || u.email || '') + (isMe ? ' <span style="color:var(--text-muted);font-size:11px;">（你）</span>' : '') + ' 👑</span>';
-                if (!isMe) {
+                if (!isMe && isSuperAdmin) {
                     html += '<button class="btn btn-sm btn-outline" onclick="toggleAdmin(\'' + u.id + '\')" style="font-size:10px;padding:3px 8px;">取消管理者</button>';
                 }
                 html += '</div>';

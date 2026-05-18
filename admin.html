@@ -285,7 +285,7 @@
         let queryCondition = 'perfect'; // 'perfect' | 'greater' | 'marked' | 'custom'
         let queryCustomText = '';
         let queryCustomNum = 0;
-        let queryTerm = 'all';
+        let queryRecent = 'all';
         let queryTeacher = 'all';
         let queryClass = 'all';
         let querySort = 'count_desc'; // 'count_desc' | 'avg_desc' | 'latest_desc'
@@ -1310,23 +1310,10 @@
             Object.values(allTeachers).forEach(function(u) {
                 if (u.name) teacherOpts += '<option value="' + u.id + '" ' + (queryTeacher === u.id ? 'selected' : '') + '>' + escapeHtml(u.name) + '</option>';
             });
-            // Term options
-            var terms = '<option value="all" ' + (queryTerm === 'all' ? 'selected' : '') + '>全部学期</option>';
-            // Collect unique terms from feedback keys
-            var termSet = {};
-            Object.values(allTeachers).forEach(function(u) {
-                Object.keys(u.feedback || {}).forEach(function(k) {
-                    var parts = k.split('|');
-                    if (parts.length >= 2) {
-                        var label = parts.slice(1).join('|');
-                        // Try to extract term: first 2-4 chars might be date pattern
-                        var t = label.replace(/[0-9]/g, '').trim().substring(0, 8) || label;
-                        if (t && t.length <= 15) termSet[t] = true;
-                    }
-                });
-            });
-            Object.keys(termSet).sort().forEach(function(t) {
-                terms += '<option value="' + t + '" ' + (queryTerm === t ? 'selected' : '') + '>' + escapeHtml(t) + '</option>';
+            // Recent N lessons dropdown
+            var recentOpts = '<option value="all" ' + (queryRecent === 'all' ? 'selected' : '') + '>全部课次</option>';
+            [4, 8, 12].forEach(function(n) {
+                recentOpts += '<option value="' + n + '" ' + (queryRecent === String(n) ? 'selected' : '') + '>近 ' + n + ' 次课</option>';
             });
 
             var html = '<div class="card"><div class="card-title">🔍 全局查询</div>';
@@ -1347,8 +1334,8 @@
             if (queryCondition === 'custom') {
                 html += '<input type="text" id="qText" value="' + escapeHtml(queryCustomText) + '" oninput="queryCustomText=this.value" style="width:80px;padding:5px 8px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);" placeholder="文本">';
             }
-            // Term
-            html += '<select id="qTerm" onchange="queryTerm=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">' + terms + '</select>';
+            // Recent
+            html += '<select id="qRecent" onchange="queryRecent=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">' + recentOpts + '</select>';
             // Teacher
             html += '<select id="qTeacher" onchange="queryTeacher=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">' + teacherOpts + '</select>';
             // Class filter
@@ -1404,8 +1391,24 @@
                 var classMap = {};
                 classes.forEach(function(c) { classMap[c.id] = c; });
 
-                // Collect all fb keys
-                Object.keys(fb).forEach(function(k) {
+                // Collect all fb keys, optionally filter to recent N per class
+                var fbKeys = Object.keys(fb);
+                if (queryRecent !== 'all') {
+                    var recentN = parseInt(queryRecent);
+                    var perClass = {};
+                    fbKeys.forEach(function(k) {
+                        var cid = k.split('|')[0];
+                        if (!perClass[cid]) perClass[cid] = [];
+                        perClass[cid].push(k);
+                    });
+                    fbKeys = [];
+                    Object.keys(perClass).forEach(function(cid) {
+                        perClass[cid].sort(naturalSort);
+                        var keys = perClass[cid].slice(-recentN);
+                        fbKeys = fbKeys.concat(keys);
+                    });
+                }
+                fbKeys.forEach(function(k) {
                     var parts = k.split('|');
                     if (parts.length < 2) return;
                     var classId = parts[0];
@@ -1414,9 +1417,6 @@
                     if (!cls) return;
                     // Class type filter
                     if (queryClass !== 'all' && cls.name.indexOf(queryClass) === -1) return;
-
-                    // Term filter
-                    if (queryTerm !== 'all' && dateLabel.indexOf(queryTerm) !== 0) return;
 
                     var entry = fb[k];
                     if (!entry || !entry.dateColumns) return;
@@ -1758,8 +1758,8 @@
                 set queryCustomNum(v) { queryCustomNum = v; },
                 get queryCustomText() { return queryCustomText; },
                 set queryCustomText(v) { queryCustomText = v; },
-                get queryTerm() { return queryTerm; },
-                set queryTerm(v) { queryTerm = v; },
+                get queryRecent() { return queryRecent; },
+                set queryRecent(v) { queryRecent = v; },
                 get queryTeacher() { return queryTeacher; },
                 set queryTeacher(v) { queryTeacher = v; },
                 get queryClass() { return queryClass; },

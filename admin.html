@@ -583,6 +583,7 @@
                             <div id="view-dashboard" class="subview active"></div>
                             <div id="view-awards" class="subview"></div>
                             <div id="view-teachers" class="subview"></div>
+                            <div id="view-data" class="subview"></div>
                             <div id="view-analysis" class="subview"></div>
                             <div id="view-query" class="subview"></div>
                             <div id="view-profile" class="subview"></div>
@@ -617,6 +618,7 @@
             if (analysisChart) { analysisChart.destroy(); analysisChart = null; }
             if (view === 'dashboard') renderDashboard();
             else if (view === 'teachers') renderTeachers();
+            else if (view === 'data') renderDataBrowser();
             else if (view === 'analysis') renderAnalysis();
             else if (view === 'awards') renderAwards();
             else if (view === 'query') renderQuery();

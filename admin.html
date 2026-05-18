@@ -161,6 +161,24 @@
         .check-group label { display: flex; align-items: center; gap: 3px; cursor: pointer; }
         .chart-container { height: 260px; margin-top: 12px; }
         .stat-table-wrap { overflow-x: auto; margin-top: 8px; }
+
+        /* Icon Font */
+        @font-face { font-family: "iconfont"; src: url(data:font/truetype;charset=utf-8;base64,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) format('truetype'); }
+        .iconfont { font-family: "iconfont" !important; font-size: 16px; font-style: normal; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        .icon-settings:before { content: "\e623"; }
+        .icon-table:before { content: "\e936"; }
+        .icon-chart:before { content: "\e677"; }
+        .icon-time:before { content: "\e619"; }
+        .icon-logout:before { content: "\e605"; }
+        .icon-download:before { content: "\e607"; }
+        .icon-arrow-left:before { content: "\e858"; }
+        .icon-user-group:before { content: "\e878"; }
+        .icon-dashboard:before { content: "\e64f"; }
+        .icon-refresh:before { content: "\e650"; }
+        .stat-icon .iconfont { font-size: 20px; }
+        .subtab .iconfont { font-size: 13px; }
+        .btn .iconfont { font-size: 13px; }
+        .card-title .iconfont { font-size: 16px; }
     </style>
 </head>
 <body>
@@ -291,7 +309,7 @@
             isAdmin = profile && profile.is_admin;
             if (!isAdmin) {
                 const name = currentUser.user_metadata?.name || currentUser.email;
-                document.getElementById('app').innerHTML = `<div class="login-gate"><div class="msg">❌ 仅管理员可访问<br><br>当前账号：${escapeHtml(name)}<br><br><button class="btn btn-sm btn-outline" onclick="logout()">🚪 退出登录</button>   <a href="/">← 返回主站</a></div></div>`;
+                document.getElementById('app').innerHTML = `<div class="login-gate"><div class="msg">❌ 仅管理员可访问<br><br>当前账号：${escapeHtml(name)}<br><br><button class="btn btn-sm btn-outline" onclick="logout()"><i class="iconfont icon-logout"></i> 退出登录</button>   <a href="/"><i class="iconfont icon-arrow-left"></i> 返回主站</a></div></div>`;
                 return;
             }
             await loadAllData();
@@ -303,7 +321,7 @@
         function showLoginForm() {
             document.getElementById('app').innerHTML = `
                 <div class="login-box">
-                    <h2>⚙ 管理者登录</h2>
+                    <h2><i class="iconfont icon-settings"></i> 管理者登录</h2>
                     <input class="login-input" id="adminLoginName" placeholder="姓名" autocomplete="username">
                     <input class="login-input" id="adminLoginPwd" type="password" placeholder="密码" autocomplete="current-password">
                     <button class="login-btn" id="adminLoginBtn" onclick="handleAdminLogin()">登 录</button>
@@ -439,18 +457,18 @@
         function renderApp() {
             document.getElementById('app').innerHTML = `
                 <div class="topbar">
-                    <button class="btn btn-sm btn-outline" onclick="window.location.href='/'">← 返回</button>
-                    <span class="topbar-title">⚙ 管理者后台</span>
+                    <button class="btn btn-sm btn-outline" onclick="window.location.href='/'"><i class="iconfont icon-arrow-left"></i> 返回</button>
+                    <span class="topbar-title"><i class="iconfont icon-settings"></i> 管理者后台</span>
                     <input class="search-input" id="searchInput" type="text" placeholder="🔍 搜索教师..." oninput="onSearch(this.value)">
-                    <button class="btn btn-sm" onclick="refresh()">🔄 刷新</button>
-                    <button class="btn btn-sm btn-outline" id="exportBtn" onclick="smartExport()">📊 导出</button>
-                    <button class="btn btn-sm" style="background:#1e293b" onclick="logout()">🚪 退出</button>
+                    <button class="btn btn-sm" onclick="refresh()"><i class="iconfont icon-refresh"></i> 刷新</button>
+                    <button class="btn btn-sm btn-outline" id="exportBtn" onclick="smartExport()"><i class="iconfont icon-download"></i> 导出</button>
+                    <button class="btn btn-sm" style="background:#1e293b" onclick="logout()"><i class="iconfont icon-logout"></i> 退出</button>
                 </div>
                 <div class="subtabs">
-                    <button class="subtab active" data-view="dashboard" onclick="switchView('dashboard')">📊 概览</button>
-                    <button class="subtab" data-view="teachers" onclick="switchView('teachers')">👥 教师</button>
-                    <button class="subtab" data-view="data" onclick="switchView('data')">📋 数据</button>
-                    <button class="subtab" data-view="analysis" onclick="switchView('analysis')">📈 分析</button>
+                    <button class="subtab active" data-view="dashboard" onclick="switchView('dashboard')"><i class="iconfont icon-dashboard"></i> 概览</button>
+                    <button class="subtab" data-view="teachers" onclick="switchView('teachers')"><i class="iconfont icon-user-group"></i> 教师</button>
+                    <button class="subtab" data-view="data" onclick="switchView('data')"><i class="iconfont icon-table"></i> 数据</button>
+                    <button class="subtab" data-view="analysis" onclick="switchView('analysis')"><i class="iconfont icon-chart"></i> 分析</button>
                 </div>
                 <div id="view-dashboard" class="subview active"></div>
                 <div id="view-teachers" class="subview"></div>
@@ -493,12 +511,12 @@
             const recent = teachers.filter(t => t.lastActive).sort((a,b) => b.lastActive.localeCompare(a.lastActive)).slice(0, 8);
             let html = `
                 <div class="stat-grid">
-                    <div class="stat-card"><div class="stat-icon" style="background:#eff6ff">👥</div><div><div class="stat-value">${teachers.length}</div><div class="stat-label">教师总数</div></div></div>
+                    <div class="stat-card"><div class="stat-icon" style="background:#eff6ff"><i class="iconfont icon-user-group"></i></div><div><div class="stat-value">${teachers.length}</div><div class="stat-label">教师总数</div></div></div>
                     <div class="stat-card"><div class="stat-icon" style="background:#f0fdf4">🏫</div><div><div class="stat-value">${totalClasses}</div><div class="stat-label">班级总数</div></div></div>
                     <div class="stat-card"><div class="stat-icon" style="background:#fef3c7">🧑‍🎓</div><div><div class="stat-value">${totalStudents}</div><div class="stat-label">学生总数</div></div></div>
-                    <div class="stat-card"><div class="stat-icon" style="background:#fce7f3">📝</div><div><div class="stat-value">${totalLessons}</div><div class="stat-label">反馈课次</div></div></div>
+                    <div class="stat-card"><div class="stat-icon" style="background:#fce7f3"><i class="iconfont icon-table"></i></div><div><div class="stat-value">${totalLessons}</div><div class="stat-label">反馈课次</div></div></div>
                 </div>
-                <div class="card"><div class="card-title">🕐 最近活跃</div>
+                <div class="card"><div class="card-title"><i class="iconfont icon-time"></i> 最近活跃</div>
                     ${recent.length ? recent.map(t => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-light);font-size:12px"><span>${escapeHtml(t.name || t.email || '未命名')}</span><span style="color:var(--text-muted)">${t.lastActive ? new Date(t.lastActive).toLocaleString('zh-CN') : '-'}</span></div>`).join('') : '<div class="empty-state">暂无数据</div>'}
                 </div>
             `;
@@ -818,16 +836,17 @@
         function updateExportLabel() {
             const btn = document.getElementById('exportBtn');
             if (!btn) return;
+            const icon = '<i class="iconfont icon-download"></i> ';
             if (currentView === 'data' && currentTeacherId && currentClassId && currentLesson) {
-                btn.textContent = '📊 导出此课次';
+                btn.innerHTML = icon + '导出此课次';
             } else if (currentView === 'data' && currentTeacherId && currentClassId) {
-                btn.textContent = '📊 导出此班级';
+                btn.innerHTML = icon + '导出此班级';
             } else if (currentView === 'data' && currentTeacherId) {
-                btn.textContent = '📊 导出此教师';
+                btn.innerHTML = icon + '导出此教师';
             } else if (currentView === 'analysis' && analysisTeacherId && analysisClassId) {
-                btn.textContent = '📊 导出此班级';
+                btn.innerHTML = icon + '导出此班级';
             } else {
-                btn.textContent = '📊 导出汇总';
+                btn.innerHTML = icon + '导出汇总';
             }
         }
 

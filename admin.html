@@ -1081,7 +1081,9 @@
             html += '<span>课次范围：</span>';
             html += '<select onchange="awardsRange=this.value;renderAwards()" style="padding:4px 8px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
             html += '<option value="all" ' + (awardsRange === 'all' ? 'selected' : '') + '>全部课次 (' + r.totalLessons + ')</option>';
-            html += '<option value="recent10" ' + (awardsRange === 'recent10' ? 'selected' : '') + '>最近 10 次</option>';
+            [4, 8, 12].forEach(function(n) {
+                html += '<option value="recent' + n + '" ' + (awardsRange === 'recent' + n ? 'selected' : '') + '>近 ' + n + ' 次课</option>';
+            });
             html += '</select>';
             html += '<span style="color:var(--text-muted)">| 学生 ' + r.studentCount + ' 人</span>';
             html += '</div>';
@@ -1145,7 +1147,11 @@
             var prefix = cls.id + '|';
             var allKeys = Object.keys(fb).filter(function(k) { return k.indexOf(prefix) === 0; }).sort(naturalSort);
             // Apply range filter
-            var keys = awardsRange === 'recent10' ? allKeys.slice(-10) : allKeys;
+            var keys = allKeys;
+            if (awardsRange.indexOf('recent') === 0) {
+                var n = parseInt(awardsRange.replace('recent', ''));
+                keys = allKeys.slice(-n);
+            }
             if (!keys.length) return { totalLessons: 0, studentCount: students.length, fullAttendance: [], progressStars: [], dictationPerfect: [], quizPerfect: [], xstPerfect: [] };
 
             // Find column indices by keyword

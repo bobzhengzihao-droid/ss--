@@ -1106,7 +1106,7 @@
             // Quiz Perfect
             html += buildAwardCard('📋 小测满分达人', r.quizPerfect, 'quiz', cls);
             // Xiaoshutong Perfect
-            html += buildAwardCard('📖 小书童满分达人', r.xstPerfect, 'xst', cls);
+            html += buildAwardCard('📖 小书童口语达人', r.xstPerfect, 'xst', cls);
 
             document.getElementById('view-awards').innerHTML = html;
         }
@@ -1245,9 +1245,39 @@
                 return list;
             }
 
+            function countByThreshold(keyword, threshold) {
+                var results = {};
+                students.forEach(function(s) { results[s] = 0; });
+                keys.forEach(function(k) {
+                    var entry = fb[k];
+                    if (!entry || !entry.dateColumns) return;
+                    var ci = findColIdx(entry, keyword);
+                    if (ci === -1) return;
+                    var maxS = extractMaxScore(entry.dateColumns[ci]) || 100;
+                    var recs = entry.records || [];
+                    students.forEach(function(s) {
+                        var rec = recs.find(function(r) { return r.name === s; });
+                        if (!rec || !rec.values || rec.values[ci] === '' || rec.values[ci] === null) return;
+                        var score = convertToNumber(rec.values[ci], maxS);
+                        if (score >= threshold) results[s]++;
+                    });
+                });
+                var list = [];
+                Object.keys(results).forEach(function(name) {
+                    if (results[name] > 0) list.push({ name: name, count: results[name] });
+                });
+                list.sort(function(a, b) { return b.count - a.count; });
+                var topN = Math.max(1, Math.ceil(list.length * 0.3));
+                list = list.slice(0, topN);
+                list.forEach(function(p, i) { p.rank = i + 1; });
+                return list;
+            }
+
             var dictationPerfect = countPerfect('听写');
             var quizPerfect = countPerfect('小测');
-            var xstPerfect = countPerfect('小书童');
+            // 小书童口语达人：A班 ≥80，B班 ≥90
+            var xstThreshold = cls.name.indexOf('A') >= 0 ? 80 : (cls.name.indexOf('B') >= 0 ? 90 : 100);
+            var xstPerfect = countByThreshold('小书童', xstThreshold);
 
             return {
                 totalLessons: keys.length,
@@ -1270,7 +1300,7 @@
             else if (type === 'progress') { list = awardsResults.progressStars.slice(0, 3); title = '进步之星'; }
             else if (type === 'dictation') { list = awardsResults.dictationPerfect; title = '听写满分达人'; }
             else if (type === 'quiz') { list = awardsResults.quizPerfect; title = '小测满分达人'; }
-            else if (type === 'xst') { list = awardsResults.xstPerfect; title = '小书童满分达人'; }
+            else if (type === 'xst') { list = awardsResults.xstPerfect; title = '小书童口语达人'; }
             else return;
             var rows = [['排名', '姓名'].concat(type === 'attendance' ? ['出勤率'] : (type === 'progress' ? ['前半均分(%)', '后半均分(%)', '涨幅(%)'] : ['满分次数']))];
             list.forEach(function(item, i) {

@@ -556,6 +556,7 @@
                         <div class="sidebar-logo"><i class="iconfont icon-settings"></i> 反馈表管理</div>
                         <div class="sidebar-nav">${sidebarHTML}</div>
                         <div class="sidebar-bottom">
+                            <a onclick="switchView('profile')" data-nav="profile"><i class="iconfont icon-settings"></i> 个人中心</a>
                             <a onclick="logout()"><i class="iconfont icon-logout"></i> 退出登录</a>
                         </div>
                     </div>
@@ -574,6 +575,7 @@
                             <div id="view-data" class="subview"></div>
                             <div id="view-analysis" class="subview"></div>
                             <div id="view-query" class="subview"></div>
+                            <div id="view-profile" class="subview"></div>
                         </div>
                     </div>
                     <div class="mobile-nav" id="mobileNav">
@@ -610,6 +612,7 @@
             else if (view === 'analysis') renderAnalysis();
             else if (view === 'awards') renderAwards();
             else if (view === 'query') renderQuery();
+            else if (view === 'profile') renderProfile();
             updateExportLabel();
             // Close mobile sidebar
             if (window.innerWidth <= 768) { var s = document.getElementById('sidebar'); if (s) s.classList.remove('open'); var o = document.getElementById('sidebarOverlay'); if (o) o.classList.remove('open'); }
@@ -871,6 +874,49 @@
         window.renderAwards = renderAwards;
         window.renderQuery = renderQuery;
         window.runQuery = runQuery;
+
+        function renderProfile() {
+            var admins = [];
+            Object.values(allTeachers).forEach(function(u) { if (u.isAdmin) admins.push(u); });
+            var html = '<div class="card"><div class="card-title"><i class="iconfont icon-settings"></i> 个人中心</div>';
+            // Account info
+            html += '<div style="background:var(--bg);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:10px;">';
+            html += '<div style="font-size:13px;color:var(--text-muted);margin-bottom:6px;">账号信息</div>';
+            html += '<div style="display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:13px;">';
+            html += '<span style="color:var(--text-muted);">姓名：</span><span style="font-weight:600;">' + escapeHtml(currentUser.user_metadata?.name || currentUser.email || '') + '</span>';
+            html += '<span style="color:var(--text-muted);">邮箱：</span><span>' + escapeHtml(currentUser.email || '') + '</span>';
+            html += '<span style="color:var(--text-muted);">角色：</span><span style="font-weight:600;color:var(--accent);">' + (isAdmin ? '管理者 👑' : '教师') + '</span>';
+            html += '</div></div>';
+            // Change password
+            html += '<button class="btn btn-sm btn-outline" onclick="changeMyPassword()" style="margin-bottom:14px;">🔒 修改密码</button>';
+            // Admin list
+            html += '<div style="background:var(--bg);border-radius:var(--radius-sm);padding:14px 16px;">';
+            html += '<div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">管理权限（共 ' + admins.length + ' 位管理者）</div>';
+            admins.forEach(function(u) {
+                var isMe = u.id === currentUser.id;
+                html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-light);font-size:13px;">';
+                html += '<span>' + escapeHtml(u.name || u.email || '') + (isMe ? ' <span style="color:var(--text-muted);font-size:11px;">（你）</span>' : '') + ' 👑</span>';
+                if (!isMe) {
+                    html += '<button class="btn btn-sm btn-outline" onclick="toggleAdmin(\'' + u.id + '\')" style="font-size:10px;padding:3px 8px;">取消管理者</button>';
+                }
+                html += '</div>';
+            });
+            if (!admins.length) html += '<div class="empty-state">暂无管理者</div>';
+            html += '</div></div>';
+            document.getElementById('view-profile').innerHTML = html;
+        }
+
+        window.changeMyPassword = async function() {
+            var p1 = await showPrompt('请输入新密码（至少4位）：', '');
+            if (p1 === null) return;
+            if (p1.length < 4) { await showConfirm('密码至少4位'); return; }
+            var p2 = await showPrompt('请再次输入新密码：', '');
+            if (p2 === null) return;
+            if (p1 !== p2) { await showConfirm('两次密码不一致'); return; }
+            var { error } = await supabase.auth.updateUser({ password: p1 });
+            if (error) { await showConfirm('修改失败：' + error.message); return; }
+            await showConfirm('密码已修改，下次登录请使用新密码');
+        };
 
         function buildAnalysisStatTable(cls, dates, columns) {
             if (!analysisSelCols.length) return '<div class="empty-state">请选择至少一个分析板块</div>';

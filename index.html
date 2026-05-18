@@ -1152,9 +1152,9 @@
             updateSaveStatus('⏳ 同步中...');
             // 150ms 防抖后同步脏 key 到云端（每个 key 单独上传，2.5KB 而非全量）
             clearTimeout(saveFeedbackTimeout);
-            var dirtySnapshot={};Object.keys(_dirtyKeys).forEach(function(k){dirtySnapshot[k]=true;});
-            _dirtyKeys={};
             saveFeedbackTimeout = setTimeout(async () => {
+                var dirtySnapshot={};Object.keys(_dirtyKeys).forEach(function(k){dirtySnapshot[k]=true;});
+                _dirtyKeys={};
                 var allOk=true;
                 var keys=Object.keys(dirtySnapshot);
                 for(var i=0;i<keys.length;i++){

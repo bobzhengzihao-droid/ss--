@@ -10,18 +10,86 @@
     <style>
         :root {
             --primary: #1e293b; --accent: #2563eb; --accent-light: #93c5fd;
-            --bg: #f8fafc; --card-bg: #ffffff; --text: #1e293b; --text-light: #64748b;
+            --bg: #f5f7fa; --card-bg: #ffffff; --text: #1e293b; --text-light: #64748b;
             --text-muted: #94a3b8; --border: #e2e8f0; --border-light: #f1f5f9;
             --shadow: 0 1px 3px rgba(0,0,0,0.04); --shadow-md: 0 4px 6px rgba(0,0,0,0.05);
             --radius: 14px; --radius-sm: 10px; --btn-radius: 9999px;
             --danger: #ef4444; --success: #10b981; --warning: #f59e0b;
             --table-header-bg: #eff6ff; --table-header-text: #1e40af; --table-border: #bfdbfe;
+            --sidebar-w: 220px; --sidebar-bg: #001529; --sidebar-text: rgba(255,255,255,0.65); --sidebar-active: #2563eb;
         }
         * { margin:0; padding:0; box-sizing:border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
-            background: var(--bg); color: var(--text); max-width: 960px; margin: 0 auto;
-            padding: 8px 12px 40px; min-height: 100vh;
+            background: var(--bg); color: var(--text); min-height: 100vh;
+        }
+        /* ===== Layout ===== */
+        .app-layout { display: flex; min-height: 100vh; }
+        .sidebar {
+            width: var(--sidebar-w); min-width: var(--sidebar-w); background: var(--sidebar-bg);
+            display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0;
+            z-index: 100; transition: transform 0.25s ease;
+        }
+        .sidebar-logo { padding: 18px 16px; font-size: 15px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .sidebar-logo .iconfont { font-size: 20px; }
+        .sidebar-nav { flex: 1; padding: 8px 0; overflow-y: auto; }
+        .sidebar-nav a {
+            display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: var(--sidebar-text);
+            text-decoration: none; font-size: 13px; font-weight: 500; transition: all 0.15s; cursor: pointer;
+            border-left: 3px solid transparent;
+        }
+        .sidebar-nav a:hover { color: #fff; background: rgba(255,255,255,0.04); }
+        .sidebar-nav a.active { color: #fff; background: rgba(37,99,235,0.25); border-left-color: var(--sidebar-active); }
+        .sidebar-nav a .iconfont { font-size: 16px; }
+        .sidebar-bottom { padding: 8px 0; border-top: 1px solid rgba(255,255,255,0.08); }
+        .sidebar-bottom a {
+            display: flex; align-items: center; gap: 10px; padding: 9px 20px; color: var(--sidebar-text);
+            text-decoration: none; font-size: 12px; cursor: pointer; transition: all 0.15s;
+        }
+        .sidebar-bottom a:hover { color: #fff; }
+        .sidebar-bottom a .iconfont { font-size: 16px; }
+        .admin-badge { margin-left: auto; font-size: 10px; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); padding: 2px 8px; border-radius: 10px; }
+        .main-area { flex: 1; margin-left: var(--sidebar-w); display: flex; flex-direction: column; min-height: 100vh; }
+        .topbar {
+            display: flex; align-items: center; gap: 10px; padding: 10px 18px; background: var(--card-bg);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04); position: sticky; top: 0; z-index: 50; flex-wrap: wrap;
+        }
+        .topbar-title { font-weight: 700; font-size: 14px; white-space: nowrap; display: none; }
+        .search-input {
+            flex: 1; min-width: 120px; padding: 7px 12px; border-radius: var(--btn-radius);
+            border: 1.5px solid var(--border); font-size: 12px; background: var(--bg); outline: none;
+        }
+        .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        .hamburger { display: none; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text); padding: 4px; }
+        .content-area { flex: 1; padding: 14px 18px 20px; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 99; }
+        /* Mobile bottom nav */
+        .mobile-nav {
+            display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--card-bg);
+            box-shadow: 0 -1px 6px rgba(0,0,0,0.06); z-index: 90; padding: 4px 0 env(safe-area-inset-bottom, 0);
+        }
+        .mobile-nav-inner { display: flex; }
+        .mobile-nav a {
+            flex: 1; text-align: center; padding: 6px 2px 4px; color: var(--text-muted); text-decoration: none;
+            font-size: 10px; font-weight: 500; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer;
+        }
+        .mobile-nav a .iconfont { font-size: 18px; }
+        .mobile-nav a.active { color: var(--accent); }
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            .main-area { margin-left: 0; }
+            .hamburger { display: block; }
+            .topbar-title { display: block; }
+            .topbar .btn { padding: 5px 10px; font-size: 11px; }
+            .topbar .search-input { font-size: 11px; padding: 5px 8px; }
+            .content-area { padding: 8px 8px 70px; }
+            .mobile-nav { display: block; }
+            .sidebar-bottom { display: none; }
+        }
+        @media (min-width: 769px) {
+            .sidebar-overlay.open { display: none; }
         }
         .login-gate {
             display: flex; align-items: center; justify-content: center; min-height: 70vh;
@@ -31,11 +99,6 @@
         .login-gate .msg a { color: var(--accent); text-decoration: none; font-weight: 600; }
         .login-gate .msg .err { color: var(--danger); font-size: 13px; }
 
-        .topbar {
-            display: flex; align-items: center; gap: 8px; padding: 10px 14px;
-            background: var(--card-bg); border-radius: var(--radius);
-            box-shadow: var(--shadow-md); margin-bottom: 10px; flex-wrap: wrap;
-        }
         .topbar-title { font-weight: 700; font-size: 15px; white-space: nowrap; }
         .search-input {
             flex: 1; min-width: 100px; padding: 7px 12px; border-radius: var(--btn-radius);
@@ -376,13 +439,13 @@
             if (!dsResp.ok) { console.error('data_store load error:', dsResp.status); return; }
             const allRows = await dsResp.json();
 
-            // 2. Load teacher_profiles for name/email lookup
+            // 2. Load teacher_profiles for name/email lookup + admin status
             let profiles = {};
             try {
                 const tpResp = await fetch(SUPABASE_URL + '/rest/v1/teacher_profiles?select=user_id,name,is_admin', { headers: hdrs });
                 if (tpResp.ok) {
                     const tpRows = await tpResp.json();
-                    (tpRows || []).forEach(p => { if (p.user_id) profiles[p.user_id] = p.name || ''; });
+                    (tpRows || []).forEach(p => { if (p.user_id) profiles[p.user_id] = { name: p.name || '', isAdmin: !!p.is_admin }; });
                 }
             } catch(e) { /* non-critical */ }
 
@@ -416,9 +479,13 @@
                 }
             });
 
-            // Fill missing names from teacher_profiles
+            // Fill missing names from teacher_profiles + admin status
             Object.values(userMap).forEach(u => {
-                if (!u.name && profiles[u.id]) u.name = profiles[u.id];
+                var p = profiles[u.id];
+                if (p) {
+                    if (!u.name) u.name = p.name;
+                    u.isAdmin = p.isAdmin;
+                }
             });
 
             Object.entries(userMap).forEach(([id, u]) => {
@@ -461,36 +528,66 @@
 
         // ========== Render ==========
         function renderApp() {
+            var sidebarHTML = '';
+            sidebarHTML += '<a onclick="switchView(\'dashboard\')" class="active" data-nav="dashboard"><i class="iconfont icon-dashboard"></i> 概览</a>';
+            sidebarHTML += '<a onclick="switchView(\'awards\')" data-nav="awards">🏆 评优</a>';
+            sidebarHTML += '<a onclick="switchView(\'teachers\')" data-nav="teachers"><i class="iconfont icon-user-group"></i> 教师</a>';
+            sidebarHTML += '<a onclick="switchView(\'data\')" data-nav="data"><i class="iconfont icon-table"></i> 数据</a>';
+            sidebarHTML += '<a onclick="switchView(\'analysis\')" data-nav="analysis"><i class="iconfont icon-chart"></i> 分析</a>';
+
             document.getElementById('app').innerHTML = `
-                <div class="topbar">
-                    <button class="btn btn-sm btn-outline" onclick="window.location.href='/'"><i class="iconfont icon-arrow-left"></i> 返回</button>
-                    <span class="topbar-title"><i class="iconfont icon-settings"></i> 管理者后台</span>
-                    <input class="search-input" id="searchInput" type="text" placeholder="🔍 搜索教师..." oninput="onSearch(this.value)">
-                    <button class="btn btn-sm" onclick="refresh()"><i class="iconfont icon-refresh"></i> 刷新</button>
-                    <button class="btn btn-sm btn-outline" id="exportBtn" onclick="smartExport()"><i class="iconfont icon-download"></i> 导出</button>
-                    <button class="btn btn-sm" style="background:#1e293b" onclick="logout()"><i class="iconfont icon-logout"></i> 退出</button>
+                <div class="app-layout">
+                    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+                    <div class="sidebar" id="sidebar">
+                        <div class="sidebar-logo"><i class="iconfont icon-settings"></i> 反馈表管理</div>
+                        <div class="sidebar-nav">${sidebarHTML}</div>
+                        <div class="sidebar-bottom">
+                            <a onclick="smartExport()"><i class="iconfont icon-download"></i> 导出汇总 <span id="adminCountBadge" class="admin-badge" style="display:none"></span></a>
+                            <a onclick="logout()"><i class="iconfont icon-logout"></i> 退出登录</a>
+                        </div>
+                    </div>
+                    <div class="main-area">
+                        <div class="topbar">
+                            <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()">☰</button>
+                            <span class="topbar-title"><i class="iconfont icon-settings"></i> 管理者后台</span>
+                            <input class="search-input" id="searchInput" type="text" placeholder="🔍 搜索教师..." oninput="onSearch(this.value)">
+                            <button class="btn btn-sm" onclick="refresh()"><i class="iconfont icon-refresh"></i> 刷新</button>
+                            <button class="btn btn-sm btn-outline" id="exportBtn" onclick="smartExport()"><i class="iconfont icon-download"></i> 导出</button>
+                        </div>
+                        <div class="content-area">
+                            <div id="view-dashboard" class="subview active"></div>
+                            <div id="view-awards" class="subview"></div>
+                            <div id="view-teachers" class="subview"></div>
+                            <div id="view-data" class="subview"></div>
+                            <div id="view-analysis" class="subview"></div>
+                        </div>
+                    </div>
+                    <div class="mobile-nav" id="mobileNav">
+                        <div class="mobile-nav-inner">
+                            <a onclick="switchView('dashboard')" class="active" data-mnav="dashboard"><i class="iconfont icon-dashboard"></i>看板</a>
+                            <a onclick="switchView('awards')" data-mnav="awards">🏆荣誉</a>
+                            <a onclick="switchView('teachers')" data-mnav="teachers"><i class="iconfont icon-user-group"></i>教师</a>
+                            <a onclick="switchView('data')" data-mnav="data"><i class="iconfont icon-table"></i>数据</a>
+                        </div>
+                    </div>
                 </div>
-                <div class="subtabs">
-                    <button class="subtab active" data-view="dashboard" onclick="switchView('dashboard')"><i class="iconfont icon-dashboard"></i> 概览</button>
-                    <button class="subtab" data-view="teachers" onclick="switchView('teachers')"><i class="iconfont icon-user-group"></i> 教师</button>
-                    <button class="subtab" data-view="data" onclick="switchView('data')"><i class="iconfont icon-table"></i> 数据</button>
-                    <button class="subtab" data-view="analysis" onclick="switchView('analysis')"><i class="iconfont icon-chart"></i> 分析</button>
-                    <button class="subtab" data-view="awards" onclick="switchView('awards')">🏆 评优</button>
-                </div>
-                <div id="view-dashboard" class="subview active"></div>
-                <div id="view-teachers" class="subview"></div>
-                <div id="view-data" class="subview"></div>
-                <div id="view-analysis" class="subview"></div>
-                <div id="view-awards" class="subview"></div>
             `;
         }
 
         window.switchView = function(view) {
             currentView = view;
-            document.querySelectorAll('.subtab').forEach(t => t.classList.remove('active'));
-            document.querySelector(`.subtab[data-view="${view}"]`)?.classList.add('active');
-            document.querySelectorAll('.subview').forEach(v => v.classList.remove('active'));
-            document.getElementById('view-' + view)?.classList.add('active');
+            // Sidebar nav
+            document.querySelectorAll('.sidebar-nav a').forEach(function(a) { a.classList.remove('active'); });
+            var sideLink = document.querySelector('.sidebar-nav a[data-nav="' + view + '"]');
+            if (sideLink) sideLink.classList.add('active');
+            // Mobile nav
+            document.querySelectorAll('.mobile-nav a').forEach(function(a) { a.classList.remove('active'); });
+            var mLink = document.querySelector('.mobile-nav a[data-mnav="' + view + '"]');
+            if (mLink) mLink.classList.add('active');
+            // Subview
+            document.querySelectorAll('.subview').forEach(function(v) { v.classList.remove('active'); });
+            var sv = document.getElementById('view-' + view);
+            if (sv) sv.classList.add('active');
             if (activeChart) { activeChart.destroy(); activeChart = null; }
             if (analysisChart) { analysisChart.destroy(); analysisChart = null; }
             if (view === 'dashboard') renderDashboard();
@@ -499,9 +596,26 @@
             else if (view === 'analysis') renderAnalysis();
             else if (view === 'awards') renderAwards();
             updateExportLabel();
+            // Close mobile sidebar
+            if (window.innerWidth <= 768) { var s = document.getElementById('sidebar'); if (s) s.classList.remove('open'); var o = document.getElementById('sidebarOverlay'); if (o) o.classList.remove('open'); }
         };
 
         window.onSearch = function(q) { searchQuery = q.toLowerCase(); if (currentView === 'teachers') renderTeachers(); };
+
+        window.toggleAdmin = async function(teacherId) {
+            const t = allTeachers[teacherId];
+            if (!t) return;
+            const newVal = !t.isAdmin;
+            const confirmed = await showConfirm(newVal ? '确定将「' + (t.name || teacherId) + '」设为管理者？\n\n设置后该老师登录 admin.html 即可访问管理面板。' : '确定取消「' + (t.name || teacherId) + '」的管理者权限？');
+            if (!confirmed) return;
+            try {
+                const hdrs = { 'apikey': SERVICE_ROLE_KEY, 'Authorization': 'Bearer ' + SERVICE_ROLE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+                await fetch(SUPABASE_URL + '/rest/v1/teacher_profiles?user_id=eq.' + teacherId, { method: 'PATCH', headers: hdrs, body: JSON.stringify({ is_admin: newVal }) });
+                t.isAdmin = newVal;
+                await showConfirm(newVal ? '✅ 已设为管理者' : '✅ 已取消管理者权限');
+                refresh();
+            } catch(e) { await showConfirm('操作失败：' + e.message); }
+        };
 
         window.refresh = async function() {
             document.getElementById('searchInput').value = ''; searchQuery = '';
@@ -510,6 +624,15 @@
         };
 
         window.logout = async function() { await supabase.auth.signOut(); window.location.href = '/'; };
+
+        window.toggleSidebar = function() {
+            var s = document.getElementById('sidebar');
+            var o = document.getElementById('sidebarOverlay');
+            if (!s || !o) return;
+            var isOpen = s.classList.contains('open');
+            if (isOpen) { s.classList.remove('open'); o.classList.remove('open'); }
+            else { s.classList.add('open'); o.classList.add('open'); }
+        };
 
         // ========== Dashboard ==========
         function renderDashboard() {
@@ -573,6 +696,7 @@
             if (!classes.length) html = '<div class="empty-state">暂无班级</div>';
             html += `<div class="t-actions">
                 <button class="btn btn-sm btn-outline" onclick="event.stopPropagation();resetTeacherPassword('${id}')">🔒 重置密码</button>
+                <button class="btn btn-sm btn-outline" onclick="event.stopPropagation();toggleAdmin('${id}')" style="${t.isAdmin ? 'color:#f59e0b;border-color:#f59e0b;' : ''}">${t.isAdmin ? '👑 取消管理者' : '👑 设为管理者'}</button>
                 <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteTeacherAccount('${id}')">🗑️ 删除账号</button>
             </div>`;
             document.getElementById('tdetail-' + id).innerHTML = html;

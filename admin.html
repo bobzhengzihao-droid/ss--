@@ -557,7 +557,6 @@
             sidebarHTML += '<a onclick="switchView(\'dashboard\')" class="active" data-nav="dashboard"><i class="iconfont icon-dashboard"></i> 概览</a>';
             sidebarHTML += '<a onclick="switchView(\'awards\')" data-nav="awards"><span class="sidebar-emoji">🏆</span> 评优</a>';
             sidebarHTML += '<a onclick="switchView(\'teachers\')" data-nav="teachers"><i class="iconfont icon-user-group"></i> 教师</a>';
-            sidebarHTML += '<a onclick="switchView(\'data\')" data-nav="data"><i class="iconfont icon-table"></i> 数据</a>';
             sidebarHTML += '<a onclick="switchView(\'analysis\')" data-nav="analysis"><i class="iconfont icon-chart"></i> 分析</a>';
             sidebarHTML += '<a onclick="switchView(\'query\')" data-nav="query"><span class="sidebar-emoji">🔍</span> 查询</a>';
 
@@ -584,7 +583,6 @@
                             <div id="view-dashboard" class="subview active"></div>
                             <div id="view-awards" class="subview"></div>
                             <div id="view-teachers" class="subview"></div>
-                            <div id="view-data" class="subview"></div>
                             <div id="view-analysis" class="subview"></div>
                             <div id="view-query" class="subview"></div>
                             <div id="view-profile" class="subview"></div>
@@ -595,7 +593,6 @@
                             <a onclick="switchView('dashboard')" class="active" data-mnav="dashboard"><i class="iconfont icon-dashboard"></i>看板</a>
                             <a onclick="switchView('awards')" data-mnav="awards"><span class="sidebar-emoji">🏆</span>评优</a>
                             <a onclick="switchView('teachers')" data-mnav="teachers"><i class="iconfont icon-user-group"></i>教师</a>
-                            <a onclick="switchView('data')" data-mnav="data"><i class="iconfont icon-table"></i>数据</a>
                         </div>
                     </div>
                 </div>
@@ -620,7 +617,6 @@
             if (analysisChart) { analysisChart.destroy(); analysisChart = null; }
             if (view === 'dashboard') renderDashboard();
             else if (view === 'teachers') renderTeachers();
-            else if (view === 'data') renderDataBrowser();
             else if (view === 'analysis') renderAnalysis();
             else if (view === 'awards') renderAwards();
             else if (view === 'query') renderQuery();
@@ -1592,13 +1588,7 @@
             const btn = document.getElementById('exportBtn');
             if (!btn) return;
             const icon = '<i class="iconfont icon-download"></i> ';
-            if (currentView === 'data' && currentTeacherId && currentClassId && currentLesson) {
-                btn.innerHTML = icon + '导出此课次';
-            } else if (currentView === 'data' && currentTeacherId && currentClassId) {
-                btn.innerHTML = icon + '导出此班级';
-            } else if (currentView === 'data' && currentTeacherId) {
-                btn.innerHTML = icon + '导出此教师';
-            } else if (currentView === 'analysis' && analysisTeacherId && analysisClassId) {
+            if (currentView === 'analysis' && analysisTeacherId && analysisClassId) {
                 btn.innerHTML = icon + '导出此班级';
             } else if (currentView === 'awards' && awardsTeacherId && awardsClassId) {
                 btn.innerHTML = icon + '导出汇总';

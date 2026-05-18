@@ -556,7 +556,6 @@
                         <div class="sidebar-logo"><i class="iconfont icon-settings"></i> 反馈表管理</div>
                         <div class="sidebar-nav">${sidebarHTML}</div>
                         <div class="sidebar-bottom">
-                            <a onclick="smartExport()"><i class="iconfont icon-download"></i> 导出汇总 <span id="adminCountBadge" class="admin-badge" style="display:none"></span></a>
                             <a onclick="logout()"><i class="iconfont icon-logout"></i> 退出登录</a>
                         </div>
                     </div>
@@ -616,7 +615,7 @@
             if (window.innerWidth <= 768) { var s = document.getElementById('sidebar'); if (s) s.classList.remove('open'); var o = document.getElementById('sidebarOverlay'); if (o) o.classList.remove('open'); }
         };
 
-        window.onSearch = function(q) { searchQuery = q.toLowerCase(); if (currentView === 'teachers') renderTeachers(); };
+        window.onSearch = function(q) { searchQuery = q.toLowerCase(); switchView('teachers'); };
 
         window.toggleAdmin = async function(teacherId) {
             const t = allTeachers[teacherId];

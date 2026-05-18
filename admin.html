@@ -1224,10 +1224,16 @@
         // ========== Query Engine ==========
         function renderQuery() {
             var subjects = ['听写', '小测', '小书童', '笔记', '语音作业', '出勤', '自学资料'];
-            var conditions = [
+            var scoredSubs = ['听写', '小测', '小书童'];
+            var isScored = scoredSubs.indexOf(querySubject) >= 0;
+            var conditions = isScored ? [
                 { value: 'perfect', label: '等于满分' },
                 { value: 'greater', label: '大于 X 分' },
-                { value: 'marked', label: '标记 A+/A++/✅/已完成' },
+                { value: 'marked', label: '标记 A+/A++' },
+                { value: 'custom', label: '等于指定文本' }
+            ] : [
+                { value: 'perfect', label: '已完成（✅/✓）' },
+                { value: 'marked', label: 'A+ / A++' },
                 { value: 'custom', label: '等于指定文本' }
             ];
             var sorts = [
@@ -1268,7 +1274,7 @@
             // Filter bar
             html += '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;">';
             // Subject
-            html += '<select id="qSubject" onchange="querySubject=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
+            html += '<select id="qSubject" onchange="querySubject=this.value;queryCondition=\'perfect\';renderQuery()" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
             subjects.forEach(function(s) { html += '<option value="' + s + '" ' + (querySubject === s ? 'selected' : '') + '>' + s + '</option>'; });
             html += '</select>';
             // Condition
@@ -1353,7 +1359,7 @@
                     for (var ci = 0; ci < entry.dateColumns.length; ci++) {
                         if (columnContainsKeyword(entry.dateColumns[ci], subject)) {
                             colIdx = ci;
-                            maxScore = extractMaxScore(entry.dateColumns[ci]) || 100;
+                            maxScore = extractMaxScore(entry.dateColumns[ci]);
                             break;
                         }
                     }
@@ -1369,10 +1375,12 @@
                         var score = convertToNumber(val, maxScore);
 
                         if (condition === 'perfect') {
-                            // Equal to maxScore
+                            // Scored column only: value equals maxScore
                             if (maxScore > 0 && score >= maxScore) matched = true;
+                            // Non-scored column (✅ marks): treat as "已完成"
+                            if (maxScore === 0 && (strVal === '✅' || strVal === '已完成' || strVal === '✓' || strVal === '✔' || strVal === 'A+' || strVal === 'A++')) matched = true;
                         } else if (condition === 'greater') {
-                            if (score > customNum) matched = true;
+                            if (maxScore > 0 && score > customNum) matched = true;
                         } else if (condition === 'marked') {
                             if (strVal === 'A+' || strVal === 'A++' || strVal === '✅' || strVal === '已完成' || strVal === '✓' || strVal === '✔') matched = true;
                         } else if (condition === 'custom') {

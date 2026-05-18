@@ -1382,10 +1382,12 @@
                                 cloudFeedback[fbKey]=row.value;
                             }
                             else if (row.key === 'feedback') {
-                                // 兼容旧格式：整个大 JSON
+                                // 兼容旧格式：只补漏，不覆盖 fb|* 的新数据
                                 var legacy=row.value;
                                 if(legacy && typeof legacy==='object' && !Array.isArray(legacy)){
-                                    Object.assign(cloudFeedback,legacy);
+                                    Object.keys(legacy).forEach(function(k){
+                                        if(!(k in cloudFeedback))cloudFeedback[k]=legacy[k];
+                                    });
                                 }
                             }
                         });

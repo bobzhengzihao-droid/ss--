@@ -287,6 +287,7 @@
         let queryCustomNum = 0;
         let queryTerm = 'all';
         let queryTeacher = 'all';
+        let queryClass = 'all';
         let querySort = 'count_desc'; // 'count_desc' | 'avg_desc' | 'latest_desc'
         let queryLimit = '50';
         let queryResults = null;
@@ -1350,6 +1351,12 @@
             html += '<select id="qTerm" onchange="queryTerm=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">' + terms + '</select>';
             // Teacher
             html += '<select id="qTeacher" onchange="queryTeacher=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">' + teacherOpts + '</select>';
+            // Class filter
+            html += '<select id="qClass" onchange="queryClass=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
+            html += '<option value="all" ' + (queryClass === 'all' ? 'selected' : '') + '>全部班级</option>';
+            html += '<option value="A" ' + (queryClass === 'A' ? 'selected' : '') + '>A 班</option>';
+            html += '<option value="B" ' + (queryClass === 'B' ? 'selected' : '') + '>B 班</option>';
+            html += '</select>';
             // Sort
             html += '<select id="qSort" onchange="querySort=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
             sorts.forEach(function(s) { html += '<option value="' + s.value + '" ' + (querySort === s.value ? 'selected' : '') + '>' + s.label + '</option>'; });
@@ -1405,6 +1412,8 @@
                     var dateLabel = parts.slice(1).join('|');
                     var cls = classMap[classId];
                     if (!cls) return;
+                    // Class type filter
+                    if (queryClass !== 'all' && cls.name.indexOf(queryClass) === -1) return;
 
                     // Term filter
                     if (queryTerm !== 'all' && dateLabel.indexOf(queryTerm) !== 0) return;
@@ -1753,6 +1762,8 @@
                 set queryTerm(v) { queryTerm = v; },
                 get queryTeacher() { return queryTeacher; },
                 set queryTeacher(v) { queryTeacher = v; },
+                get queryClass() { return queryClass; },
+                set queryClass(v) { queryClass = v; },
                 get querySort() { return querySort; },
                 set querySort(v) { querySort = v; },
                 get queryLimit() { return queryLimit; },

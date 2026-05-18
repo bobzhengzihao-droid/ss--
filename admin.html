@@ -42,13 +42,14 @@
         .sidebar-nav a:hover { color: var(--accent); background: #eff6ff; }
         .sidebar-nav a.active { color: var(--accent); background: #eff6ff; border-left-color: var(--sidebar-active); font-weight: 600; }
         .sidebar-nav a .iconfont { font-size: 16px; }
+        .sidebar-emoji { display: inline-block; width: 16px; text-align: center; font-size: 14px; }
         .sidebar-bottom { padding: 8px 0; border-top: 1px solid var(--border-light); }
         .sidebar-bottom a {
             display: flex; align-items: center; gap: 10px; padding: 9px 20px; color: var(--sidebar-text);
             text-decoration: none; font-size: 13px; cursor: pointer; transition: all 0.15s;
         }
         .sidebar-bottom a:hover { color: var(--accent); }
-        .sidebar-bottom a .iconfont { font-size: 14px; }
+        .sidebar-bottom a .iconfont { font-size: 16px; }
         .admin-badge { margin-left: auto; font-size: 10px; background: var(--bg); color: var(--text-muted); padding: 2px 8px; border-radius: 10px; }
         .main-area { flex: 1; margin-left: var(--sidebar-w); display: flex; flex-direction: column; min-height: 100vh; }
         .topbar {
@@ -553,11 +554,11 @@
         function renderApp() {
             var sidebarHTML = '';
             sidebarHTML += '<a onclick="switchView(\'dashboard\')" class="active" data-nav="dashboard"><i class="iconfont icon-dashboard"></i> 概览</a>';
-            sidebarHTML += '<a onclick="switchView(\'awards\')" data-nav="awards">🏆 评优</a>';
+            sidebarHTML += '<a onclick="switchView(\'awards\')" data-nav="awards"><span class="sidebar-emoji">🏆</span> 评优</a>';
             sidebarHTML += '<a onclick="switchView(\'teachers\')" data-nav="teachers"><i class="iconfont icon-user-group"></i> 教师</a>';
             sidebarHTML += '<a onclick="switchView(\'data\')" data-nav="data"><i class="iconfont icon-table"></i> 数据</a>';
             sidebarHTML += '<a onclick="switchView(\'analysis\')" data-nav="analysis"><i class="iconfont icon-chart"></i> 分析</a>';
-            sidebarHTML += '<a onclick="switchView(\'query\')" data-nav="query">🔍 查询</a>';
+            sidebarHTML += '<a onclick="switchView(\'query\')" data-nav="query"><span class="sidebar-emoji">🔍</span> 查询</a>';
 
             document.getElementById('app').innerHTML = `
                 <div class="app-layout">
@@ -1297,8 +1298,7 @@
             ];
             var sorts = [
                 { value: 'count_desc', label: '按次数降序' },
-                { value: 'avg_desc', label: '按均分降序' },
-                { value: 'latest_desc', label: '按最新得分降序' }
+                { value: 'avg_desc', label: '按均分降序' }
             ];
             var limits = [
                 { value: '10', label: 'TOP 10' },
@@ -1487,8 +1487,6 @@
             // Sort
             if (querySort === 'avg_desc') {
                 results.sort(function(a, b) { return b.avgScore - a.avgScore || b.count - a.count; });
-            } else if (querySort === 'latest_desc') {
-                results.sort(function(a, b) { return b.latestDate.localeCompare(a.latestDate) || b.latestScore - a.latestScore; });
             } else {
                 // count_desc
                 results.sort(function(a, b) { return b.count - a.count || b.avgScore - a.avgScore; });

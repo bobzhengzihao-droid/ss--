@@ -1238,9 +1238,6 @@
                     if (results[name] > 0) list.push({ name: name, count: results[name] });
                 });
                 list.sort(function(a, b) { return b.count - a.count; });
-                // 取前 30%，至少 1 人
-                var topN = Math.max(3, Math.ceil(list.length * 0.3));
-                list = list.slice(0, topN);
                 list.forEach(function(p, i) { p.rank = i + 1; });
                 return list;
             }
@@ -1268,8 +1265,6 @@
                     if (results[name] > 0) list.push({ name: name, count: results[name] });
                 });
                 list.sort(function(a, b) { return b.count - a.count; });
-                var topN = Math.max(3, Math.ceil(list.length * 0.3));
-                list = list.slice(0, topN);
                 list.forEach(function(p, i) { p.rank = i + 1; });
                 return list;
             }

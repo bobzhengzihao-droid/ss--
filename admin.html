@@ -1253,7 +1253,8 @@
                     if (!entry || !entry.dateColumns) return;
                     var ci = findColIdx(entry, keyword);
                     if (ci === -1) return;
-                    var maxS = extractMaxScore(entry.dateColumns[ci]) || 100;
+                    var maxS = extractMaxScore(entry.dateColumns[ci]);
+                    if (maxS <= 0) return; // 非配分列（如✅标记），不参与阈值比较
                     var recs = entry.records || [];
                     students.forEach(function(s) {
                         var rec = recs.find(function(r) { return r.name === s; });

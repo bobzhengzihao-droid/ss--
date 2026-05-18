@@ -279,6 +279,18 @@
         let awardsRange = 'all'; // 'all' | 'recent10'
         let awardsResults = null;
 
+        // Query state
+        let querySubject = '听写';
+        let queryCondition = 'perfect'; // 'perfect' | 'greater' | 'marked' | 'custom'
+        let queryCustomText = '';
+        let queryCustomNum = 0;
+        let queryTerm = 'all';
+        let queryTeacher = 'all';
+        let querySort = 'count_desc'; // 'count_desc' | 'avg_desc' | 'latest_desc'
+        let queryLimit = '50';
+        let queryResults = null;
+        let queryLoading = false;
+
         // ========== Utilities ==========
         function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
         function naturalSort(a,b) { const re=/(\d+)/g, aP=a.split(re).filter(Boolean), bP=b.split(re).filter(Boolean); for(let i=0;i<Math.max(aP.length,bP.length);i++){const av=aP[i]||'',bv=bP[i]||'',an=parseInt(av,10),bn=parseInt(bv,10); if(!isNaN(an)&&!isNaN(bn)){if(an!==bn)return an-bn;} else if(av!==bv)return av.localeCompare(bv);} return 0; }
@@ -535,6 +547,7 @@
             sidebarHTML += '<a onclick="switchView(\'teachers\')" data-nav="teachers"><i class="iconfont icon-user-group"></i> 教师</a>';
             sidebarHTML += '<a onclick="switchView(\'data\')" data-nav="data"><i class="iconfont icon-table"></i> 数据</a>';
             sidebarHTML += '<a onclick="switchView(\'analysis\')" data-nav="analysis"><i class="iconfont icon-chart"></i> 分析</a>';
+            sidebarHTML += '<a onclick="switchView(\'query\')" data-nav="query">🔍 查询</a>';
 
             document.getElementById('app').innerHTML = `
                 <div class="app-layout">
@@ -561,6 +574,7 @@
                             <div id="view-teachers" class="subview"></div>
                             <div id="view-data" class="subview"></div>
                             <div id="view-analysis" class="subview"></div>
+                            <div id="view-query" class="subview"></div>
                         </div>
                     </div>
                     <div class="mobile-nav" id="mobileNav">
@@ -596,6 +610,7 @@
             else if (view === 'data') renderDataBrowser();
             else if (view === 'analysis') renderAnalysis();
             else if (view === 'awards') renderAwards();
+            else if (view === 'query') renderQuery();
             updateExportLabel();
             // Close mobile sidebar
             if (window.innerWidth <= 768) { var s = document.getElementById('sidebar'); if (s) s.classList.remove('open'); var o = document.getElementById('sidebarOverlay'); if (o) o.classList.remove('open'); }
@@ -848,6 +863,8 @@
         }
         window.renderAnalysis = renderAnalysis;
         window.renderAwards = renderAwards;
+        window.renderQuery = renderQuery;
+        window.runQuery = runQuery;
 
         function buildAnalysisStatTable(cls, dates, columns) {
             if (!analysisSelCols.length) return '<div class="empty-state">请选择至少一个分析板块</div>';
@@ -1197,6 +1214,269 @@
             XLSX.writeFile(wb, sanitizeSheetName(t.name || '') + '_' + sanitizeSheetName(cls.name) + '_' + title + '_' + new Date().toISOString().slice(0, 10) + '.xlsx');
         };
 
+        // ========== Query Engine ==========
+        function renderQuery() {
+            if (queryChart) { queryChart.destroy(); queryChart = null; }
+            var subjects = ['听写', '小测', '小书童', '笔记', '语音作业', '出勤', '自学资料'];
+            var conditions = [
+                { value: 'perfect', label: '等于满分' },
+                { value: 'greater', label: '大于 X 分' },
+                { value: 'marked', label: '标记 A+/A++/✅/已完成' },
+                { value: 'custom', label: '等于指定文本' }
+            ];
+            var sorts = [
+                { value: 'count_desc', label: '按次数降序' },
+                { value: 'avg_desc', label: '按均分降序' },
+                { value: 'latest_desc', label: '按最新得分降序' }
+            ];
+            var limits = [
+                { value: '10', label: 'TOP 10' },
+                { value: '50', label: 'TOP 50' },
+                { value: 'all', label: '全部' }
+            ];
+            // Teacher list for filter
+            var teacherOpts = '<option value="all">全部教师</option>';
+            Object.values(allTeachers).forEach(function(u) {
+                if (u.name) teacherOpts += '<option value="' + u.id + '" ' + (queryTeacher === u.id ? 'selected' : '') + '>' + escapeHtml(u.name) + '</option>';
+            });
+            // Term options
+            var terms = '<option value="all" ' + (queryTerm === 'all' ? 'selected' : '') + '>全部学期</option>';
+            // Collect unique terms from feedback keys
+            var termSet = {};
+            Object.values(allTeachers).forEach(function(u) {
+                Object.keys(u.feedback || {}).forEach(function(k) {
+                    var parts = k.split('|');
+                    if (parts.length >= 2) {
+                        var label = parts.slice(1).join('|');
+                        // Try to extract term: first 2-4 chars might be date pattern
+                        var t = label.replace(/[0-9]/g, '').trim().substring(0, 8) || label;
+                        if (t && t.length <= 15) termSet[t] = true;
+                    }
+                });
+            });
+            Object.keys(termSet).sort().forEach(function(t) {
+                terms += '<option value="' + t + '" ' + (queryTerm === t ? 'selected' : '') + '>' + escapeHtml(t) + '</option>';
+            });
+
+            var html = '<div class="card"><div class="card-title">🔍 全局查询</div>';
+            // Filter bar
+            html += '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;">';
+            // Subject
+            html += '<select id="qSubject" onchange="querySubject=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
+            subjects.forEach(function(s) { html += '<option value="' + s + '" ' + (querySubject === s ? 'selected' : '') + '>' + s + '</option>'; });
+            html += '</select>';
+            // Condition
+            html += '<select id="qCond" onchange="queryCondition=this.value;renderQuery()" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
+            conditions.forEach(function(c) { html += '<option value="' + c.value + '" ' + (queryCondition === c.value ? 'selected' : '') + '>' + c.label + '</option>'; });
+            html += '</select>';
+            // Custom value input
+            if (queryCondition === 'greater') {
+                html += '<input type="number" id="qNum" value="' + queryCustomNum + '" oninput="queryCustomNum=parseInt(this.value)||0" style="width:60px;padding:5px 8px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);" placeholder="分数">';
+            }
+            if (queryCondition === 'custom') {
+                html += '<input type="text" id="qText" value="' + escapeHtml(queryCustomText) + '" oninput="queryCustomText=this.value" style="width:80px;padding:5px 8px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);" placeholder="文本">';
+            }
+            // Term
+            html += '<select id="qTerm" onchange="queryTerm=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">' + terms + '</select>';
+            // Teacher
+            html += '<select id="qTeacher" onchange="queryTeacher=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">' + teacherOpts + '</select>';
+            // Sort
+            html += '<select id="qSort" onchange="querySort=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
+            sorts.forEach(function(s) { html += '<option value="' + s.value + '" ' + (querySort === s.value ? 'selected' : '') + '>' + s.label + '</option>'; });
+            html += '</select>';
+            // Limit
+            html += '<select id="qLimit" onchange="queryLimit=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
+            limits.forEach(function(l) { html += '<option value="' + l.value + '" ' + (queryLimit === l.value ? 'selected' : '') + '>' + l.label + '</option>'; });
+            html += '</select>';
+            // Actions
+            html += '<button class="btn btn-sm" onclick="runQuery()">🔍 查询</button>';
+            html += '<button class="btn btn-sm btn-outline" onclick="exportQueryResults()" ' + (!queryResults ? 'disabled style="opacity:0.5"' : '') + '><i class="iconfont icon-download"></i> 导出</button>';
+            html += '</div></div>';
+
+            // Results
+            if (queryLoading) {
+                html += '<div class="card"><div class="empty-state">⏳ 正在查询...（可能需要几秒）</div></div>';
+            } else if (queryResults) {
+                html += renderQueryResults();
+            } else {
+                html += '<div class="card"><div class="empty-state">设置筛选条件后点击「查询」</div></div>';
+            }
+
+            document.getElementById('view-query').innerHTML = html;
+        }
+
+        function runQuery() {
+            queryLoading = true; queryResults = null; renderQuery();
+            setTimeout(function() {
+                queryResults = computeQuery();
+                queryLoading = false; renderQuery();
+            }, 100);
+        }
+
+        function computeQuery() {
+            var results = [];
+            var condition = queryCondition;
+            var subject = querySubject;
+            var customNum = queryCustomNum || 0;
+            var customText = (queryCustomText || '').trim();
+
+            Object.values(allTeachers).forEach(function(t) {
+                if (queryTeacher !== 'all' && t.id !== queryTeacher) return;
+                var classes = Array.isArray(t.classes) ? t.classes : [];
+                var fb = t.feedback || {};
+                var classMap = {};
+                classes.forEach(function(c) { classMap[c.id] = c; });
+
+                // Collect all fb keys
+                Object.keys(fb).forEach(function(k) {
+                    var parts = k.split('|');
+                    if (parts.length < 2) return;
+                    var classId = parts[0];
+                    var dateLabel = parts.slice(1).join('|');
+                    var cls = classMap[classId];
+                    if (!cls) return;
+
+                    // Term filter
+                    if (queryTerm !== 'all' && dateLabel.indexOf(queryTerm) !== 0) return;
+
+                    var entry = fb[k];
+                    if (!entry || !entry.dateColumns) return;
+
+                    // Find column matching subject
+                    var colIdx = -1, maxScore = 0;
+                    for (var ci = 0; ci < entry.dateColumns.length; ci++) {
+                        if (columnContainsKeyword(entry.dateColumns[ci], subject)) {
+                            colIdx = ci;
+                            maxScore = extractMaxScore(entry.dateColumns[ci]) || 100;
+                            break;
+                        }
+                    }
+                    if (colIdx === -1) return;
+
+                    var recs = entry.records || [];
+                    recs.forEach(function(rec) {
+                        if (!rec || !rec.values) return;
+                        var val = rec.values[colIdx];
+                        if (val === '' || val === null || val === undefined) return;
+                        var strVal = String(val).trim();
+                        var matched = false;
+                        var score = convertToNumber(val, maxScore);
+
+                        if (condition === 'perfect') {
+                            // Equal to maxScore
+                            if (maxScore > 0 && score >= maxScore) matched = true;
+                        } else if (condition === 'greater') {
+                            if (score > customNum) matched = true;
+                        } else if (condition === 'marked') {
+                            if (strVal === 'A+' || strVal === 'A++' || strVal === '✅' || strVal === '已完成' || strVal === '✓' || strVal === '✔') matched = true;
+                        } else if (condition === 'custom') {
+                            if (customText && strVal === customText) matched = true;
+                        }
+
+                        if (!matched) return;
+
+                        // Find or create result entry
+                        var key = classId + '|' + rec.name;
+                        var existing = results.find(function(r) { return r.key === key; });
+                        if (!existing) {
+                            existing = {
+                                key: key, name: rec.name, className: cls.name, classId: classId,
+                                teacherName: t.name || t.email || '', teacherId: t.id,
+                                count: 0, totalScore: 0, maxSeen: 0, minSeen: Infinity, latestScore: 0, latestDate: '',
+                                details: []
+                            };
+                            results.push(existing);
+                        }
+                        existing.count++;
+                        existing.totalScore += score;
+                        if (score > existing.maxSeen) existing.maxSeen = score;
+                        if (score < existing.minSeen) existing.minSeen = score;
+                        if (dateLabel > existing.latestDate) { existing.latestDate = dateLabel; existing.latestScore = score; }
+                        existing.details.push({ date: dateLabel, score: score, maxScore: maxScore, raw: strVal });
+                    });
+                });
+            });
+
+            // Compute averages
+            results.forEach(function(r) {
+                r.avgScore = r.count > 0 ? Math.round(r.totalScore / r.count * 10) / 10 : 0;
+                if (r.minSeen === Infinity) r.minSeen = 0;
+            });
+
+            // Sort
+            if (querySort === 'avg_desc') {
+                results.sort(function(a, b) { return b.avgScore - a.avgScore || b.count - a.count; });
+            } else if (querySort === 'latest_desc') {
+                results.sort(function(a, b) { return b.latestDate.localeCompare(a.latestDate) || b.latestScore - a.latestScore; });
+            } else {
+                // count_desc
+                results.sort(function(a, b) { return b.count - a.count || b.avgScore - a.avgScore; });
+            }
+
+            // Limit
+            if (queryLimit !== 'all') {
+                results = results.slice(0, parseInt(queryLimit));
+            }
+
+            return results;
+        }
+
+        function renderQueryResults() {
+            if (!queryResults || !queryResults.length) return '<div class="card"><div class="empty-state">未找到符合条件的学生</div></div>';
+            var html = '<div class="card"><div class="card-title" style="justify-content:space-between"><span>共找到 ' + queryResults.length + ' 名学生</span></div>';
+            html += '<div class="table-wrap"><table><thead><tr><th>排名</th><th>学生</th><th>班级</th><th>教师</th><th>次数</th><th>最高</th><th>最低</th><th>均分</th></tr></thead><tbody>';
+            queryResults.forEach(function(r, i) {
+                var badge = '';
+                if (i === 0) badge = '🥇';
+                else if (i === 1) badge = '🥈';
+                else if (i === 2) badge = '🥉';
+                html += '<tr>';
+                html += '<td style="font-size:14px;">' + badge + ' ' + (i + 1) + '</td>';
+                html += '<td style="font-weight:600;cursor:pointer;color:var(--accent);" onclick="showStudentDetail(\'' + r.key + '\')">' + escapeHtml(r.name) + '</td>';
+                html += '<td>' + escapeHtml(r.className) + '</td>';
+                html += '<td style="color:var(--text-muted)">' + escapeHtml(r.teacherName) + '</td>';
+                html += '<td style="font-weight:600;">' + r.count + '</td>';
+                html += '<td>' + r.maxSeen + '</td>';
+                html += '<td>' + r.minSeen + '</td>';
+                html += '<td style="font-weight:700;color:var(--accent);">' + r.avgScore + '</td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table></div></div>';
+            return html;
+        }
+
+        window.showStudentDetail = function(key) {
+            var r = queryResults.find(function(x) { return x.key === key; });
+            if (!r) return;
+            var html = '<div style="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;" onclick="this.remove()">';
+            html += '<div style="background:var(--card-bg);border-radius:var(--radius);padding:20px;max-width:500px;width:90%;max-height:70vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);" onclick="event.stopPropagation()">';
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
+            html += '<span style="font-weight:700;font-size:16px;">' + escapeHtml(r.name) + ' <span style="color:var(--text-muted);font-size:13px;">' + escapeHtml(r.className) + ' · ' + escapeHtml(r.teacherName) + '</span></span>';
+            html += '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">&times;</button>';
+            html += '</div>';
+            html += '<table style="width:100%;font-size:12px;"><thead><tr><th>课次</th><th>得分</th></tr></thead><tbody>';
+            r.details.sort(function(a, b) { return naturalSort(a.date, b.date); });
+            r.details.forEach(function(d) {
+                html += '<tr><td>' + escapeHtml(d.date) + '</td><td style="font-weight:600;">' + escapeHtml(d.raw) + '</td></tr>';
+            });
+            html += '</tbody></table></div></div>';
+            var overlay = document.createElement('div');
+            overlay.innerHTML = html;
+            document.body.appendChild(overlay.firstElementChild);
+        };
+
+        window.exportQueryResults = function() {
+            if (!queryResults || !queryResults.length) return;
+            var rows = [['排名', '学生', '班级', '教师', '次数', '最高分', '最低分', '均分']];
+            queryResults.forEach(function(r, i) {
+                rows.push([String(i + 1), r.name, r.className, r.teacherName, String(r.count), String(r.maxSeen), String(r.minSeen), String(r.avgScore)]);
+            });
+            var ws = XLSX.utils.aoa_to_sheet(rows);
+            var wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(querySubject + '查询结果'));
+            XLSX.writeFile(wb, '查询_' + querySubject + '_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+        };
+
         // ========== Export ==========
         window.smartExport = function() {
             // Context-aware export: what can we export right now?
@@ -1375,7 +1655,23 @@
                 get awardsClassId() { return awardsClassId; },
                 set awardsClassId(v) { awardsClassId = v; },
                 get awardsRange() { return awardsRange; },
-                set awardsRange(v) { awardsRange = v; }
+                set awardsRange(v) { awardsRange = v; },
+                get querySubject() { return querySubject; },
+                set querySubject(v) { querySubject = v; },
+                get queryCondition() { return queryCondition; },
+                set queryCondition(v) { queryCondition = v; },
+                get queryCustomNum() { return queryCustomNum; },
+                set queryCustomNum(v) { queryCustomNum = v; },
+                get queryCustomText() { return queryCustomText; },
+                set queryCustomText(v) { queryCustomText = v; },
+                get queryTerm() { return queryTerm; },
+                set queryTerm(v) { queryTerm = v; },
+                get queryTeacher() { return queryTeacher; },
+                set queryTeacher(v) { queryTeacher = v; },
+                get querySort() { return querySort; },
+                set querySort(v) { querySort = v; },
+                get queryLimit() { return queryLimit; },
+                set queryLimit(v) { queryLimit = v; }
             };
             Object.defineProperties(window, Object.getOwnPropertyDescriptors(_vars));
         })();

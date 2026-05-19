@@ -72,10 +72,10 @@
             margin-left: auto; background: var(--bg); border: 1px solid var(--border);
             border-radius: 9999px; width: 32px; height: 32px; display: flex; align-items: center;
             justify-content: center; cursor: pointer; font-size: 16px; transition: all 0.35s ease;
-            flex-shrink: 0; line-height: 1; padding: 0;
+            flex-shrink: 0; line-height: 1; padding: 0; color: var(--text);
         }
-        .theme-toggle:hover { border-color: var(--accent); transform: rotate(15deg); }
-        .theme-toggle:active { transform: rotate(15deg) scale(0.9); }
+        .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+        .theme-toggle:active { transform: scale(0.9); }
         .sidebar-nav { flex: 1; padding: 8px 0; overflow-y: auto; }
         .sidebar-nav a {
             display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: var(--sidebar-text);
@@ -345,6 +345,10 @@
         .iconfont2 { font-family: "iconfont2" !important; font-size: 16px; font-style: normal; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
         .icon-user:before { content: "\e66c"; font-family: "iconfont2"; }
         .icon-trophy:before { content: "\e7cf"; font-family: "iconfont2"; }
+        @font-face { font-family: "iconfont3"; src: url(data:font/truetype;charset=utf-8;base64,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AAEECQALACYBY0NyZWF0ZWQgYnkgaWNvbmZvbnRpY29uZm9udFJlZ3VsYXJpY29uZm9udGljb25mb250VmVyc2lvbiAxLjBpY29uZm9udEdlbmVyYXRlZCBieSBzdmcydHRmIGZyb20gRm9udGVsbG8gcHJvamVjdC5odHRwOi8vZm9udGVsbG8uY29tAEMAcgBlAGEAdABlAGQAIABiAHkAIABpAGMAbwBuAGYAbwBuAHQAaQBjAG8AbgBmAG8AbgB0AFIAZQBnAHUAbABhAHIAaQBjAG8AbgBmAG8AbgB0AGkAYwBvAG4AZgBvAG4AdABWAGUAcgBzAGkAbwBuACAAMQAuADAAaQBjAG8AbgBmAG8AbgB0AEcAZQBuAGUAcgBhAHQAZQBkACAAYgB5ACAAcwB2AGcAMgB0AHQAZgAgAGYAcgBvAG0AIABGAG8AbgB0AGUAbABsAG8AIABwAHIAbwBqAGUAYwB0AC4AaAB0AHQAcAA6AC8ALwBmAG8AbgB0AGUAbABsAG8ALgBjAG8AbQAAAgAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAQIBAwEEAAh5dWVsaWFuZwd0YWl5YW5nAAA=) format('truetype'); }
+        .iconfont3 { font-family: "iconfont3" !important; font-size: 16px; font-style: normal; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        .icon-moon:before { content: "\e6b6"; font-family: "iconfont3"; }
+        .icon-sun:before { content: "\e68a"; font-family: "iconfont3"; }
         .stat-icon .iconfont { font-size: 20px; }
         .subtab .iconfont { font-size: 13px; }
         .btn .iconfont { font-size: 13px; }
@@ -466,7 +470,12 @@
         function applyTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
             var btn = document.getElementById('themeToggle');
-            if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+            if (btn) {
+                var icon = btn.querySelector('i');
+                if (icon) {
+                    icon.className = 'iconfont3 ' + (theme === 'dark' ? 'icon-sun' : 'icon-moon');
+                }
+            }
         }
         window.toggleTheme = toggleTheme;
         initTheme();
@@ -740,7 +749,7 @@
                 <div class="app-layout">
                     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
                     <div class="sidebar" id="sidebar">
-                        <div class="sidebar-logo"><i class="iconfont icon-settings"></i> 反馈表管理<button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="切换深色/浅色模式">🌙</button></div>
+                        <div class="sidebar-logo"><i class="iconfont icon-settings"></i> 反馈表管理<button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="切换深色/浅色模式"><i class="iconfont3 icon-moon"></i></button></div>
                         <div class="sidebar-nav">${sidebarHTML}</div>
                         <div class="sidebar-bottom">
                             <a onclick="switchView('profile')" data-nav="profile"><i class="iconfont2 icon-user"></i> 个人中心</a>

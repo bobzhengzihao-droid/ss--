@@ -526,6 +526,21 @@
                 return v !== '' && v !== null && v !== undefined;
             });
         }
+        // 该课次是否至少有一个学生有有效数据（排除同样的列）
+        function isLessonActive(entry) {
+            const excluded = ['小书童', '小学堂', '备注'];
+            if (!entry || !entry.dateColumns) return false;
+            const recs = entry.records || (Array.isArray(entry) ? entry : []);
+            if (!recs.length) return false;
+            return recs.some(function(rec) {
+                if (!rec || !rec.values) return false;
+                return entry.dateColumns.some(function(col, i) {
+                    if (excluded.some(function(kw) { return columnContainsKeyword(col, kw); })) return false;
+                    var v = rec.values[i];
+                    return v !== '' && v !== null && v !== undefined;
+                });
+            });
+        }
         function sanitizeSheetName(name) { return String(name).replace(/[:\\\/?*\[\]]/g, '-').replace(/^['']/g, '').replace(/['']$/g, '').substring(0, 31); }
         function getAutoBackground(val, maxScore) {
             if (val === '' || val === null || val === undefined) return '';
@@ -1511,6 +1526,10 @@
             }
             if (!keys.length) return { totalLessons: 0, studentCount: students.length, fullAttendance: [], progressStars: [], dictationPerfect: [], quizPerfect: [], xstPerfect: [] };
 
+            // 排除老师提前建的空白课次（没有任何学生有数据）
+            keys = keys.filter(function(k) { return isLessonActive(fb[k]); });
+            if (!keys.length) return { totalLessons: 0, studentCount: students.length, fullAttendance: [], progressStars: [], dictationPerfect: [], quizPerfect: [], xstPerfect: [] };
+
             // Find column indices by keyword
             function findColIdx(entry, keyword) {
                 if (!entry || !entry.dateColumns) return -1;
@@ -1809,6 +1828,9 @@
                             keys = allKeys.slice(-parseInt(queryRecent));
                         }
                         if (!keys.length || !cls.students) return;
+                        // 排除老师提前建的空白课次
+                        keys = keys.filter(function(k) { return isLessonActive(fb[k]); });
+                        if (!keys.length) return;
 
                         cls.students.forEach(function(s) {
                             var present = 0;

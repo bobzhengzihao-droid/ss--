@@ -26,16 +26,10 @@
             --table-header-bg: #1e3a5f; --table-header-text: #93c5fd; --table-border: #334155;
             --sidebar-bg: #1e293b; --sidebar-text: #94a3b8; --sidebar-active: #3b82f6;
         }
-        /* Disable default View Transitions fade, use custom clipPath */
+        /* Disable default View Transitions crossfade */
         ::view-transition-new(root),
         ::view-transition-old(root) {
             animation: none !important;
-        }
-        [data-theme="dark"]::view-transition-old(root) {
-            z-index: 100;
-        }
-        [data-theme="light"]::view-transition-new(root) {
-            z-index: 100;
         }
 
         * { margin:0; padding:0; box-sizing:border-box; }
@@ -47,6 +41,12 @@
         .sidebar, .card, .stat-card, .topbar, .t-item, .detail-card, .custom-dialog,
         .search-input, .detail-table th, .tag-capsule, .t-class-item {
             transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease, color 0.35s ease;
+        }
+        .notransition,
+        .notransition *,
+        .notransition::view-transition-new,
+        .notransition::view-transition-old {
+            transition: none !important;
         }
         /* ===== Layout ===== */
         .app-layout { display: flex; min-height: 100vh; }
@@ -392,9 +392,11 @@
         // ========== Theme ==========
         function initTheme() {
             const saved = localStorage.getItem('admin-theme');
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const theme = saved || (prefersDark ? 'dark' : 'light');
-            applyTheme(theme);
+            if (saved) {
+                applyTheme(saved);
+            } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                applyTheme('dark');
+            }
         }
         function toggleTheme() {
             const btn = document.getElementById('themeToggle');
@@ -404,7 +406,6 @@
             const cy = rect.top + rect.height / 2;
             const current = document.documentElement.getAttribute('data-theme') || 'light';
             const next = current === 'dark' ? 'light' : 'dark';
-            const isDark = next === 'dark';
 
             // Radius to furthest viewport corner
             const radius = Math.hypot(
@@ -412,37 +413,49 @@
                 Math.max(cy, window.innerHeight - cy)
             );
 
+            // Suppress CSS transitions during View Transition to prevent flash
+            document.documentElement.classList.add('notransition');
+
             if (!document.startViewTransition) {
                 applyTheme(next);
                 localStorage.setItem('admin-theme', next);
+                document.documentElement.classList.remove('notransition');
                 return;
             }
 
-            const transition = document.startViewTransition(function() {
+            var transition = document.startViewTransition(function() {
                 applyTheme(next);
                 localStorage.setItem('admin-theme', next);
             });
 
             transition.ready.then(function() {
+                // Remove transition lock — let View Transitions handle animation exclusively
+                document.documentElement.classList.remove('notransition');
+
                 var clipPath = [
                     'circle(0px at ' + cx + 'px ' + cy + 'px)',
                     'circle(' + radius + 'px at ' + cx + 'px ' + cy + 'px)'
                 ];
+
+                // Always animate the new root expanding from the button
                 document.documentElement.animate(
-                    { clipPath: isDark ? clipPath : clipPath.reverse() },
+                    { clipPath: clipPath },
                     {
-                        duration: 500,
-                        easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
-                        pseudoElement: isDark
-                            ? '::view-transition-old(root)'
-                            : '::view-transition-new(root)'
+                        duration: 400,
+                        easing: 'ease-in',
+                        pseudoElement: '::view-transition-new(root)'
                     }
                 );
+            });
+
+            // Clean up transition lock on finish/cancel
+            transition.finished.finally(function() {
+                document.documentElement.classList.remove('notransition');
             });
         }
         function applyTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
-            const btn = document.getElementById('themeToggle');
+            var btn = document.getElementById('themeToggle');
             if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
         }
         window.toggleTheme = toggleTheme;

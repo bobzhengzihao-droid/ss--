@@ -18,10 +18,23 @@
             --table-header-bg: #eff6ff; --table-header-text: #1e40af; --table-border: #bfdbfe;
             --sidebar-w: 220px; --sidebar-bg: #ffffff; --sidebar-text: #64748b; --sidebar-active: #2563eb;
         }
+        [data-theme="dark"] {
+            --primary: #e2e8f0; --accent: #3b82f6; --accent-light: #60a5fa;
+            --bg: #0f172a; --card-bg: #1e293b; --text: #e2e8f0; --text-light: #94a3b8;
+            --text-muted: #64748b; --border: #334155; --border-light: #1e293b;
+            --shadow: 0 1px 3px rgba(0,0,0,0.3); --shadow-md: 0 4px 6px rgba(0,0,0,0.4);
+            --table-header-bg: #1e3a5f; --table-header-text: #93c5fd; --table-border: #334155;
+            --sidebar-bg: #1e293b; --sidebar-text: #94a3b8; --sidebar-active: #3b82f6;
+        }
         * { margin:0; padding:0; box-sizing:border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
             background: var(--bg); color: var(--text); min-height: 100vh;
+            transition: background-color 0.35s ease, color 0.35s ease;
+        }
+        .sidebar, .card, .stat-card, .topbar, .t-item, .detail-card, .custom-dialog,
+        .search-input, .detail-table th, .tag-capsule, .t-class-item {
+            transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease, color 0.35s ease;
         }
         /* ===== Layout ===== */
         .app-layout { display: flex; min-height: 100vh; }
@@ -33,6 +46,14 @@
         }
         .sidebar-logo { padding: 18px 16px; font-size: 15px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border-light); }
         .sidebar-logo .iconfont { font-size: 20px; color: var(--accent); }
+        .theme-toggle {
+            margin-left: auto; background: var(--bg); border: 1px solid var(--border);
+            border-radius: 9999px; width: 32px; height: 32px; display: flex; align-items: center;
+            justify-content: center; cursor: pointer; font-size: 16px; transition: all 0.35s ease;
+            flex-shrink: 0; line-height: 1; padding: 0;
+        }
+        .theme-toggle:hover { border-color: var(--accent); transform: rotate(15deg); }
+        .theme-toggle:active { transform: rotate(15deg) scale(0.9); }
         .sidebar-nav { flex: 1; padding: 8px 0; overflow-y: auto; }
         .sidebar-nav a {
             display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: var(--sidebar-text);
@@ -356,6 +377,27 @@
         let queryResults = null;
         let queryLoading = false;
 
+        // ========== Theme ==========
+        function initTheme() {
+            const saved = localStorage.getItem('admin-theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = saved || (prefersDark ? 'dark' : 'light');
+            applyTheme(theme);
+        }
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme') || 'light';
+            const next = current === 'dark' ? 'light' : 'dark';
+            applyTheme(next);
+            localStorage.setItem('admin-theme', next);
+        }
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            const btn = document.getElementById('themeToggle');
+            if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+        window.toggleTheme = toggleTheme;
+        initTheme();
+
         // ========== Utilities ==========
         function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
         function naturalSort(a,b) { const re=/(\d+)/g, aP=a.split(re).filter(Boolean), bP=b.split(re).filter(Boolean); for(let i=0;i<Math.max(aP.length,bP.length);i++){const av=aP[i]||'',bv=bP[i]||'',an=parseInt(av,10),bn=parseInt(bv,10); if(!isNaN(an)&&!isNaN(bn)){if(an!==bn)return an-bn;} else if(av!==bv)return av.localeCompare(bv);} return 0; }
@@ -625,7 +667,7 @@
                 <div class="app-layout">
                     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
                     <div class="sidebar" id="sidebar">
-                        <div class="sidebar-logo"><i class="iconfont icon-settings"></i> 反馈表管理</div>
+                        <div class="sidebar-logo"><i class="iconfont icon-settings"></i> 反馈表管理<button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="切换深色/浅色模式">🌙</button></div>
                         <div class="sidebar-nav">${sidebarHTML}</div>
                         <div class="sidebar-bottom">
                             <a onclick="switchView('profile')" data-nav="profile"><i class="iconfont2 icon-user"></i> 个人中心</a>

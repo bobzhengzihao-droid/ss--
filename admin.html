@@ -26,6 +26,18 @@
             --table-header-bg: #1e3a5f; --table-header-text: #93c5fd; --table-border: #334155;
             --sidebar-bg: #1e293b; --sidebar-text: #94a3b8; --sidebar-active: #3b82f6;
         }
+        /* Disable default View Transitions fade, use custom clipPath */
+        ::view-transition-new(root),
+        ::view-transition-old(root) {
+            animation: none !important;
+        }
+        [data-theme="dark"]::view-transition-old(root) {
+            z-index: 100;
+        }
+        [data-theme="light"]::view-transition-new(root) {
+            z-index: 100;
+        }
+
         * { margin:0; padding:0; box-sizing:border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
@@ -392,37 +404,40 @@
             const cy = rect.top + rect.height / 2;
             const current = document.documentElement.getAttribute('data-theme') || 'light';
             const next = current === 'dark' ? 'light' : 'dark';
+            const isDark = next === 'dark';
 
-            // Radius to cover furthest corner from button center
-            const maxR = Math.hypot(
+            // Radius to furthest viewport corner
+            const radius = Math.hypot(
                 Math.max(cx, window.innerWidth - cx),
                 Math.max(cy, window.innerHeight - cy)
             );
 
-            // Create expanding circle
-            const circle = document.createElement('div');
-            circle.style.cssText = [
-                'position:fixed', 'top:' + cy + 'px', 'left:' + cx + 'px',
-                'width:0', 'height:0', 'border-radius:50%',
-                'background:' + (next === 'dark' ? '#0f172a' : '#f5f7fa'),
-                'z-index:99999', 'pointer-events:none',
-                'transform:translate(-50%,-50%)',
-                'will-change:width,height'
-            ].join(';');
-            document.body.appendChild(circle);
-
-            // Animate: expand from 0 to viewport-covering circle
-            requestAnimationFrame(function() {
-                requestAnimationFrame(function() {
-                    circle.style.transition = 'width 0.55s cubic-bezier(0.25, 1, 0.5, 1), height 0.55s cubic-bezier(0.25, 1, 0.5, 1)';
-                    circle.style.width = circle.style.height = (maxR * 2) + 'px';
-                });
-            });
-
-            circle.addEventListener('transitionend', function() {
+            if (!document.startViewTransition) {
                 applyTheme(next);
                 localStorage.setItem('admin-theme', next);
-                circle.remove();
+                return;
+            }
+
+            const transition = document.startViewTransition(function() {
+                applyTheme(next);
+                localStorage.setItem('admin-theme', next);
+            });
+
+            transition.ready.then(function() {
+                var clipPath = [
+                    'circle(0px at ' + cx + 'px ' + cy + 'px)',
+                    'circle(' + radius + 'px at ' + cx + 'px ' + cy + 'px)'
+                ];
+                document.documentElement.animate(
+                    { clipPath: isDark ? clipPath : clipPath.reverse() },
+                    {
+                        duration: 500,
+                        easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
+                        pseudoElement: isDark
+                            ? '::view-transition-old(root)'
+                            : '::view-transition-new(root)'
+                    }
+                );
             });
         }
         function applyTheme(theme) {

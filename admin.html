@@ -385,10 +385,45 @@
             applyTheme(theme);
         }
         function toggleTheme() {
+            const btn = document.getElementById('themeToggle');
+            if (!btn) return;
+            const rect = btn.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
             const current = document.documentElement.getAttribute('data-theme') || 'light';
             const next = current === 'dark' ? 'light' : 'dark';
-            applyTheme(next);
-            localStorage.setItem('admin-theme', next);
+
+            // Radius to cover furthest corner from button center
+            const maxR = Math.hypot(
+                Math.max(cx, window.innerWidth - cx),
+                Math.max(cy, window.innerHeight - cy)
+            );
+
+            // Create expanding circle
+            const circle = document.createElement('div');
+            circle.style.cssText = [
+                'position:fixed', 'top:' + cy + 'px', 'left:' + cx + 'px',
+                'width:0', 'height:0', 'border-radius:50%',
+                'background:' + (next === 'dark' ? '#0f172a' : '#f5f7fa'),
+                'z-index:99999', 'pointer-events:none',
+                'transform:translate(-50%,-50%)',
+                'will-change:width,height'
+            ].join(';');
+            document.body.appendChild(circle);
+
+            // Animate: expand from 0 to viewport-covering circle
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() {
+                    circle.style.transition = 'width 0.55s cubic-bezier(0.25, 1, 0.5, 1), height 0.55s cubic-bezier(0.25, 1, 0.5, 1)';
+                    circle.style.width = circle.style.height = (maxR * 2) + 'px';
+                });
+            });
+
+            circle.addEventListener('transitionend', function() {
+                applyTheme(next);
+                localStorage.setItem('admin-theme', next);
+                circle.remove();
+            });
         }
         function applyTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);

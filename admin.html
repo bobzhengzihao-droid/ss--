@@ -513,9 +513,9 @@
             if (str === '✗' || str === '×' || str === '✘' || str === '❌' || str === '未完成') return 0;
             const num = parseInt(str, 10); return isNaN(num) ? 0 : num;
         }
-        // 出勤判定：排除「小书童」「小学堂」「备注」，任一有效列有值即算到场
+        // 出勤判定：排除「小书童」「小学堂」「语音作业」「备注」，任一有效列有值即算到场
         function isStudentPresent(entry, studentName) {
-            const excluded = ['小书童', '小学堂', '备注'];
+            const excluded = ['小书童', '小学堂', '语音作业', '备注'];
             const recs = entry.records || (Array.isArray(entry) ? entry : []);
             const rec = recs.find(function(r) { return r.name === studentName; });
             if (!rec || !rec.values) return false;
@@ -528,7 +528,7 @@
         }
         // 该课次是否至少有一个学生有有效数据（排除同样的列）
         function isLessonActive(entry) {
-            const excluded = ['小书童', '小学堂', '备注'];
+            const excluded = ['小书童', '小学堂', '语音作业', '备注'];
             if (!entry || !entry.dateColumns) return false;
             const recs = entry.records || (Array.isArray(entry) ? entry : []);
             if (!recs.length) return false;

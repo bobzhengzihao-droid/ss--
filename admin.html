@@ -76,7 +76,9 @@
             transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s ease;
             border-right: 1px solid var(--border-light); box-shadow: 2px 0 8px rgba(0,0,0,0.03);
         }
-        .sidebar-logo { padding: 12px 16px; font-size: 15px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; height: 50px; box-sizing: border-box; white-space: nowrap; }
+        .nav-label { transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar.collapsed .nav-label { opacity: 0; }
+        .sidebar-logo { padding: 12px 16px; font-size: 15px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; height: 50px; box-sizing: border-box; white-space: nowrap; overflow: hidden; }
         .sidebar-logo .iconfont { font-size: 20px; color: var(--accent); }
         .theme-toggle {
             margin-left: auto; background: var(--bg); border: 1px solid var(--border);
@@ -149,6 +151,7 @@
             .sidebar.collapsed .sidebar-logo { padding-left: 16px; padding-right: 16px; }
             .sidebar.collapsed .sidebar-nav a { padding-left: 20px; padding-right: 20px; }
             .sidebar.collapsed .sidebar-bottom a { padding-left: 20px; padding-right: 20px; }
+            .sidebar.collapsed .nav-label { opacity: 1; }
             .sidebar-overlay.open { display: block; }
             .main-area { margin-left: 0; }
             .main-area.sidebar-collapsed { margin-left: 0; }
@@ -793,21 +796,21 @@
         // ========== Render ==========
         function renderApp() {
             var sidebarHTML = '';
-            sidebarHTML += '<a onclick="switchView(\'dashboard\')" class="active" data-nav="dashboard"><i class="iconfont icon-dashboard"></i> 概览</a>';
-            sidebarHTML += '<a onclick="switchView(\'teachers\')" data-nav="teachers"><i class="iconfont icon-user-group"></i> 教师</a>';
-            sidebarHTML += '<a onclick="switchView(\'awards\')" data-nav="awards"><i class="iconfont2 icon-trophy"></i> 评优</a>';
-            sidebarHTML += '<a onclick="switchView(\'analysis\')" data-nav="analysis"><i class="iconfont icon-chart"></i> 分析</a>';
-            sidebarHTML += '<a onclick="switchView(\'query\')" data-nav="query"><span class="sidebar-emoji">🔍</span> 查询</a>';
+            sidebarHTML += '<a onclick="switchView(\'dashboard\')" class="active" data-nav="dashboard"><i class="iconfont icon-dashboard"></i><span class="nav-label">概览</span></a>';
+            sidebarHTML += '<a onclick="switchView(\'teachers\')" data-nav="teachers"><i class="iconfont icon-user-group"></i><span class="nav-label">教师</span></a>';
+            sidebarHTML += '<a onclick="switchView(\'awards\')" data-nav="awards"><i class="iconfont2 icon-trophy"></i><span class="nav-label">评优</span></a>';
+            sidebarHTML += '<a onclick="switchView(\'analysis\')" data-nav="analysis"><i class="iconfont icon-chart"></i><span class="nav-label">分析</span></a>';
+            sidebarHTML += '<a onclick="switchView(\'query\')" data-nav="query"><span class="sidebar-emoji">🔍</span><span class="nav-label">查询</span></a>';
 
             document.getElementById('app').innerHTML = `
                 <div class="app-layout">
                     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
                     <div class="sidebar" id="sidebar">
-                        <div class="sidebar-logo"><i class="iconfont icon-settings"></i> 反馈表管理</div>
+                        <div class="sidebar-logo"><i class="iconfont icon-settings"></i><span class="nav-label">反馈表管理</span></div>
                         <div class="sidebar-nav">${sidebarHTML}</div>
                         <div class="sidebar-bottom">
-                            <a onclick="switchView('profile')" data-nav="profile"><i class="iconfont2 icon-user"></i> 个人中心</a>
-                            <a onclick="logout()"><i class="iconfont icon-logout"></i> 退出登录</a>
+                            <a onclick="switchView('profile')" data-nav="profile"><i class="iconfont2 icon-user"></i><span class="nav-label">个人中心</span></a>
+                            <a onclick="logout()"><i class="iconfont icon-logout"></i><span class="nav-label">退出登录</span></a>
                         </div>
                     </div>
                     <div class="main-area">

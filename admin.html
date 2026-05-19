@@ -1537,7 +1537,7 @@
             });
             fullAttendance.sort(function(a, b) {
                 var ra = parseInt(a.rate) || 0, rb = parseInt(b.rate) || 0;
-                return ra - rb; // 出勤率低的排前面，方便看到缺勤学生
+                return rb - ra;
             });
 
             // === Progress Stars ===
@@ -1829,8 +1829,8 @@
                     });
                 });
 
-                // Sort: lowest attendance first
-                results.sort(function(a, b) { return a.rate - b.rate || b.total - a.total; });
+                // Sort: highest attendance first
+                results.sort(function(a, b) { return b.rate - a.rate || b.total - a.total; });
                 if (queryLimit !== 'all') results = results.slice(0, parseInt(queryLimit));
                 return results;
             }
@@ -1969,11 +1969,11 @@
             html += '</tr></thead><tbody>';
             queryResults.forEach(function(r, i) {
                 var badge = '';
-                if (i === 0) badge = '🥇';
-                else if (i === 1) badge = '🥈';
-                else if (i === 2) badge = '🥉';
+                if (!isAttendance && i === 0) badge = '🥇';
+                else if (!isAttendance && i === 1) badge = '🥈';
+                else if (!isAttendance && i === 2) badge = '🥉';
                 html += '<tr>';
-                html += '<td style="font-size:14px;">' + badge + ' ' + (i + 1) + '</td>';
+                html += '<td style="font-size:14px;">' + badge + (badge ? ' ' : '') + (i + 1) + '</td>';
                 html += '<td style="font-weight:600;cursor:pointer;color:var(--accent);" onclick="showStudentDetail(\'' + r.key + '\')">' + escapeHtml(r.name) + '</td>';
                 html += '<td>' + escapeHtml(r.className) + '</td>';
                 html += '<td style="color:var(--text-muted)">' + escapeHtml(r.teacherName) + '</td>';

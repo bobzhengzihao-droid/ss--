@@ -474,15 +474,16 @@
             });
 
             transition.ready.then(function() {
-                // Remove transition lock — let View Transitions handle animation exclusively
                 document.documentElement.classList.remove('notransition');
+
+                // 移动端跳过圆圈动画，用原生渐变过渡（sticky 定位下坐标会错位）
+                if (window.innerWidth <= 768) return;
 
                 var clipPath = [
                     'circle(0px at ' + cx + 'px ' + cy + 'px)',
                     'circle(' + radius + 'px at ' + cx + 'px ' + cy + 'px)'
                 ];
 
-                // Always animate the new root expanding from the button
                 document.documentElement.animate(
                     { clipPath: clipPath },
                     {

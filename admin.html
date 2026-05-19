@@ -513,6 +513,19 @@
             if (str === '✗' || str === '×' || str === '✘' || str === '❌' || str === '未完成') return 0;
             const num = parseInt(str, 10); return isNaN(num) ? 0 : num;
         }
+        // 出勤判定：排除「小书童」「小学堂」「备注」，任一有效列有值即算到场
+        function isStudentPresent(entry, studentName) {
+            const excluded = ['小书童', '小学堂', '备注'];
+            const recs = entry.records || (Array.isArray(entry) ? entry : []);
+            const rec = recs.find(function(r) { return r.name === studentName; });
+            if (!rec || !rec.values) return false;
+            if (!entry.dateColumns) return false;
+            return entry.dateColumns.some(function(col, i) {
+                if (excluded.some(function(kw) { return columnContainsKeyword(col, kw); })) return false;
+                var v = rec.values[i];
+                return v !== '' && v !== null && v !== undefined;
+            });
+        }
         function sanitizeSheetName(name) { return String(name).replace(/[:\\\/?*\[\]]/g, '-').replace(/^['']/g, '').replace(/['']$/g, '').substring(0, 31); }
         function getAutoBackground(val, maxScore) {
             if (val === '' || val === null || val === undefined) return '';
@@ -1410,14 +1423,14 @@
 
             // Overview cards
             html += '<div class="stat-grid">';
-            html += '<div class="stat-card"><div class="stat-icon" style="background:#f0fdf4">🏅</div><div><div class="stat-value">' + r.fullAttendance.length + '</div><div class="stat-label">全勤学生</div></div></div>';
+            html += '<div class="stat-card"><div class="stat-icon" style="background:#f0fdf4">🏅</div><div><div class="stat-value">' + r.fullAttendance.filter(function(x) { return x.rate === '100%'; }).length + '</div><div class="stat-label">全勤学生</div></div></div>';
             html += '<div class="stat-card"><div class="stat-icon" style="background:#eff6ff">🚀</div><div><div class="stat-value">' + Math.min(3, r.progressStars.length) + '</div><div class="stat-label">进步之星</div></div></div>';
             html += '<div class="stat-card"><div class="stat-icon" style="background:#fef3c7">📝</div><div><div class="stat-value">' + r.dictationPerfect.length + '</div><div class="stat-label">听写满分达人</div></div></div>';
             html += '<div class="stat-card"><div class="stat-icon" style="background:#fce7f3">📋</div><div><div class="stat-value">' + r.quizPerfect.length + '</div><div class="stat-label">小测满分达人</div></div></div>';
             html += '</div>';
 
-            // Full Attendance
-            html += buildAwardCard('🏅 全勤学生（出勤率 100%）', r.fullAttendance, 'attendance', cls);
+            // Attendance Rates — show all students
+            html += buildAttendanceCard(r.fullAttendance, cls);
             // Progress Stars
             var top3 = r.progressStars.slice(0, 3);
             html += buildAwardCard('🚀 进步之星（均分涨幅前三）', top3, 'progress', cls);
@@ -1459,6 +1472,30 @@
             return html;
         }
 
+        function buildAttendanceCard(list, cls) {
+            var html = '<div class="card"><div class="card-title" style="justify-content:space-between">';
+            html += '<span>📋 出勤统计（共 ' + list.length + ' 人）</span>';
+            html += '<button class="btn btn-sm btn-outline" onclick="exportAward(\'attendance\')" style="font-size:10px;padding:3px 10px;"><i class="iconfont icon-download"></i> 导出</button>';
+            html += '</div>';
+            if (!list.length) {
+                html += '<div class="empty-state">暂无数据</div>';
+            } else {
+                html += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+                list.forEach(function(item) {
+                    var rateNum = parseInt(item.rate) || 0;
+                    var color = rateNum >= 100 ? 'var(--success)' : rateNum >= 80 ? 'var(--accent)' : rateNum >= 60 ? '#f59e0b' : 'var(--danger)';
+                    html += '<div style="background:var(--bg);border-radius:10px;padding:8px 12px;font-size:12px;display:flex;align-items:center;gap:4px;">';
+                    html += '<span style="font-weight:600;">' + escapeHtml(item.name) + '</span>';
+                    html += '<span style="color:' + color + ';font-weight:600;">' + item.rate + '</span>';
+                    html += '<span style="color:var(--text-muted);font-size:11px;">(' + item.present + '/' + item.total + ')</span>';
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            html += '</div>';
+            return html;
+        }
+
         function computeAwards(t, cls) {
             var students = cls.students || [];
             var columns = cls.columns || [];
@@ -1488,15 +1525,20 @@
             students.forEach(function(s) { attendance[s] = 0; });
             keys.forEach(function(k) {
                 var entry = fb[k];
-                var recs = entry && entry.records ? entry.records : (Array.isArray(entry) ? entry : []);
+                if (!entry) return;
                 students.forEach(function(s) {
-                    var rec = recs.find(function(r) { return r.name === s; });
-                    if (rec && rec.values && rec.values.some(function(v) { return v !== '' && v !== null && v !== undefined; })) {
-                        attendance[s]++;
-                    }
+                    if (isStudentPresent(entry, s)) attendance[s]++;
                 });
             });
-            var fullAttendance = students.filter(function(s) { return attendance[s] === keys.length; }).map(function(s) { return { name: s, rate: '100%' }; });
+            var fullAttendance = [];
+            students.forEach(function(s) {
+                var rate = keys.length > 0 ? Math.round(attendance[s] / keys.length * 100) : 0;
+                fullAttendance.push({ name: s, present: attendance[s], total: keys.length, rate: rate + '%' });
+            });
+            fullAttendance.sort(function(a, b) {
+                var ra = parseInt(a.rate) || 0, rb = parseInt(b.rate) || 0;
+                return ra - rb; // 出勤率低的排前面，方便看到缺勤学生
+            });
 
             // === Progress Stars ===
             var progressList = [];
@@ -1612,16 +1654,16 @@
             var cls = (Array.isArray(t.classes) ? t.classes : []).find(function(c) { return c.id === awardsClassId; });
             if (!cls) return;
             var list, title;
-            if (type === 'attendance') { list = awardsResults.fullAttendance; title = '全勤学生'; }
+            if (type === 'attendance') { list = awardsResults.fullAttendance; title = '出勤统计'; }
             else if (type === 'progress') { list = awardsResults.progressStars.slice(0, 3); title = '进步之星'; }
             else if (type === 'dictation') { list = awardsResults.dictationPerfect; title = '听写满分达人'; }
             else if (type === 'quiz') { list = awardsResults.quizPerfect; title = '小测满分达人'; }
             else if (type === 'xst') { list = awardsResults.xstPerfect; title = '小书童口语达人'; }
             else return;
-            var rows = [['排名', '姓名'].concat(type === 'attendance' ? ['出勤率'] : (type === 'progress' ? ['前半均分(%)', '后半均分(%)', '涨幅(%)'] : ['满分次数']))];
+            var rows = [['排名', '姓名'].concat(type === 'attendance' ? ['出勤次数', '总课次', '出勤率'] : (type === 'progress' ? ['前半均分(%)', '后半均分(%)', '涨幅(%)'] : ['满分次数']))];
             list.forEach(function(item, i) {
                 var row = [String(i + 1), item.name];
-                if (type === 'attendance') row.push(item.rate);
+                if (type === 'attendance') { row.push(String(item.present), String(item.total), item.rate); }
                 else if (type === 'progress') row.push(String(item.firstAvg), String(item.secondAvg), String(item.change));
                 else row.push(String(item.count));
                 rows.push(row);
@@ -1667,6 +1709,7 @@
                 recentOpts += '<option value="' + n + '" ' + (queryRecent === String(n) ? 'selected' : '') + '>近 ' + n + ' 次课</option>';
             });
 
+            var isAttendance = querySubject === '出勤';
             var html = '<div class="card"><div class="card-title">🔍 全局查询</div>';
             // Filter bar
             html += '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;">';
@@ -1674,16 +1717,18 @@
             html += '<select id="qSubject" onchange="querySubject=this.value;queryCondition=\'perfect\';renderQuery()" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
             subjects.forEach(function(s) { html += '<option value="' + s + '" ' + (querySubject === s ? 'selected' : '') + '>' + s + '</option>'; });
             html += '</select>';
-            // Condition
-            html += '<select id="qCond" onchange="queryCondition=this.value;renderQuery()" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
-            conditions.forEach(function(c) { html += '<option value="' + c.value + '" ' + (queryCondition === c.value ? 'selected' : '') + '>' + c.label + '</option>'; });
-            html += '</select>';
-            // Custom value input
-            if (queryCondition === 'greater') {
-                html += '<input type="number" id="qNum" value="' + queryCustomNum + '" oninput="queryCustomNum=parseInt(this.value)||0" style="width:60px;padding:5px 8px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);" placeholder="分数">';
-            }
-            if (queryCondition === 'custom') {
-                html += '<input type="text" id="qText" value="' + escapeHtml(queryCustomText) + '" oninput="queryCustomText=this.value" style="width:80px;padding:5px 8px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);" placeholder="文本">';
+            // Condition (skip for attendance)
+            if (!isAttendance) {
+                html += '<select id="qCond" onchange="queryCondition=this.value;renderQuery()" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
+                conditions.forEach(function(c) { html += '<option value="' + c.value + '" ' + (queryCondition === c.value ? 'selected' : '') + '>' + c.label + '</option>'; });
+                html += '</select>';
+                // Custom value input
+                if (queryCondition === 'greater') {
+                    html += '<input type="number" id="qNum" value="' + queryCustomNum + '" oninput="queryCustomNum=parseInt(this.value)||0" style="width:60px;padding:5px 8px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);" placeholder="分数">';
+                }
+                if (queryCondition === 'custom') {
+                    html += '<input type="text" id="qText" value="' + escapeHtml(queryCustomText) + '" oninput="queryCustomText=this.value" style="width:80px;padding:5px 8px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);" placeholder="文本">';
+                }
             }
             // Recent
             html += '<select id="qRecent" onchange="queryRecent=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">' + recentOpts + '</select>';
@@ -1695,10 +1740,12 @@
             html += '<option value="A" ' + (queryClass === 'A' ? 'selected' : '') + '>A 班</option>';
             html += '<option value="B" ' + (queryClass === 'B' ? 'selected' : '') + '>B 班</option>';
             html += '</select>';
-            // Sort
-            html += '<select id="qSort" onchange="querySort=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
-            sorts.forEach(function(s) { html += '<option value="' + s.value + '" ' + (querySort === s.value ? 'selected' : '') + '>' + s.label + '</option>'; });
-            html += '</select>';
+            // Sort (skip for attendance, always sorted by rate asc)
+            if (!isAttendance) {
+                html += '<select id="qSort" onchange="querySort=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
+                sorts.forEach(function(s) { html += '<option value="' + s.value + '" ' + (querySort === s.value ? 'selected' : '') + '>' + s.label + '</option>'; });
+                html += '</select>';
+            }
             // Limit
             html += '<select id="qLimit" onchange="queryLimit=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
             limits.forEach(function(l) { html += '<option value="' + l.value + '" ' + (queryLimit === l.value ? 'selected' : '') + '>' + l.label + '</option>'; });
@@ -1735,6 +1782,60 @@
             var customNum = queryCustomNum || 0;
             var customText = (queryCustomText || '').trim();
 
+            // === 出勤专用分支 ===
+            if (subject === '出勤') {
+                Object.values(allTeachers).forEach(function(t) {
+                    if (queryTeacher !== 'all' && t.id !== queryTeacher) return;
+                    var classes = Array.isArray(t.classes) ? t.classes : [];
+                    var fb = t.feedback || {};
+                    var classMap = {};
+                    classes.forEach(function(c) { classMap[c.id] = c; });
+
+                    // Group fb keys by class
+                    var perClass = {};
+                    Object.keys(fb).forEach(function(k) {
+                        var cid = k.split('|')[0];
+                        if (!classMap[cid]) return;
+                        if (!perClass[cid]) perClass[cid] = [];
+                        perClass[cid].push(k);
+                    });
+
+                    Object.keys(perClass).forEach(function(cid) {
+                        var cls = classMap[cid];
+                        if (queryClass !== 'all' && cls.name.indexOf(queryClass) === -1) return;
+                        var allKeys = perClass[cid].sort(naturalSort);
+                        var keys = allKeys;
+                        if (queryRecent !== 'all') {
+                            keys = allKeys.slice(-parseInt(queryRecent));
+                        }
+                        if (!keys.length || !cls.students) return;
+
+                        cls.students.forEach(function(s) {
+                            var present = 0;
+                            keys.forEach(function(k) {
+                                if (isStudentPresent(fb[k], s)) present++;
+                            });
+                            var rate = Math.round(present / keys.length * 100);
+                            results.push({
+                                key: cid + '|' + s,
+                                name: s, className: cls.name, classId: cid,
+                                teacherName: t.name || t.email || '', teacherId: t.id,
+                                present: present, total: keys.length, rate: rate,
+                                details: keys.map(function(k) {
+                                    return { date: k.split('|').slice(1).join('|'), present: isStudentPresent(fb[k], s) };
+                                })
+                            });
+                        });
+                    });
+                });
+
+                // Sort: lowest attendance first
+                results.sort(function(a, b) { return a.rate - b.rate || b.total - a.total; });
+                if (queryLimit !== 'all') results = results.slice(0, parseInt(queryLimit));
+                return results;
+            }
+
+            // === 其他科目的原有逻辑 ===
             Object.values(allTeachers).forEach(function(t) {
                 if (queryTeacher !== 'all' && t.id !== queryTeacher) return;
                 var classes = Array.isArray(t.classes) ? t.classes : [];
@@ -1853,14 +1954,17 @@
 
         function renderQueryResults() {
             if (!queryResults || !queryResults.length) return '<div class="card"><div class="empty-state">未找到符合条件的学生</div></div>';
+            var isAttendance = querySubject === '出勤';
             var scoredSubs = ['听写', '小测', '小书童'];
             var isScored = scoredSubs.indexOf(querySubject) >= 0;
             var html = '<div class="card"><div class="card-title" style="justify-content:space-between"><span>共找到 ' + queryResults.length + ' 名学生</span></div>';
-            html += '<div class="table-wrap"><table><thead><tr><th>排名</th><th>学生</th><th>班级</th><th>教师</th><th>次数</th>';
-            if (isScored) {
-                html += '<th>最高</th><th>最低</th><th>均分</th>';
+            html += '<div class="table-wrap"><table><thead><tr><th>排名</th><th>学生</th><th>班级</th><th>教师</th>';
+            if (isAttendance) {
+                html += '<th>出勤</th><th>总课次</th><th>出勤率</th>';
             } else {
-                html += '<th>完成率</th>';
+                html += '<th>次数</th>';
+                if (isScored) { html += '<th>最高</th><th>最低</th><th>均分</th>'; }
+                else { html += '<th>完成率</th>'; }
             }
             html += '</tr></thead><tbody>';
             queryResults.forEach(function(r, i) {
@@ -1873,14 +1977,22 @@
                 html += '<td style="font-weight:600;cursor:pointer;color:var(--accent);" onclick="showStudentDetail(\'' + r.key + '\')">' + escapeHtml(r.name) + '</td>';
                 html += '<td>' + escapeHtml(r.className) + '</td>';
                 html += '<td style="color:var(--text-muted)">' + escapeHtml(r.teacherName) + '</td>';
-                html += '<td style="font-weight:600;">' + r.count + '</td>';
-                if (isScored) {
-                    html += '<td>' + r.maxSeen + '</td>';
-                    html += '<td>' + r.minSeen + '</td>';
-                    html += '<td style="font-weight:700;color:var(--accent);">' + r.avgScore + '</td>';
+                if (isAttendance) {
+                    var rateNum = r.rate || 0;
+                    var color = rateNum >= 100 ? 'var(--success)' : rateNum >= 80 ? 'var(--accent)' : rateNum >= 60 ? '#f59e0b' : 'var(--danger)';
+                    html += '<td>' + r.present + '</td>';
+                    html += '<td>' + r.total + '</td>';
+                    html += '<td style="font-weight:700;color:' + color + ';">' + r.rate + '%</td>';
                 } else {
-                    var rate = Math.round(r.avgScore * 100);
-                    html += '<td style="font-weight:700;color:' + (rate >= 90 ? 'var(--success)' : rate >= 70 ? 'var(--accent)' : 'var(--danger)') + ';">' + rate + '%</td>';
+                    html += '<td style="font-weight:600;">' + r.count + '</td>';
+                    if (isScored) {
+                        html += '<td>' + r.maxSeen + '</td>';
+                        html += '<td>' + r.minSeen + '</td>';
+                        html += '<td style="font-weight:700;color:var(--accent);">' + r.avgScore + '</td>';
+                    } else {
+                        var rate = Math.round(r.avgScore * 100);
+                        html += '<td style="font-weight:700;color:' + (rate >= 90 ? 'var(--success)' : rate >= 70 ? 'var(--accent)' : 'var(--danger)') + ';">' + rate + '%</td>';
+                    }
                 }
                 html += '</tr>';
             });
@@ -1891,18 +2003,29 @@
         window.showStudentDetail = function(key) {
             var r = queryResults.find(function(x) { return x.key === key; });
             if (!r) return;
+            var isAttendance = querySubject === '出勤';
             var html = '<div style="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;" onclick="this.remove()">';
             html += '<div style="background:var(--card-bg);border-radius:var(--radius);padding:20px;max-width:500px;width:90%;max-height:70vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);" onclick="event.stopPropagation()">';
             html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
             html += '<span style="font-weight:700;font-size:16px;">' + escapeHtml(r.name) + ' <span style="color:var(--text-muted);font-size:13px;">' + escapeHtml(r.className) + ' · ' + escapeHtml(r.teacherName) + '</span></span>';
             html += '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">&times;</button>';
             html += '</div>';
-            html += '<table style="width:100%;font-size:12px;"><thead><tr><th>课次</th><th>得分</th></tr></thead><tbody>';
-            r.details.sort(function(a, b) { return naturalSort(a.date, b.date); });
-            r.details.forEach(function(d) {
-                html += '<tr><td>' + escapeHtml(d.date) + '</td><td style="font-weight:600;">' + escapeHtml(d.raw) + '</td></tr>';
-            });
-            html += '</tbody></table></div></div>';
+            if (isAttendance) {
+                html += '<table style="width:100%;font-size:12px;"><thead><tr><th>课次</th><th>出勤</th></tr></thead><tbody>';
+                r.details.sort(function(a, b) { return naturalSort(a.date, b.date); });
+                r.details.forEach(function(d) {
+                    html += '<tr><td>' + escapeHtml(d.date) + '</td><td style="font-weight:600;color:' + (d.present ? 'var(--success)' : 'var(--danger)') + ';">' + (d.present ? '✅ 到场' : '❌ 缺勤') + '</td></tr>';
+                });
+                html += '</tbody></table>';
+            } else {
+                html += '<table style="width:100%;font-size:12px;"><thead><tr><th>课次</th><th>得分</th></tr></thead><tbody>';
+                r.details.sort(function(a, b) { return naturalSort(a.date, b.date); });
+                r.details.forEach(function(d) {
+                    html += '<tr><td>' + escapeHtml(d.date) + '</td><td style="font-weight:600;">' + escapeHtml(d.raw) + '</td></tr>';
+                });
+                html += '</tbody></table>';
+            }
+            html += '</div></div>';
             var overlay = document.createElement('div');
             overlay.innerHTML = html;
             document.body.appendChild(overlay.firstElementChild);
@@ -1910,9 +2033,15 @@
 
         window.exportQueryResults = function() {
             if (!queryResults || !queryResults.length) return;
-            var rows = [['排名', '学生', '班级', '教师', '次数', '最高分', '最低分', '均分']];
+            var isAttendance = querySubject === '出勤';
+            var headers = isAttendance ? ['排名', '学生', '班级', '教师', '出勤次数', '总课次', '出勤率'] : ['排名', '学生', '班级', '教师', '次数', '最高分', '最低分', '均分'];
+            var rows = [headers];
             queryResults.forEach(function(r, i) {
-                rows.push([String(i + 1), r.name, r.className, r.teacherName, String(r.count), String(r.maxSeen), String(r.minSeen), String(r.avgScore)]);
+                if (isAttendance) {
+                    rows.push([String(i + 1), r.name, r.className, r.teacherName, String(r.present), String(r.total), r.rate + '%']);
+                } else {
+                    rows.push([String(i + 1), r.name, r.className, r.teacherName, String(r.count), String(r.maxSeen), String(r.minSeen), String(r.avgScore)]);
+                }
             });
             var ws = XLSX.utils.aoa_to_sheet(rows);
             var wb = XLSX.utils.book_new();

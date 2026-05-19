@@ -16,7 +16,7 @@
             --radius: 14px; --radius-sm: 10px; --btn-radius: 9999px;
             --danger: #ef4444; --success: #10b981; --warning: #f59e0b;
             --table-header-bg: #eff6ff; --table-header-text: #1e40af; --table-border: #bfdbfe;
-            --sidebar-w: 220px; --sidebar-bg: #ffffff; --sidebar-text: #64748b; --sidebar-active: #2563eb;
+            --sidebar-w: 220px; --sidebar-collapsed-w: 56px; --sidebar-bg: #ffffff; --sidebar-text: #64748b; --sidebar-active: #2563eb;
         }
         [data-theme="dark"] {
             --primary: #f1f5f9; --accent: #60a5fa; --accent-light: #93c5fd;
@@ -104,6 +104,20 @@
         .sidebar-bottom a .iconfont { font-size: 16px; }
         .sidebar-bottom a .icon-settings { font-size: 17px; }
         .admin-badge { margin-left: auto; font-size: 10px; background: var(--bg); color: var(--text-muted); padding: 2px 8px; border-radius: 10px; }
+        .sidebar.collapsed { width: var(--sidebar-collapsed-w); min-width: var(--sidebar-collapsed-w); }
+        .sidebar.collapsed .sidebar-logo,
+        .sidebar.collapsed .sidebar-nav a,
+        .sidebar.collapsed .sidebar-bottom a { font-size: 0; justify-content: center; padding-left: 8px; padding-right: 8px; }
+        .sidebar.collapsed .sidebar-logo .iconfont,
+        .sidebar.collapsed .sidebar-nav a .iconfont,
+        .sidebar.collapsed .sidebar-nav a .iconfont2,
+        .sidebar.collapsed .sidebar-nav a .sidebar-emoji,
+        .sidebar.collapsed .sidebar-bottom a .iconfont,
+        .sidebar.collapsed .sidebar-bottom a .iconfont2 { font-size: 18px; }
+        .sidebar.collapsed .theme-toggle { margin-left: 0; }
+        .sidebar.collapsed .admin-badge { display: none; }
+        .sidebar.collapsed .sidebar-nav a { border-left-width: 0; }
+        .main-area.sidebar-collapsed { margin-left: var(--sidebar-collapsed-w); }
         .main-area { flex: 1; margin-left: var(--sidebar-w); display: flex; flex-direction: column; min-height: 100vh; }
         .topbar {
             display: flex; align-items: center; gap: 10px; padding: 10px 18px; background: var(--card-bg);
@@ -115,7 +129,9 @@
             border: 1.5px solid var(--border); font-size: 12px; background: var(--bg); outline: none;
         }
         .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-        .hamburger { display: none; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text); padding: 4px; }
+        .hamburger { display: flex; align-items: center; justify-content: center; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text); padding: 4px; width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0; }
+        .hamburger:hover { background: var(--bg); color: var(--accent); }
+        .hamburger:active { transform: scale(0.9); }
         .content-area { flex: 1; padding: 14px 18px 20px; }
         .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 99; }
         /* Mobile bottom nav */
@@ -795,7 +811,7 @@
                     </div>
                     <div class="main-area">
                         <div class="topbar">
-                            <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()">☰</button>
+                            <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebarCollapse()" title="折叠/展开导航栏"><i class="iconfont icon-menu"></i></button>
                             <span class="topbar-title"><i class="iconfont icon-settings"></i> 管理者后台</span>
                             <input class="search-input" id="searchInput" type="text" placeholder="🔍 搜索教师..." oninput="onSearch(this.value)">
                             <button class="btn btn-sm" id="refreshBtn" onclick="refresh()"><i class="iconfont icon-refresh"></i> 刷新</button>
@@ -820,6 +836,13 @@
                     </div>
                 </div>
             `;
+            // 恢复侧边栏折叠状态
+            if (localStorage.getItem('admin-sidebar-collapsed') === '1') {
+                var s = document.getElementById('sidebar');
+                var m = document.querySelector('.main-area');
+                if (s) s.classList.add('collapsed');
+                if (m) m.classList.add('sidebar-collapsed');
+            }
         }
 
         window.switchView = function(view) {
@@ -886,6 +909,20 @@
             var isOpen = s.classList.contains('open');
             if (isOpen) { s.classList.remove('open'); o.classList.remove('open'); }
             else { s.classList.add('open'); o.classList.add('open'); }
+        };
+
+        window.toggleSidebarCollapse = function() {
+            var s = document.getElementById('sidebar');
+            var m = document.querySelector('.main-area');
+            if (!s) return;
+            // 手机端：滑入/滑出侧边栏；桌面端：折叠/展开
+            if (window.innerWidth <= 768) {
+                toggleSidebar();
+            } else {
+                s.classList.toggle('collapsed');
+                if (m) m.classList.toggle('sidebar-collapsed');
+                localStorage.setItem('admin-sidebar-collapsed', s.classList.contains('collapsed') ? '1' : '0');
+            }
         };
 
         // ========== Dashboard ==========

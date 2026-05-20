@@ -566,6 +566,34 @@
             });
         }
         function sanitizeSheetName(name) { return String(name).replace(/[:\\\/?*\[\]]/g, '-').replace(/^['']/g, '').replace(/['']$/g, '').substring(0, 31); }
+        // Build dynamic subject list from actual column names across all feedback data
+        function getDynamicSubjects() {
+            var subjectSet = {};
+            var scoredSet = {};
+            Object.values(allTeachers).forEach(function(t) {
+                var fb = t.feedback || {};
+                Object.values(fb).forEach(function(entry) {
+                    if (entry && entry.dateColumns) {
+                        entry.dateColumns.forEach(function(col) {
+                            var name = stripMaxScore(col);
+                            if (name && name !== '备注') {
+                                subjectSet[name] = true;
+                                if (extractMaxScore(col) > 0) scoredSet[name] = true;
+                            }
+                        });
+                    }
+                });
+            });
+            var subjects = Object.keys(subjectSet).sort(function(a, b) {
+                // Scored subjects first, then alphabetical
+                var aScored = scoredSet[a] ? 0 : 1;
+                var bScored = scoredSet[b] ? 0 : 1;
+                if (aScored !== bScored) return aScored - bScored;
+                return a.localeCompare(b);
+            });
+            subjects.push('出勤');
+            return { subjects: subjects, scoredSubs: Object.keys(scoredSet) };
+        }
         function getAutoBackground(val, maxScore) {
             if (val === '' || val === null || val === undefined) return '';
             const str = String(val).trim();
@@ -1740,8 +1768,11 @@
 
         // ========== Query Engine ==========
         function renderQuery() {
-            var subjects = ['听写', '小测', '小书童', '笔记', '语音作业', '出勤', '自学资料'];
-            var scoredSubs = ['听写', '小测', '小书童'];
+            var dyn = getDynamicSubjects();
+            var subjects = dyn.subjects;
+            var scoredSubs = dyn.scoredSubs;
+            // If current subject no longer exists, reset to first available
+            if (subjects.indexOf(querySubject) === -1) querySubject = subjects[0] || '出勤';
             var isScored = scoredSubs.indexOf(querySubject) >= 0;
             var conditions = isScored ? [
                 { value: 'perfect', label: '等于满分' },
@@ -1755,6 +1786,8 @@
             ];
             var sorts = [
                 { value: 'count_desc', label: '按次数降序' },
+                { value: 'perfect_desc', label: '按满分次数降序' },
+                { value: 'perfect_rate_desc', label: '按满分率降序' },
                 { value: 'avg_desc', label: '按均分降序' }
             ];
             var limits = [
@@ -1983,12 +2016,14 @@
                                 key: key, name: rec.name, className: cls.name, classId: classId,
                                 teacherName: t.name || t.email || '', teacherId: t.id,
                                 count: 0, totalScore: 0, maxSeen: 0, minSeen: Infinity, latestScore: 0, latestDate: '',
+                                perfectCount: 0,
                                 details: []
                             };
                             results.push(existing);
                         }
                         existing.count++;
                         existing.totalScore += score;
+                        if (maxScore > 0 && score >= maxScore) existing.perfectCount++;
                         if (score > existing.maxSeen) existing.maxSeen = score;
                         if (score < existing.minSeen) existing.minSeen = score;
                         if (dateLabel > existing.latestDate) { existing.latestDate = dateLabel; existing.latestScore = score; }
@@ -2000,12 +2035,18 @@
             // Compute averages
             results.forEach(function(r) {
                 r.avgScore = r.count > 0 ? Math.round(r.totalScore / r.count * 10) / 10 : 0;
+                r.perfectRate = r.count > 0 ? Math.round(r.perfectCount / r.count * 100) : 0;
                 if (r.minSeen === Infinity) r.minSeen = 0;
             });
 
             // Sort
-            if (querySort === 'avg_desc') {
+            var sortField = querySort || 'count_desc';
+            if (sortField === 'avg_desc') {
                 results.sort(function(a, b) { return b.avgScore - a.avgScore || b.count - a.count; });
+            } else if (sortField === 'perfect_desc') {
+                results.sort(function(a, b) { return b.perfectCount - a.perfectCount || b.perfectRate - a.perfectRate; });
+            } else if (sortField === 'perfect_rate_desc') {
+                results.sort(function(a, b) { return b.perfectRate - a.perfectRate || b.perfectCount - a.perfectCount; });
             } else {
                 // count_desc
                 results.sort(function(a, b) { return b.count - a.count || b.avgScore - a.avgScore; });
@@ -2022,7 +2063,8 @@
         function renderQueryResults() {
             if (!queryResults || !queryResults.length) return '<div class="card"><div class="empty-state">未找到符合条件的学生</div></div>';
             var isAttendance = querySubject === '出勤';
-            var scoredSubs = ['听写', '小测', '小书童'];
+            var dyn = getDynamicSubjects();
+            var scoredSubs = dyn.scoredSubs;
             var isScored = scoredSubs.indexOf(querySubject) >= 0;
             var html = '<div class="card"><div class="card-title" style="justify-content:space-between"><span>共找到 ' + queryResults.length + ' 名学生</span></div>';
             html += '<div class="table-wrap"><table><thead><tr><th>排名</th><th>学生</th><th>班级</th><th>教师</th>';
@@ -2030,7 +2072,7 @@
                 html += '<th>出勤</th><th>总课次</th><th>出勤率</th>';
             } else {
                 html += '<th>次数</th>';
-                if (isScored) { html += '<th>最高</th><th>最低</th><th>均分</th>'; }
+                if (isScoped) { html += '<th>满分次数</th><th>满分率</th><th>最高</th><th>最低</th>'; }
                 else { html += '<th>完成率</th>'; }
             }
             html += '</tr></thead><tbody>';
@@ -2053,9 +2095,10 @@
                 } else {
                     html += '<td style="font-weight:600;">' + r.count + '</td>';
                     if (isScored) {
+                        html += '<td style="font-weight:700;color:var(--success);">' + (r.perfectCount || 0) + '</td>';
+                        html += '<td>' + (r.perfectRate || 0) + '%</td>';
                         html += '<td>' + r.maxSeen + '</td>';
                         html += '<td>' + r.minSeen + '</td>';
-                        html += '<td style="font-weight:700;color:var(--accent);">' + r.avgScore + '</td>';
                     } else {
                         var rate = Math.round(r.avgScore * 100);
                         html += '<td style="font-weight:700;color:' + (rate >= 90 ? 'var(--success)' : rate >= 70 ? 'var(--accent)' : 'var(--danger)') + ';">' + rate + '%</td>';
@@ -2071,6 +2114,8 @@
             var r = queryResults.find(function(x) { return x.key === key; });
             if (!r) return;
             var isAttendance = querySubject === '出勤';
+            var dyn = getDynamicSubjects();
+            var isScored = dyn.scoredSubs.indexOf(querySubject) >= 0;
             var html = '<div style="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;" onclick="this.remove()">';
             html += '<div style="background:var(--card-bg);border-radius:var(--radius);padding:20px;max-width:500px;width:90%;max-height:70vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);" onclick="event.stopPropagation()">';
             html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
@@ -2084,8 +2129,17 @@
                     html += '<tr><td>' + escapeHtml(d.date) + '</td><td style="font-weight:600;color:' + (d.present ? 'var(--success)' : 'var(--danger)') + ';">' + (d.present ? '✅ 到场' : '❌ 缺勤') + '</td></tr>';
                 });
                 html += '</tbody></table>';
+            } else if (isScored) {
+                html += '<div style="margin-bottom:8px;font-size:12px;color:var(--text-muted);">满分次数：<b style="color:var(--success);">' + (r.perfectCount || 0) + '</b> / ' + r.count + '（满分率 ' + (r.perfectRate || 0) + '%）</div>';
+                html += '<table style="width:100%;font-size:12px;"><thead><tr><th>课次</th><th>得分</th><th>满分</th></tr></thead><tbody>';
+                r.details.sort(function(a, b) { return naturalSort(a.date, b.date); });
+                r.details.forEach(function(d) {
+                    var isPerfect = d.maxScore > 0 && d.score >= d.maxScore;
+                    html += '<tr><td>' + escapeHtml(d.date) + '</td><td style="font-weight:600;color:' + (isPerfect ? 'var(--success)' : '') + ';">' + escapeHtml(d.raw) + (isPerfect ? ' 💯' : '') + '</td><td style="color:var(--text-muted);">' + (d.maxScore || '-') + '</td></tr>';
+                });
+                html += '</tbody></table>';
             } else {
-                html += '<table style="width:100%;font-size:12px;"><thead><tr><th>课次</th><th>得分</th></tr></thead><tbody>';
+                html += '<table style="width:100%;font-size:12px;"><thead><tr><th>课次</th><th>记录</th></tr></thead><tbody>';
                 r.details.sort(function(a, b) { return naturalSort(a.date, b.date); });
                 r.details.forEach(function(d) {
                     html += '<tr><td>' + escapeHtml(d.date) + '</td><td style="font-weight:600;">' + escapeHtml(d.raw) + '</td></tr>';
@@ -2101,13 +2155,24 @@
         window.exportQueryResults = function() {
             if (!queryResults || !queryResults.length) return;
             var isAttendance = querySubject === '出勤';
-            var headers = isAttendance ? ['排名', '学生', '班级', '教师', '出勤次数', '总课次', '出勤率'] : ['排名', '学生', '班级', '教师', '次数', '最高分', '最低分', '均分'];
+            var dyn = getDynamicSubjects();
+            var isScored = dyn.scoredSubs.indexOf(querySubject) >= 0;
+            var headers;
+            if (isAttendance) {
+                headers = ['排名', '学生', '班级', '教师', '出勤次数', '总课次', '出勤率'];
+            } else if (isScored) {
+                headers = ['排名', '学生', '班级', '教师', '次数', '满分次数', '满分率', '最高分', '最低分'];
+            } else {
+                headers = ['排名', '学生', '班级', '教师', '次数', '完成率'];
+            }
             var rows = [headers];
             queryResults.forEach(function(r, i) {
                 if (isAttendance) {
                     rows.push([String(i + 1), r.name, r.className, r.teacherName, String(r.present), String(r.total), r.rate + '%']);
+                } else if (isScored) {
+                    rows.push([String(i + 1), r.name, r.className, r.teacherName, String(r.count), String(r.perfectCount || 0), (r.perfectRate || 0) + '%', String(r.maxSeen), String(r.minSeen)]);
                 } else {
-                    rows.push([String(i + 1), r.name, r.className, r.teacherName, String(r.count), String(r.maxSeen), String(r.minSeen), String(r.avgScore)]);
+                    rows.push([String(i + 1), r.name, r.className, r.teacherName, String(r.count), String(Math.round(r.avgScore * 100)) + '%']);
                 }
             });
             var ws = XLSX.utils.aoa_to_sheet(rows);

@@ -1768,11 +1768,8 @@
 
         // ========== Query Engine ==========
         function renderQuery() {
-            var dyn = getDynamicSubjects();
-            var subjects = dyn.subjects;
-            var scoredSubs = dyn.scoredSubs;
-            // If current subject no longer exists, reset to first available
-            if (subjects.indexOf(querySubject) === -1) querySubject = subjects[0] || '出勤';
+            var subjects = ['听写', '小测', '小书童', '笔记', '语音作业', '出勤', '自学资料'];
+            var scoredSubs = ['听写', '小测', '小书童'];
             var isScored = scoredSubs.indexOf(querySubject) >= 0;
             var conditions = isScored ? [
                 { value: 'perfect', label: '等于满分' },
@@ -2063,8 +2060,7 @@
         function renderQueryResults() {
             if (!queryResults || !queryResults.length) return '<div class="card"><div class="empty-state">未找到符合条件的学生</div></div>';
             var isAttendance = querySubject === '出勤';
-            var dyn = getDynamicSubjects();
-            var scoredSubs = dyn.scoredSubs;
+            var scoredSubs = ['听写', '小测', '小书童'];
             var isScored = scoredSubs.indexOf(querySubject) >= 0;
             var html = '<div class="card"><div class="card-title" style="justify-content:space-between"><span>共找到 ' + queryResults.length + ' 名学生</span></div>';
             html += '<div class="table-wrap"><table><thead><tr><th>排名</th><th>学生</th><th>班级</th><th>教师</th>';
@@ -2114,8 +2110,8 @@
             var r = queryResults.find(function(x) { return x.key === key; });
             if (!r) return;
             var isAttendance = querySubject === '出勤';
-            var dyn = getDynamicSubjects();
-            var isScored = dyn.scoredSubs.indexOf(querySubject) >= 0;
+            var scoredSubs = ['听写', '小测', '小书童'];
+            var isScored = scoredSubs.indexOf(querySubject) >= 0;
             var html = '<div style="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;" onclick="this.remove()">';
             html += '<div style="background:var(--card-bg);border-radius:var(--radius);padding:20px;max-width:500px;width:90%;max-height:70vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);" onclick="event.stopPropagation()">';
             html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
@@ -2155,8 +2151,8 @@
         window.exportQueryResults = function() {
             if (!queryResults || !queryResults.length) return;
             var isAttendance = querySubject === '出勤';
-            var dyn = getDynamicSubjects();
-            var isScored = dyn.scoredSubs.indexOf(querySubject) >= 0;
+            var scoredSubs = ['听写', '小测', '小书童'];
+            var isScored = scoredSubs.indexOf(querySubject) >= 0;
             var headers;
             if (isAttendance) {
                 headers = ['排名', '学生', '班级', '教师', '出勤次数', '总课次', '出勤率'];

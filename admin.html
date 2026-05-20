@@ -16,7 +16,7 @@
             --radius: 14px; --radius-sm: 10px; --btn-radius: 9999px;
             --danger: #ef4444; --success: #10b981; --warning: #f59e0b;
             --table-header-bg: #eff6ff; --table-header-text: #1e40af; --table-border: #bfdbfe;
-            --sidebar-w: 220px; --sidebar-bg: #ffffff; --sidebar-text: #64748b; --sidebar-active: #2563eb;
+            --sidebar-w: 220px; --sidebar-collapsed-w: 56px; --sidebar-bg: #ffffff; --sidebar-text: #64748b; --sidebar-active: #2563eb;
         }
         [data-theme="dark"] {
             --primary: #f1f5f9; --accent: #60a5fa; --accent-light: #93c5fd;
@@ -56,6 +56,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
             background: var(--bg); color: var(--text); min-height: 100vh;
             transition: background-color 0.35s ease, color 0.35s ease;
+            -webkit-tap-highlight-color: transparent;
         }
         .sidebar, .card, .stat-card, .topbar, .t-item, .detail-card, .custom-dialog,
         .search-input, .detail-table th, .tag-capsule, .t-class-item {
@@ -72,10 +73,13 @@
         .sidebar {
             width: var(--sidebar-w); min-width: var(--sidebar-w); background: var(--sidebar-bg);
             display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0;
-            z-index: 100; transition: transform 0.25s ease;
+            z-index: 100; overflow: hidden;
+            transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s ease;
             border-right: 1px solid var(--border-light); box-shadow: 2px 0 8px rgba(0,0,0,0.03);
         }
-        .sidebar-logo { padding: 18px 16px; font-size: 15px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border-light); }
+        .nav-label { transition: opacity 0.2s 0.08s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.3s 0.08s cubic-bezier(0.4, 0, 0.2, 1); overflow: hidden; display: inline-block; max-width: 200px; vertical-align: middle; }
+        .sidebar.collapsed .nav-label { opacity: 0; max-width: 0; }
+        .sidebar-logo { padding: 12px 16px; font-size: 15px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; height: 50px; box-sizing: border-box; white-space: nowrap; overflow: hidden; }
         .sidebar-logo .iconfont { font-size: 20px; color: var(--accent); }
         .theme-toggle {
             margin-left: auto; background: var(--bg); border: 1px solid var(--border);
@@ -88,8 +92,9 @@
         .sidebar-nav { flex: 1; padding: 8px 0; overflow-y: auto; }
         .sidebar-nav a {
             display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: var(--sidebar-text);
-            text-decoration: none; font-size: 13px; font-weight: 500; transition: all 0.15s; cursor: pointer;
-            border-left: 3px solid transparent;
+            text-decoration: none; font-size: 13px; font-weight: 500; cursor: pointer;
+            border-left: 3px solid transparent; white-space: nowrap;
+            transition: padding 0.35s cubic-bezier(0.4, 0, 0.2, 1), background 0.15s, color 0.15s;
         }
         .sidebar-nav a:hover { color: var(--accent); background: #eff6ff; }
         .sidebar-nav a.active { color: var(--accent); background: #eff6ff; border-left-color: var(--sidebar-active); font-weight: 600; }
@@ -98,16 +103,22 @@
         .sidebar-bottom { padding: 8px 0; border-top: 1px solid var(--border-light); }
         .sidebar-bottom a {
             display: flex; align-items: center; gap: 10px; padding: 9px 20px; color: var(--sidebar-text);
-            text-decoration: none; font-size: 13px; cursor: pointer; transition: all 0.15s;
+            text-decoration: none; font-size: 13px; cursor: pointer; white-space: nowrap;
+            transition: padding 0.35s cubic-bezier(0.4, 0, 0.2, 1), background 0.15s, color 0.15s;
         }
         .sidebar-bottom a:hover { color: var(--accent); }
         .sidebar-bottom a .iconfont { font-size: 16px; }
         .sidebar-bottom a .icon-settings { font-size: 17px; }
         .admin-badge { margin-left: auto; font-size: 10px; background: var(--bg); color: var(--text-muted); padding: 2px 8px; border-radius: 10px; }
-        .main-area { flex: 1; margin-left: var(--sidebar-w); display: flex; flex-direction: column; min-height: 100vh; }
+        .sidebar.collapsed { width: var(--sidebar-collapsed-w); min-width: var(--sidebar-collapsed-w); }
+        .sidebar.collapsed .sidebar-nav a { border-left-width: 0; }
+        .sidebar.collapsed .admin-badge { display: none; }
+        .main-area.sidebar-collapsed { margin-left: var(--sidebar-collapsed-w); }
+        .main-area { flex: 1; margin-left: var(--sidebar-w); display: flex; flex-direction: column; min-height: 100vh; transition: margin-left 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
         .topbar {
             display: flex; align-items: center; gap: 10px; padding: 10px 18px; background: var(--card-bg);
-            box-shadow: 0 1px 4px rgba(0,0,0,0.04); position: sticky; top: 0; z-index: 50; flex-wrap: wrap;
+            border-bottom: 1px solid var(--border-light); position: sticky; top: 0; z-index: 50; flex-wrap: wrap;
+            min-height: 50px; box-sizing: border-box;
         }
         .topbar-title { font-weight: 700; font-size: 14px; white-space: nowrap; display: none; }
         .search-input {
@@ -115,7 +126,9 @@
             border: 1.5px solid var(--border); font-size: 12px; background: var(--bg); outline: none;
         }
         .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-        .hamburger { display: none; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text); padding: 4px; }
+        .hamburger { display: flex; align-items: center; justify-content: center; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text); padding: 4px; width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0; }
+        .hamburger:hover { background: var(--bg); color: var(--accent); }
+        .hamburger:active { transform: scale(0.9); }
         .content-area { flex: 1; padding: 14px 18px 20px; }
         .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 99; }
         /* Mobile bottom nav */
@@ -133,10 +146,14 @@
         @media (max-width: 768px) {
             .sidebar { transform: translateX(-100%); }
             .sidebar.open { transform: translateX(0); }
+            .sidebar.collapsed { width: var(--sidebar-w); min-width: var(--sidebar-w); }
+
+            .sidebar.collapsed .nav-label { opacity: 1; max-width: 200px; }
             .sidebar-overlay.open { display: block; }
             .main-area { margin-left: 0; }
-            .hamburger { display: block; }
-            .topbar-title { display: block; }
+            .main-area.sidebar-collapsed { margin-left: 0; }
+            .hamburger { display: flex; }
+            .topbar-title { display: none; }
             .topbar .btn { padding: 5px 10px; font-size: 11px; }
             .topbar .search-input { font-size: 11px; padding: 5px 8px; }
             .content-area { padding: 8px 8px 70px; }
@@ -358,10 +375,16 @@
         .iconfont3 { font-family: "iconfont3" !important; font-size: 16px; font-style: normal; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
         .icon-moon:before { content: "\e6b6"; font-family: "iconfont3"; }
         .icon-sun:before { content: "\e68a"; font-family: "iconfont3"; }
-        .stat-icon .iconfont { font-size: 20px; }
-        .subtab .iconfont { font-size: 13px; }
-        .btn .iconfont { font-size: 13px; }
-        .card-title .iconfont { font-size: 16px; }
+        @font-face { font-family: "iconfont4"; src: url(data:font/truetype;charset=utf-8;base64,AAEAAAALAIAAAwAwR1NVQiCLJXoAAAE4AAAAVE9TLzI8JUm2AAABjAAAAGBjbWFwzNidqgAAAgAAAAGyZ2x5ZtbC8qoAAAPAAAAEWGhlYWQvg5OqAAAA4AAAADZoaGVhB94DhgAAALwAAAAkaG10eBQAAAAAAAHsAAAAFGxvY2ECGgMYAAADtAAAAAxtYXhwARUAhAAAARgAAAAgbmFtZRCjPLAAAAgYAAACZ3Bvc3T4Nf77AAAKgAAAAE0AAQAAA4D/gABcBAAAAAAABAAAAQAAAAAAAAAAAAAAAAAAAAUAAQAAAAEAAK7YfmdfDzz1AAsEAAAAAADmMifWAAAAAOYyJ9YAAP+ABAADgQAAAAgAAgAAAAAAAAABAAAABQB4AAYAAAAAAAIAAAAKAAoAAAD/AAAAAAAAAAEAAAAKADAAPgACREZMVAAObGF0bgAaAAQAAAAAAAAAAQAAAAQAAAAAAAAAAQAAAAFsaWdhAAgAAAABAAAAAQAEAAQAAAABAAgAAQAGAAAAAQAAAAQEAAGQAAUAAAKJAswAAACPAokCzAAAAesAMgEIAAACAAUDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFBmRWQAwOYQ5uYDgP+AAAAD3ACAAAAAAQAAAAAAAAAAAAAAAAACBAAAAAQAAAAEAAAABAAAAAQAAAAAAAAFAAAAAwAAACwAAAAEAAABcgABAAAAAABsAAMAAQAAACwAAwAKAAABcgAEAEAAAAAKAAgAAgAC5hDmEuYr5ub//wAA5hDmEuYr5ub//wAAAAAAAAAAAAEACgAKAAoACgAAAAMAAQACAAQAAAEGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAAAAAEAAAAAAAAAABAAA5hAAAOYQAAAAAwAA5hIAAOYSAAAAAQAA5isAAOYrAAAAAgAA5uYAAObmAAAABAAAAAAAAACCAOwBmAIsAAYAAP+FA9wDgQAgACYAMwBAAE0AWgAAASIOAQcjIgYUFjsBERQeATMhMj4BNREzMjY0JisBLgIHPgEyFhcBIi4BNREhERQOASMhNzI2NRE0JiIGFREUFjMyNjURNCYiBhURFBYzMjY1ETQmIgYVERQWAggzVzUB8xQdHRQ2KkgqAbcqSCoxFB0dFOQBNFefAzlQOQP+yA8fEwJAEx8P/kJEEhoaJBoZrhIaGiQaGpcSGhokGhkDgDJVMxwpHf3dM1YyMlYzAiMdKB0zVTKxJTMzJf0QGSsbAiL93RosGYUdFAEXFBwcFP7pFB0dFAEXFBwcFP7pFB0dFAEXFBwcFP7pFB0AAwAA/4YDmgOBACoAOgBJAAABITU0PgEyHgEdARQWMjY9ATQuASIHDgEdAQ4BFREUHgEzITI+ATURLgITFAYjISImNRE0NjMhMhYVBSIGHQEUFjI2PQE0JicmAwD+Rjddcl42GB0YSn6WQT5KLjgmQSYB4CZAJwcsQSAjHf4gHCQkHAHgHSP+zQ4YGB0YCAUHAeCGOV42Nl45QA4YGA5HS39JJyV+SY0OTCz+uSZAJydAJgFHJj0j/jMdIyMdAUccJCQcJxgOhw4YGA6NBRAFBgAAAAAGAAD/nQPiA4AALwBDAE8AWwBpAHcAAAUhIi4CNRE0Nz4BMyEyFhcWFQMUFjI2NRM0LgIjISIOAhURFB4CMyEyNjQmBSc+AS4CDgIeAjY3FxYyNjQlIi4BPgEeAQYHDgETMjY0JiMhIgYUFjMXMj4BNC4BKwEiBhQWMxUiBhQWOwEyPgE0LgEjAmf+WRMiGg4bDSITAn8TIg0cAhQdFAIZLTwh/YEgPC4YGC48IAGnDhUVAWOEHwwlUWZlSh0VRGFnLIMKHRT+yjFNEy9bXjcKIxMySw4VFA/92Q4UFA7PCRAJCRAJzw4UFA4OFBQOigoQCQkRCRwPGyMUApQnHQ0PDw0cKP5LDhUUDwG1IT0vGhkwPSL9bSI9LxoVHRUKhy1qZUYWHk5naVQmDCCHCxUdgEBkWiceVWQlFBUB8RUdFRUdFdUKEBMQChUdFY4VHRUJERMQCgAAAAMAAP+AA+cDfwAfAFgAYQAAJTQ3NjcnPgE1NCcmJyYiBwYHBhUUFhcOAQcGFSEmJyYlNDY3JicGLgI3JicOASImJwYHFg4CJwYHHgEUBgcWFzYeAgcWFz4BMhYXNjcmPgIXNjcuAQciJjQ2MhYUBgHdKilFBEpbJiU/QpdBQCUmW0pusDEzAjkwGhwB4hYRCBARJRsHCBwgBx8mHgcgHAgHGyUREQgSFRUSCBERJRsHCBwgBx4nHgcgHAgHGyUREAgRFrYZIyMzIyNiUkdEKAEhilRMQT8lJiYlP0FMVIohGo1kaHQqOTxCEx8GIBwHBhslEREIERYWEQgRESUbBgccIAYfJh8HHxwHBhslEREIERYWEQgRESUbBgccHwcfKiQyJCQyJAAAAAASAN4AAQAAAAAAAAATAAAAAQAAAAAAAQAIABMAAQAAAAAAAgAHABsAAQAAAAAAAwAIACIAAQAAAAAABAAIACoAAQAAAAAABQALADIAAQAAAAAABgAIAD0AAQAAAAAACgArAEUAAQAAAAAACwATAHAAAwABBAkAAAAmAIMAAwABBAkAAQAQAKkAAwABBAkAAgAOALkAAwABBAkAAwAQAMcAAwABBAkABAAQANcAAwABBAkABQAWAOcAAwABBAkABgAQAP0AAwABBAkACgBWAQ0AAwABBAkACwAmAWNDcmVhdGVkIGJ5IGljb25mb250aWNvbmZvbnRSZWd1bGFyaWNvbmZvbnRpY29uZm9udFZlcnNpb24gMS4waWNvbmZvbnRHZW5lcmF0ZWQgYnkgc3ZnMnR0ZiBmcm9tIEZvbnRlbGxvIHByb2plY3QuaHR0cDovL2ZvbnRlbGxvLmNvbQBDAHIAZQBhAHQAZQBkACAAYgB5ACAAaQBjAG8AbgBmAG8AbgB0AGkAYwBvAG4AZgBvAG4AdABSAGUAZwB1AGwAYQByAGkAYwBvAG4AZgBvAG4AdABpAGMAbwBuAGYAbwBuAHQAVgBlAHIAcwBpAG8AbgAgADEALgAwAGkAYwBvAG4AZgBvAG4AdABHAGUAbgBlAHIAYQB0AGUAZAAgAGIAeQAgAHMAdgBnADIAdAB0AGYAIABmAHIAbwBtACAARgBvAG4AdABlAGwAbABvACAAcAByAG8AagBlAGMAdAAuAGgAdAB0AHAAOgAvAC8AZgBvAG4AdABlAGwAbABvAC4AYwBvAG0AAAIAAAAAAAAACgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQECAQMBBAEFAQYAB3NoYW5jaHUEbWltYQZjaGF4dW4JZ3VhbmxpemhlAAAAAAA=) format('truetype'); }
+        .iconfont4 { font-family: "iconfont4" !important; font-size: 16px; font-style: normal; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        .icon-chaxun:before { content: "\e610"; font-family: "iconfont4"; }
+        .icon-mima:before { content: "\e62b"; font-family: "iconfont4"; }
+        .icon-guanlizhe:before { content: "\e6e6"; font-family: "iconfont4"; }
+        .icon-shanchu:before { content: "\e612"; font-family: "iconfont4"; }
+        .stat-icon .iconfont, .stat-icon .iconfont4 { font-size: 20px; }
+        .subtab .iconfont, .subtab .iconfont4 { font-size: 13px; }
+        .btn .iconfont, .btn .iconfont4 { font-size: 13px; }
+        .card-title .iconfont, .card-title .iconfont4 { font-size: 16px; }
     </style>
 </head>
 <body>
@@ -407,10 +430,12 @@
         let queryRecent = 'all';
         let queryTeacher = 'all';
         let queryClass = 'all';
+        let queryGrade = 'all';
         let querySort = 'count_desc'; // 'count_desc' | 'avg_desc' | 'latest_desc'
         let queryLimit = '50';
         let queryResults = null;
         let queryLoading = false;
+        let queryError = null;
 
         // ========== Theme ==========
         function initTheme() {
@@ -452,15 +477,16 @@
             });
 
             transition.ready.then(function() {
-                // Remove transition lock — let View Transitions handle animation exclusively
                 document.documentElement.classList.remove('notransition');
+
+                // 移动端跳过圆圈动画，用原生渐变过渡（sticky 定位下坐标会错位）
+                if (window.innerWidth <= 768) return;
 
                 var clipPath = [
                     'circle(0px at ' + cx + 'px ' + cy + 'px)',
                     'circle(' + radius + 'px at ' + cx + 'px ' + cy + 'px)'
                 ];
 
-                // Always animate the new root expanding from the button
                 document.documentElement.animate(
                     { clipPath: clipPath },
                     {
@@ -513,7 +539,72 @@
             if (str === '✗' || str === '×' || str === '✘' || str === '❌' || str === '未完成') return 0;
             const num = parseInt(str, 10); return isNaN(num) ? 0 : num;
         }
+        // 出勤判定：排除「小书童」「小学堂」「语音作业」「备注」，任一有效列有值即算到场
+        function isStudentPresent(entry, studentName) {
+            const excluded = ['小书童', '小学堂', '语音作业', '备注'];
+            const recs = entry.records || (Array.isArray(entry) ? entry : []);
+            const rec = recs.find(function(r) { return r.name === studentName; });
+            if (!rec || !rec.values) return false;
+            if (!entry.dateColumns) return false;
+            return entry.dateColumns.some(function(col, i) {
+                if (excluded.some(function(kw) { return columnContainsKeyword(col, kw); })) return false;
+                var v = rec.values[i];
+                return v !== '' && v !== null && v !== undefined;
+            });
+        }
+        // 该课次是否至少有一个学生有有效数据（排除同样的列）
+        function isLessonActive(entry) {
+            const excluded = ['小书童', '小学堂', '语音作业', '备注'];
+            if (!entry || !entry.dateColumns) return false;
+            const recs = entry.records || (Array.isArray(entry) ? entry : []);
+            if (!recs.length) return false;
+            return recs.some(function(rec) {
+                if (!rec || !rec.values) return false;
+                return entry.dateColumns.some(function(col, i) {
+                    if (excluded.some(function(kw) { return columnContainsKeyword(col, kw); })) return false;
+                    var v = rec.values[i];
+                    return v !== '' && v !== null && v !== undefined;
+                });
+            });
+        }
         function sanitizeSheetName(name) { return String(name).replace(/[:\\\/?*\[\]]/g, '-').replace(/^['']/g, '').replace(/['']$/g, '').substring(0, 31); }
+        // Check if class name contains the given grade (supports Arabic 1-6 and Chinese 一二三四五六)
+        function classContainsGrade(className, grade) {
+            if (grade === 'all') return true;
+            var chineseMap = { '1': '一', '2': '二', '3': '三', '4': '四', '5': '五', '6': '六' };
+            var arabic = String(grade);
+            var chinese = chineseMap[arabic] || '';
+            var arabicRegex = new RegExp(arabic + '[A-Za-z级]');
+            return arabicRegex.test(className) || (chinese && className.indexOf(chinese) !== -1);
+        }
+        // Build dynamic subject list from actual column names across all feedback data
+        function getDynamicSubjects() {
+            var subjectSet = {};
+            var scoredSet = {};
+            Object.values(allTeachers).forEach(function(t) {
+                var fb = t.feedback || {};
+                Object.values(fb).forEach(function(entry) {
+                    if (entry && entry.dateColumns) {
+                        entry.dateColumns.forEach(function(col) {
+                            var name = stripMaxScore(col);
+                            if (name && name !== '备注') {
+                                subjectSet[name] = true;
+                                if (extractMaxScore(col) > 0) scoredSet[name] = true;
+                            }
+                        });
+                    }
+                });
+            });
+            var subjects = Object.keys(subjectSet).sort(function(a, b) {
+                // Scored subjects first, then alphabetical
+                var aScored = scoredSet[a] ? 0 : 1;
+                var bScored = scoredSet[b] ? 0 : 1;
+                if (aScored !== bScored) return aScored - bScored;
+                return a.localeCompare(b);
+            });
+            subjects.push('出勤');
+            return { subjects: subjects, scoredSubs: Object.keys(scoredSet) };
+        }
         function getAutoBackground(val, maxScore) {
             if (val === '' || val === null || val === undefined) return '';
             const str = String(val).trim();
@@ -748,30 +839,30 @@
         // ========== Render ==========
         function renderApp() {
             var sidebarHTML = '';
-            sidebarHTML += '<a onclick="switchView(\'dashboard\')" class="active" data-nav="dashboard"><i class="iconfont icon-dashboard"></i> 概览</a>';
-            sidebarHTML += '<a onclick="switchView(\'teachers\')" data-nav="teachers"><i class="iconfont icon-user-group"></i> 教师</a>';
-            sidebarHTML += '<a onclick="switchView(\'awards\')" data-nav="awards"><i class="iconfont2 icon-trophy"></i> 评优</a>';
-            sidebarHTML += '<a onclick="switchView(\'analysis\')" data-nav="analysis"><i class="iconfont icon-chart"></i> 分析</a>';
-            sidebarHTML += '<a onclick="switchView(\'query\')" data-nav="query"><span class="sidebar-emoji">🔍</span> 查询</a>';
+            sidebarHTML += '<a onclick="switchView(\'dashboard\')" class="active" data-nav="dashboard"><i class="iconfont icon-dashboard"></i><span class="nav-label">概览</span></a>';
+            sidebarHTML += '<a onclick="switchView(\'teachers\')" data-nav="teachers"><i class="iconfont icon-user-group"></i><span class="nav-label">教师</span></a>';
+            sidebarHTML += '<a onclick="switchView(\'awards\')" data-nav="awards"><i class="iconfont2 icon-trophy"></i><span class="nav-label">评优</span></a>';
+            sidebarHTML += '<a onclick="switchView(\'analysis\')" data-nav="analysis"><i class="iconfont icon-chart"></i><span class="nav-label">分析</span></a>';
+            sidebarHTML += '<a onclick="switchView(\'query\')" data-nav="query"><i class="iconfont4 icon-chaxun"></i><span class="nav-label">查询</span></a>';
 
             document.getElementById('app').innerHTML = `
                 <div class="app-layout">
                     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
                     <div class="sidebar" id="sidebar">
-                        <div class="sidebar-logo"><i class="iconfont icon-settings"></i> 反馈表管理<button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="切换深色/浅色模式"><i class="iconfont3 icon-moon"></i></button></div>
+                        <div class="sidebar-logo"><i class="iconfont icon-settings"></i><span class="nav-label">反馈表管理</span></div>
                         <div class="sidebar-nav">${sidebarHTML}</div>
                         <div class="sidebar-bottom">
-                            <a onclick="switchView('profile')" data-nav="profile"><i class="iconfont2 icon-user"></i> 个人中心</a>
-                            <a onclick="logout()"><i class="iconfont icon-logout"></i> 退出登录</a>
+                            <a onclick="switchView('profile')" data-nav="profile"><i class="iconfont2 icon-user"></i><span class="nav-label">个人中心</span></a>
+                            <a onclick="logout()"><i class="iconfont icon-logout"></i><span class="nav-label">退出登录</span></a>
                         </div>
                     </div>
                     <div class="main-area">
                         <div class="topbar">
-                            <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()">☰</button>
+                            <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebarCollapse()" title="折叠/展开导航栏">☰</button>
                             <span class="topbar-title"><i class="iconfont icon-settings"></i> 管理者后台</span>
                             <input class="search-input" id="searchInput" type="text" placeholder="🔍 搜索教师..." oninput="onSearch(this.value)">
                             <button class="btn btn-sm" id="refreshBtn" onclick="refresh()"><i class="iconfont icon-refresh"></i> 刷新</button>
-                            <button class="btn btn-sm btn-outline" id="exportBtn" onclick="smartExport()"><i class="iconfont icon-download"></i> 导出</button>
+                            <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="切换深色/浅色模式"><i class="iconfont3 icon-moon"></i></button>
                         </div>
                         <div class="content-area">
                             <div id="view-dashboard" class="subview active"></div>
@@ -787,11 +878,18 @@
                         <div class="mobile-nav-inner">
                             <a onclick="switchView('dashboard')" class="active" data-mnav="dashboard"><i class="iconfont icon-dashboard"></i>看板</a>
                             <a onclick="switchView('teachers')" data-mnav="teachers"><i class="iconfont icon-user-group"></i>教师</a>
-                            <a onclick="switchView('awards')" data-mnav="awards"><i class="iconfont2 icon-trophy"></i>评优</a>
+                            <a onclick="switchView('query')" data-mnav="query"><i class="iconfont4 icon-chaxun"></i>查询</a>
                         </div>
                     </div>
                 </div>
             `;
+            // 恢复侧边栏折叠状态
+            if (localStorage.getItem('admin-sidebar-collapsed') === '1') {
+                var s = document.getElementById('sidebar');
+                var m = document.querySelector('.main-area');
+                if (s) s.classList.add('collapsed');
+                if (m) m.classList.add('sidebar-collapsed');
+            }
         }
 
         window.switchView = function(view) {
@@ -858,6 +956,20 @@
             var isOpen = s.classList.contains('open');
             if (isOpen) { s.classList.remove('open'); o.classList.remove('open'); }
             else { s.classList.add('open'); o.classList.add('open'); }
+        };
+
+        window.toggleSidebarCollapse = function() {
+            var s = document.getElementById('sidebar');
+            var m = document.querySelector('.main-area');
+            if (!s) return;
+            // 手机端：滑入/滑出侧边栏；桌面端：折叠/展开
+            if (window.innerWidth <= 768) {
+                toggleSidebar();
+            } else {
+                s.classList.toggle('collapsed');
+                if (m) m.classList.toggle('sidebar-collapsed');
+                localStorage.setItem('admin-sidebar-collapsed', s.classList.contains('collapsed') ? '1' : '0');
+            }
         };
 
         // ========== Dashboard ==========
@@ -1044,9 +1156,9 @@
             });
             if (!classes.length) html = '<div class="empty-state">暂无班级</div>';
             html += `<div class="t-actions">
-                <button class="btn btn-sm btn-outline" onclick="event.stopPropagation();resetTeacherPassword('${id}')">🔒 重置密码</button>
-                ${isSuperAdmin ? '<button class="btn btn-sm btn-outline" onclick="event.stopPropagation();toggleAdmin(\'' + id + '\')" style="' + (t.isAdmin ? 'color:#f59e0b;border-color:#f59e0b;' : '') + '">' + (t.isAdmin ? '👑 取消管理者' : '👑 设为管理者') + '</button>' : ''}
-                <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteTeacherAccount('${id}')">🗑️ 删除账号</button>
+                <button class="btn btn-sm btn-outline" onclick="event.stopPropagation();resetTeacherPassword('${id}')"><i class="iconfont4 icon-mima"></i> 重置密码</button>
+                ${isSuperAdmin ? '<button class="btn btn-sm btn-outline" onclick="event.stopPropagation();toggleAdmin(\'' + id + '\')" style="' + (t.isAdmin ? 'color:#f59e0b;border-color:#f59e0b;' : '') + '"><i class="iconfont4 icon-guanlizhe"></i> ' + (t.isAdmin ? '取消管理者' : '设为管理者') + '</button>' : ''}
+                <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteTeacherAccount('${id}')"><i class="iconfont4 icon-shanchu"></i> 删除账号</button>
             </div>`;
             document.getElementById('tdetail-' + id).innerHTML = html;
         }
@@ -1216,19 +1328,19 @@
             html += '<div style="display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:13px;">';
             html += '<span style="color:var(--text-muted);">姓名：</span><span style="font-weight:600;">' + escapeHtml(currentUser.user_metadata?.name || currentUser.email || '') + '</span>';
             html += '<span style="color:var(--text-muted);">邮箱：</span><span>' + escapeHtml(currentUser.email || '') + '</span>';
-            html += '<span style="color:var(--text-muted);">角色：</span><span style="font-weight:600;color:var(--accent);">' + (isSuperAdmin ? '超级管理员 👑' : isAdmin ? '管理者' : '教师') + '</span>';
+            html += '<span style="color:var(--text-muted);">角色：</span><span style="font-weight:600;color:var(--accent);">' + (isSuperAdmin ? '超级管理员' : isAdmin ? '管理者' : '教师') + '</span>';
             html += '</div></div>';
             // Change password
-            html += '<button class="btn btn-sm btn-outline" onclick="changeMyPassword()" style="margin-bottom:14px;">🔒 修改密码</button>';
+            html += '<button class="btn btn-sm btn-outline" onclick="changeMyPassword()" style="margin-bottom:14px;"><i class="iconfont4 icon-mima"></i> 修改密码</button>';
             // Admin list
             html += '<div style="background:var(--bg);border-radius:var(--radius-sm);padding:14px 16px;">';
             html += '<div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">管理权限（共 ' + admins.length + ' 位管理者）</div>';
             admins.forEach(function(u) {
                 var isMe = u.id === currentUser.id;
                 html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-light);font-size:13px;">';
-                html += '<span>' + escapeHtml(u.name || u.email || '') + (isMe ? ' <span style="color:var(--text-muted);font-size:11px;">（你）</span>' : '') + ' 👑</span>';
+                html += '<span>' + escapeHtml(u.name || u.email || '') + (isMe ? ' <span style="color:var(--text-muted);font-size:11px;">（你）</span>' : '') + '</span>';
                 if (!isMe && isSuperAdmin) {
-                    html += '<button class="btn btn-sm btn-outline" onclick="toggleAdmin(\'' + u.id + '\')" style="font-size:10px;padding:3px 8px;">取消管理者</button>';
+                    html += '<button class="btn btn-sm btn-outline" onclick="toggleAdmin(\'' + u.id + '\')" style="font-size:10px;padding:3px 8px;"><i class="iconfont4 icon-shanchu"></i> 移除</button>';
                 }
                 html += '</div>';
             });
@@ -1410,14 +1522,14 @@
 
             // Overview cards
             html += '<div class="stat-grid">';
-            html += '<div class="stat-card"><div class="stat-icon" style="background:#f0fdf4">🏅</div><div><div class="stat-value">' + r.fullAttendance.length + '</div><div class="stat-label">全勤学生</div></div></div>';
+            html += '<div class="stat-card"><div class="stat-icon" style="background:#f0fdf4">🏅</div><div><div class="stat-value">' + r.fullAttendance.filter(function(x) { return x.rate === '100%'; }).length + '</div><div class="stat-label">全勤学生</div></div></div>';
             html += '<div class="stat-card"><div class="stat-icon" style="background:#eff6ff">🚀</div><div><div class="stat-value">' + Math.min(3, r.progressStars.length) + '</div><div class="stat-label">进步之星</div></div></div>';
             html += '<div class="stat-card"><div class="stat-icon" style="background:#fef3c7">📝</div><div><div class="stat-value">' + r.dictationPerfect.length + '</div><div class="stat-label">听写满分达人</div></div></div>';
             html += '<div class="stat-card"><div class="stat-icon" style="background:#fce7f3">📋</div><div><div class="stat-value">' + r.quizPerfect.length + '</div><div class="stat-label">小测满分达人</div></div></div>';
             html += '</div>';
 
-            // Full Attendance
-            html += buildAwardCard('🏅 全勤学生（出勤率 100%）', r.fullAttendance, 'attendance', cls);
+            // Attendance Rates — show all students
+            html += buildAttendanceCard(r.fullAttendance, cls);
             // Progress Stars
             var top3 = r.progressStars.slice(0, 3);
             html += buildAwardCard('🚀 进步之星（均分涨幅前三）', top3, 'progress', cls);
@@ -1459,6 +1571,30 @@
             return html;
         }
 
+        function buildAttendanceCard(list, cls) {
+            var html = '<div class="card"><div class="card-title" style="justify-content:space-between">';
+            html += '<span>📋 出勤统计（共 ' + list.length + ' 人）</span>';
+            html += '<button class="btn btn-sm btn-outline" onclick="exportAward(\'attendance\')" style="font-size:10px;padding:3px 10px;"><i class="iconfont icon-download"></i> 导出</button>';
+            html += '</div>';
+            if (!list.length) {
+                html += '<div class="empty-state">暂无数据</div>';
+            } else {
+                html += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+                list.forEach(function(item) {
+                    var rateNum = parseInt(item.rate) || 0;
+                    var color = rateNum >= 100 ? 'var(--success)' : rateNum >= 80 ? 'var(--accent)' : rateNum >= 60 ? '#f59e0b' : 'var(--danger)';
+                    html += '<div style="background:var(--bg);border-radius:10px;padding:8px 12px;font-size:12px;display:flex;align-items:center;gap:4px;">';
+                    html += '<span style="font-weight:600;">' + escapeHtml(item.name) + '</span>';
+                    html += '<span style="color:' + color + ';font-weight:600;">' + item.rate + '</span>';
+                    html += '<span style="color:var(--text-muted);font-size:11px;">(' + item.present + '/' + item.total + ')</span>';
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            html += '</div>';
+            return html;
+        }
+
         function computeAwards(t, cls) {
             var students = cls.students || [];
             var columns = cls.columns || [];
@@ -1472,6 +1608,10 @@
                 var n = parseInt(awardsRange.replace('recent', ''));
                 keys = allKeys.slice(-n);
             }
+            if (!keys.length) return { totalLessons: 0, studentCount: students.length, fullAttendance: [], progressStars: [], dictationPerfect: [], quizPerfect: [], xstPerfect: [] };
+
+            // 排除老师提前建的空白课次（没有任何学生有数据）
+            keys = keys.filter(function(k) { return isLessonActive(fb[k]); });
             if (!keys.length) return { totalLessons: 0, studentCount: students.length, fullAttendance: [], progressStars: [], dictationPerfect: [], quizPerfect: [], xstPerfect: [] };
 
             // Find column indices by keyword
@@ -1488,15 +1628,20 @@
             students.forEach(function(s) { attendance[s] = 0; });
             keys.forEach(function(k) {
                 var entry = fb[k];
-                var recs = entry && entry.records ? entry.records : (Array.isArray(entry) ? entry : []);
+                if (!entry) return;
                 students.forEach(function(s) {
-                    var rec = recs.find(function(r) { return r.name === s; });
-                    if (rec && rec.values && rec.values.some(function(v) { return v !== '' && v !== null && v !== undefined; })) {
-                        attendance[s]++;
-                    }
+                    if (isStudentPresent(entry, s)) attendance[s]++;
                 });
             });
-            var fullAttendance = students.filter(function(s) { return attendance[s] === keys.length; }).map(function(s) { return { name: s, rate: '100%' }; });
+            var fullAttendance = [];
+            students.forEach(function(s) {
+                var rate = keys.length > 0 ? Math.round(attendance[s] / keys.length * 100) : 0;
+                fullAttendance.push({ name: s, present: attendance[s], total: keys.length, rate: rate + '%' });
+            });
+            fullAttendance.sort(function(a, b) {
+                var ra = parseInt(a.rate) || 0, rb = parseInt(b.rate) || 0;
+                return rb - ra;
+            });
 
             // === Progress Stars ===
             var progressList = [];
@@ -1591,8 +1736,9 @@
 
             var dictationPerfect = countPerfect('听写');
             var quizPerfect = countPerfect('小测');
-            // 小书童口语达人：A班 ≥80，B班 ≥90
-            var xstThreshold = cls.name.indexOf('A') >= 0 ? 80 : (cls.name.indexOf('B') >= 0 ? 90 : 100);
+            // 小书童口语达人：A班 ≥80，B班/S班 ≥90
+            var clsNameLower = cls.name.toLowerCase();
+            var xstThreshold = clsNameLower.indexOf('a') >= 0 ? 80 : (clsNameLower.indexOf('b') >= 0 || clsNameLower.indexOf('s') >= 0 ? 90 : 100);
             var xstPerfect = countByThreshold('小书童', xstThreshold);
 
             return {
@@ -1612,16 +1758,16 @@
             var cls = (Array.isArray(t.classes) ? t.classes : []).find(function(c) { return c.id === awardsClassId; });
             if (!cls) return;
             var list, title;
-            if (type === 'attendance') { list = awardsResults.fullAttendance; title = '全勤学生'; }
+            if (type === 'attendance') { list = awardsResults.fullAttendance; title = '出勤统计'; }
             else if (type === 'progress') { list = awardsResults.progressStars.slice(0, 3); title = '进步之星'; }
             else if (type === 'dictation') { list = awardsResults.dictationPerfect; title = '听写满分达人'; }
             else if (type === 'quiz') { list = awardsResults.quizPerfect; title = '小测满分达人'; }
             else if (type === 'xst') { list = awardsResults.xstPerfect; title = '小书童口语达人'; }
             else return;
-            var rows = [['排名', '姓名'].concat(type === 'attendance' ? ['出勤率'] : (type === 'progress' ? ['前半均分(%)', '后半均分(%)', '涨幅(%)'] : ['满分次数']))];
+            var rows = [['排名', '姓名'].concat(type === 'attendance' ? ['出勤次数', '总课次', '出勤率'] : (type === 'progress' ? ['前半均分(%)', '后半均分(%)', '涨幅(%)'] : ['满分次数']))];
             list.forEach(function(item, i) {
                 var row = [String(i + 1), item.name];
-                if (type === 'attendance') row.push(item.rate);
+                if (type === 'attendance') { row.push(String(item.present), String(item.total), item.rate); }
                 else if (type === 'progress') row.push(String(item.firstAvg), String(item.secondAvg), String(item.change));
                 else row.push(String(item.count));
                 rows.push(row);
@@ -1649,6 +1795,8 @@
             ];
             var sorts = [
                 { value: 'count_desc', label: '按次数降序' },
+                { value: 'perfect_desc', label: '按满分次数降序' },
+                { value: 'perfect_rate_desc', label: '按满分率降序' },
                 { value: 'avg_desc', label: '按均分降序' }
             ];
             var limits = [
@@ -1667,49 +1815,64 @@
                 recentOpts += '<option value="' + n + '" ' + (queryRecent === String(n) ? 'selected' : '') + '>近 ' + n + ' 次课</option>';
             });
 
-            var html = '<div class="card"><div class="card-title">🔍 全局查询</div>';
+            var isAttendance = querySubject === '出勤';
+            var html = '<div class="card"><div class="card-title"><i class="iconfont4 icon-chaxun"></i> 全局查询</div>';
             // Filter bar
             html += '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;">';
             // Subject
             html += '<select id="qSubject" onchange="querySubject=this.value;queryCondition=\'perfect\';renderQuery()" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
             subjects.forEach(function(s) { html += '<option value="' + s + '" ' + (querySubject === s ? 'selected' : '') + '>' + s + '</option>'; });
             html += '</select>';
-            // Condition
-            html += '<select id="qCond" onchange="queryCondition=this.value;renderQuery()" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
-            conditions.forEach(function(c) { html += '<option value="' + c.value + '" ' + (queryCondition === c.value ? 'selected' : '') + '>' + c.label + '</option>'; });
-            html += '</select>';
-            // Custom value input
-            if (queryCondition === 'greater') {
-                html += '<input type="number" id="qNum" value="' + queryCustomNum + '" oninput="queryCustomNum=parseInt(this.value)||0" style="width:60px;padding:5px 8px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);" placeholder="分数">';
-            }
-            if (queryCondition === 'custom') {
-                html += '<input type="text" id="qText" value="' + escapeHtml(queryCustomText) + '" oninput="queryCustomText=this.value" style="width:80px;padding:5px 8px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);" placeholder="文本">';
+            // Condition (skip for attendance)
+            if (!isAttendance) {
+                html += '<select id="qCond" onchange="queryCondition=this.value;renderQuery()" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
+                conditions.forEach(function(c) { html += '<option value="' + c.value + '" ' + (queryCondition === c.value ? 'selected' : '') + '>' + c.label + '</option>'; });
+                html += '</select>';
+                // Custom value input
+                if (queryCondition === 'greater') {
+                    html += '<input type="number" id="qNum" value="' + queryCustomNum + '" oninput="queryCustomNum=parseInt(this.value)||0" style="width:60px;padding:5px 8px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);" placeholder="分数">';
+                }
+                if (queryCondition === 'custom') {
+                    html += '<input type="text" id="qText" value="' + escapeHtml(queryCustomText) + '" oninput="queryCustomText=this.value" style="width:80px;padding:5px 8px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);" placeholder="文本">';
+                }
             }
             // Recent
             html += '<select id="qRecent" onchange="queryRecent=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">' + recentOpts + '</select>';
             // Teacher
             html += '<select id="qTeacher" onchange="queryTeacher=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">' + teacherOpts + '</select>';
-            // Class filter
+            // Class type filter
             html += '<select id="qClass" onchange="queryClass=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
-            html += '<option value="all" ' + (queryClass === 'all' ? 'selected' : '') + '>全部班级</option>';
+            html += '<option value="all" ' + (queryClass === 'all' ? 'selected' : '') + '>全部班型</option>';
             html += '<option value="A" ' + (queryClass === 'A' ? 'selected' : '') + '>A 班</option>';
             html += '<option value="B" ' + (queryClass === 'B' ? 'selected' : '') + '>B 班</option>';
+            html += '<option value="S" ' + (queryClass === 'S' ? 'selected' : '') + '>S 班</option>';
             html += '</select>';
-            // Sort
-            html += '<select id="qSort" onchange="querySort=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
-            sorts.forEach(function(s) { html += '<option value="' + s.value + '" ' + (querySort === s.value ? 'selected' : '') + '>' + s.label + '</option>'; });
+            // Grade filter
+            html += '<select id="qGrade" onchange="queryGrade=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
+            html += '<option value="all" ' + (queryGrade === 'all' ? 'selected' : '') + '>全部年级</option>';
+            [1, 2, 3, 4, 5, 6].forEach(function(g) {
+                html += '<option value="' + g + '" ' + (queryGrade === String(g) ? 'selected' : '') + '>' + g + ' 年级</option>';
+            });
             html += '</select>';
+            // Sort (skip for attendance, always sorted by rate asc)
+            if (!isAttendance) {
+                html += '<select id="qSort" onchange="querySort=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
+                sorts.forEach(function(s) { html += '<option value="' + s.value + '" ' + (querySort === s.value ? 'selected' : '') + '>' + s.label + '</option>'; });
+                html += '</select>';
+            }
             // Limit
             html += '<select id="qLimit" onchange="queryLimit=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
             limits.forEach(function(l) { html += '<option value="' + l.value + '" ' + (queryLimit === l.value ? 'selected' : '') + '>' + l.label + '</option>'; });
             html += '</select>';
             // Actions
-            html += '<button class="btn btn-sm" onclick="runQuery()">🔍 查询</button>';
+            html += '<button class="btn btn-sm" onclick="runQuery()"><i class="iconfont4 icon-chaxun"></i> 查询</button>';
             html += '<button class="btn btn-sm btn-outline" onclick="exportQueryResults()" ' + (!queryResults ? 'disabled style="opacity:0.5"' : '') + '><i class="iconfont icon-download"></i> 导出</button>';
             html += '</div></div>';
 
             // Results
-            if (queryLoading) {
+            if (queryError) {
+                html += '<div class="card"><div class="empty-state" style="color:var(--danger);">查询出错：' + escapeHtml(queryError) + '</div></div>';
+            } else if (queryLoading) {
                 html += '<div class="card"><div class="empty-state">⏳ 正在查询...（可能需要几秒）</div></div>';
             } else if (queryResults) {
                 html += renderQueryResults();
@@ -1721,10 +1884,18 @@
         }
 
         function runQuery() {
-            queryLoading = true; queryResults = null; renderQuery();
+            queryLoading = true; queryResults = null; queryError = null; renderQuery();
             setTimeout(function() {
-                queryResults = computeQuery();
-                queryLoading = false; renderQuery();
+                try {
+                    queryResults = computeQuery();
+                    queryLoading = false;
+                } catch(e) {
+                    queryLoading = false;
+                    queryResults = null;
+                    queryError = e.message || String(e);
+                    console.error('Query error:', e);
+                }
+                renderQuery();
             }, 100);
         }
 
@@ -1735,6 +1906,64 @@
             var customNum = queryCustomNum || 0;
             var customText = (queryCustomText || '').trim();
 
+            // === 出勤专用分支 ===
+            if (subject === '出勤') {
+                Object.values(allTeachers).forEach(function(t) {
+                    if (queryTeacher !== 'all' && t.id !== queryTeacher) return;
+                    var classes = Array.isArray(t.classes) ? t.classes : [];
+                    var fb = t.feedback || {};
+                    var classMap = {};
+                    classes.forEach(function(c) { classMap[c.id] = c; });
+
+                    // Group fb keys by class
+                    var perClass = {};
+                    Object.keys(fb).forEach(function(k) {
+                        var cid = k.split('|')[0];
+                        if (!classMap[cid]) return;
+                        if (!perClass[cid]) perClass[cid] = [];
+                        perClass[cid].push(k);
+                    });
+
+                    Object.keys(perClass).forEach(function(cid) {
+                        var cls = classMap[cid];
+                        if (queryClass !== 'all' && cls.name.toLowerCase().indexOf(queryClass.toLowerCase()) === -1) return;
+                        if (!classContainsGrade(cls.name, queryGrade)) return;
+                        var allKeys = perClass[cid].sort(naturalSort);
+                        var keys = allKeys;
+                        if (queryRecent !== 'all') {
+                            keys = allKeys.slice(-parseInt(queryRecent));
+                        }
+                        if (!keys.length || !cls.students) return;
+                        // 排除老师提前建的空白课次
+                        keys = keys.filter(function(k) { return isLessonActive(fb[k]); });
+                        if (!keys.length) return;
+
+                        cls.students.forEach(function(s) {
+                            var present = 0;
+                            keys.forEach(function(k) {
+                                if (isStudentPresent(fb[k], s)) present++;
+                            });
+                            var rate = Math.round(present / keys.length * 100);
+                            results.push({
+                                key: cid + '|' + s,
+                                name: s, className: cls.name, classId: cid,
+                                teacherName: t.name || t.email || '', teacherId: t.id,
+                                present: present, total: keys.length, rate: rate,
+                                details: keys.map(function(k) {
+                                    return { date: k.split('|').slice(1).join('|'), present: isStudentPresent(fb[k], s) };
+                                })
+                            });
+                        });
+                    });
+                });
+
+                // Sort: highest attendance first
+                results.sort(function(a, b) { return b.rate - a.rate || b.total - a.total; });
+                if (queryLimit !== 'all') results = results.slice(0, parseInt(queryLimit));
+                return results;
+            }
+
+            // === 其他科目的原有逻辑 ===
             Object.values(allTeachers).forEach(function(t) {
                 if (queryTeacher !== 'all' && t.id !== queryTeacher) return;
                 var classes = Array.isArray(t.classes) ? t.classes : [];
@@ -1767,7 +1996,8 @@
                     var cls = classMap[classId];
                     if (!cls) return;
                     // Class type filter
-                    if (queryClass !== 'all' && cls.name.indexOf(queryClass) === -1) return;
+                    if (queryClass !== 'all' && cls.name.toLowerCase().indexOf(queryClass.toLowerCase()) === -1) return;
+                    if (!classContainsGrade(cls.name, queryGrade)) return;
 
                     var entry = fb[k];
                     if (!entry || !entry.dateColumns) return;
@@ -1815,12 +2045,14 @@
                                 key: key, name: rec.name, className: cls.name, classId: classId,
                                 teacherName: t.name || t.email || '', teacherId: t.id,
                                 count: 0, totalScore: 0, maxSeen: 0, minSeen: Infinity, latestScore: 0, latestDate: '',
+                                perfectCount: 0,
                                 details: []
                             };
                             results.push(existing);
                         }
                         existing.count++;
                         existing.totalScore += score;
+                        if (maxScore > 0 && score >= maxScore) existing.perfectCount++;
                         if (score > existing.maxSeen) existing.maxSeen = score;
                         if (score < existing.minSeen) existing.minSeen = score;
                         if (dateLabel > existing.latestDate) { existing.latestDate = dateLabel; existing.latestScore = score; }
@@ -1832,12 +2064,18 @@
             // Compute averages
             results.forEach(function(r) {
                 r.avgScore = r.count > 0 ? Math.round(r.totalScore / r.count * 10) / 10 : 0;
+                r.perfectRate = r.count > 0 ? Math.round(r.perfectCount / r.count * 100) : 0;
                 if (r.minSeen === Infinity) r.minSeen = 0;
             });
 
             // Sort
-            if (querySort === 'avg_desc') {
+            var sortField = querySort || 'count_desc';
+            if (sortField === 'avg_desc') {
                 results.sort(function(a, b) { return b.avgScore - a.avgScore || b.count - a.count; });
+            } else if (sortField === 'perfect_desc') {
+                results.sort(function(a, b) { return b.perfectCount - a.perfectCount || b.perfectRate - a.perfectRate; });
+            } else if (sortField === 'perfect_rate_desc') {
+                results.sort(function(a, b) { return b.perfectRate - a.perfectRate || b.perfectCount - a.perfectCount; });
             } else {
                 // count_desc
                 results.sort(function(a, b) { return b.count - a.count || b.avgScore - a.avgScore; });
@@ -1853,34 +2091,52 @@
 
         function renderQueryResults() {
             if (!queryResults || !queryResults.length) return '<div class="card"><div class="empty-state">未找到符合条件的学生</div></div>';
+            var isAttendance = querySubject === '出勤';
             var scoredSubs = ['听写', '小测', '小书童'];
             var isScored = scoredSubs.indexOf(querySubject) >= 0;
+            var showPerfect = ['听写', '小测'].indexOf(querySubject) >= 0;
             var html = '<div class="card"><div class="card-title" style="justify-content:space-between"><span>共找到 ' + queryResults.length + ' 名学生</span></div>';
-            html += '<div class="table-wrap"><table><thead><tr><th>排名</th><th>学生</th><th>班级</th><th>教师</th><th>次数</th>';
-            if (isScored) {
-                html += '<th>最高</th><th>最低</th><th>均分</th>';
+            html += '<div class="table-wrap"><table><thead><tr><th>排名</th><th>学生</th><th>班级</th><th>教师</th>';
+            if (isAttendance) {
+                html += '<th>出勤</th><th>总课次</th><th>出勤率</th>';
             } else {
-                html += '<th>完成率</th>';
+                html += '<th>次数</th>';
+                if (isScored && showPerfect) { html += '<th>满分次数</th><th>满分率</th><th>最高</th><th>最低</th>'; }
+                else if (isScored && !showPerfect) { html += '<th>最高</th><th>最低</th><th>均分</th>'; }
+                else { html += '<th>完成率</th>'; }
             }
             html += '</tr></thead><tbody>';
             queryResults.forEach(function(r, i) {
                 var badge = '';
-                if (i === 0) badge = '🥇';
-                else if (i === 1) badge = '🥈';
-                else if (i === 2) badge = '🥉';
+                if (!isAttendance && i === 0) badge = '🥇';
+                else if (!isAttendance && i === 1) badge = '🥈';
+                else if (!isAttendance && i === 2) badge = '🥉';
                 html += '<tr>';
-                html += '<td style="font-size:14px;">' + badge + ' ' + (i + 1) + '</td>';
+                html += '<td style="font-size:14px;">' + badge + (badge ? ' ' : '') + (i + 1) + '</td>';
                 html += '<td style="font-weight:600;cursor:pointer;color:var(--accent);" onclick="showStudentDetail(\'' + r.key + '\')">' + escapeHtml(r.name) + '</td>';
                 html += '<td>' + escapeHtml(r.className) + '</td>';
                 html += '<td style="color:var(--text-muted)">' + escapeHtml(r.teacherName) + '</td>';
-                html += '<td style="font-weight:600;">' + r.count + '</td>';
-                if (isScored) {
-                    html += '<td>' + r.maxSeen + '</td>';
-                    html += '<td>' + r.minSeen + '</td>';
-                    html += '<td style="font-weight:700;color:var(--accent);">' + r.avgScore + '</td>';
+                if (isAttendance) {
+                    var rateNum = r.rate || 0;
+                    var color = rateNum >= 100 ? 'var(--success)' : rateNum >= 80 ? 'var(--accent)' : rateNum >= 60 ? '#f59e0b' : 'var(--danger)';
+                    html += '<td>' + r.present + '</td>';
+                    html += '<td>' + r.total + '</td>';
+                    html += '<td style="font-weight:700;color:' + color + ';">' + r.rate + '%</td>';
                 } else {
-                    var rate = Math.round(r.avgScore * 100);
-                    html += '<td style="font-weight:700;color:' + (rate >= 90 ? 'var(--success)' : rate >= 70 ? 'var(--accent)' : 'var(--danger)') + ';">' + rate + '%</td>';
+                    html += '<td style="font-weight:600;">' + r.count + '</td>';
+                    if (isScored && showPerfect) {
+                        html += '<td style="font-weight:700;color:var(--success);">' + (r.perfectCount || 0) + '</td>';
+                        html += '<td>' + (r.perfectRate || 0) + '%</td>';
+                        html += '<td>' + r.maxSeen + '</td>';
+                        html += '<td>' + r.minSeen + '</td>';
+                    } else if (isScored && !showPerfect) {
+                        html += '<td>' + r.maxSeen + '</td>';
+                        html += '<td>' + r.minSeen + '</td>';
+                        html += '<td style="font-weight:700;color:var(--accent);">' + r.avgScore + '</td>';
+                    } else {
+                        var rate = Math.round(r.avgScore * 100);
+                        html += '<td style="font-weight:700;color:' + (rate >= 90 ? 'var(--success)' : rate >= 70 ? 'var(--accent)' : 'var(--danger)') + ';">' + rate + '%</td>';
+                    }
                 }
                 html += '</tr>';
             });
@@ -1891,18 +2147,41 @@
         window.showStudentDetail = function(key) {
             var r = queryResults.find(function(x) { return x.key === key; });
             if (!r) return;
+            var isAttendance = querySubject === '出勤';
+            var scoredSubs = ['听写', '小测', '小书童'];
+            var isScored = scoredSubs.indexOf(querySubject) >= 0;
+            var showPerfect = ['听写', '小测'].indexOf(querySubject) >= 0;
             var html = '<div style="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;" onclick="this.remove()">';
             html += '<div style="background:var(--card-bg);border-radius:var(--radius);padding:20px;max-width:500px;width:90%;max-height:70vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);" onclick="event.stopPropagation()">';
             html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
             html += '<span style="font-weight:700;font-size:16px;">' + escapeHtml(r.name) + ' <span style="color:var(--text-muted);font-size:13px;">' + escapeHtml(r.className) + ' · ' + escapeHtml(r.teacherName) + '</span></span>';
             html += '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">&times;</button>';
             html += '</div>';
-            html += '<table style="width:100%;font-size:12px;"><thead><tr><th>课次</th><th>得分</th></tr></thead><tbody>';
-            r.details.sort(function(a, b) { return naturalSort(a.date, b.date); });
-            r.details.forEach(function(d) {
-                html += '<tr><td>' + escapeHtml(d.date) + '</td><td style="font-weight:600;">' + escapeHtml(d.raw) + '</td></tr>';
-            });
-            html += '</tbody></table></div></div>';
+            if (isAttendance) {
+                html += '<table style="width:100%;font-size:12px;"><thead><tr><th>课次</th><th>出勤</th></tr></thead><tbody>';
+                r.details.sort(function(a, b) { return naturalSort(a.date, b.date); });
+                r.details.forEach(function(d) {
+                    html += '<tr><td>' + escapeHtml(d.date) + '</td><td style="font-weight:600;color:' + (d.present ? 'var(--success)' : 'var(--danger)') + ';">' + (d.present ? '✅ 到场' : '❌ 缺勤') + '</td></tr>';
+                });
+                html += '</tbody></table>';
+            } else if (isScored && showPerfect) {
+                html += '<div style="margin-bottom:8px;font-size:12px;color:var(--text-muted);">满分次数：<b style="color:var(--success);">' + (r.perfectCount || 0) + '</b> / ' + r.count + '（满分率 ' + (r.perfectRate || 0) + '%）</div>';
+                html += '<table style="width:100%;font-size:12px;"><thead><tr><th>课次</th><th>得分</th><th>满分</th></tr></thead><tbody>';
+                r.details.sort(function(a, b) { return naturalSort(a.date, b.date); });
+                r.details.forEach(function(d) {
+                    var isPerfect = d.maxScore > 0 && d.score >= d.maxScore;
+                    html += '<tr><td>' + escapeHtml(d.date) + '</td><td style="font-weight:600;color:' + (isPerfect ? 'var(--success)' : '') + ';">' + escapeHtml(d.raw) + (isPerfect ? ' 💯' : '') + '</td><td style="color:var(--text-muted);">' + (d.maxScore || '-') + '</td></tr>';
+                });
+                html += '</tbody></table>';
+            } else {
+                html += '<table style="width:100%;font-size:12px;"><thead><tr><th>课次</th><th>得分</th></tr></thead><tbody>';
+                r.details.sort(function(a, b) { return naturalSort(a.date, b.date); });
+                r.details.forEach(function(d) {
+                    html += '<tr><td>' + escapeHtml(d.date) + '</td><td style="font-weight:600;">' + escapeHtml(d.raw) + '</td></tr>';
+                });
+                html += '</tbody></table>';
+            }
+            html += '</div></div>';
             var overlay = document.createElement('div');
             overlay.innerHTML = html;
             document.body.appendChild(overlay.firstElementChild);
@@ -1910,9 +2189,31 @@
 
         window.exportQueryResults = function() {
             if (!queryResults || !queryResults.length) return;
-            var rows = [['排名', '学生', '班级', '教师', '次数', '最高分', '最低分', '均分']];
+            var isAttendance = querySubject === '出勤';
+            var scoredSubs = ['听写', '小测', '小书童'];
+            var isScored = scoredSubs.indexOf(querySubject) >= 0;
+            var showPerfect = ['听写', '小测'].indexOf(querySubject) >= 0;
+            var headers;
+            if (isAttendance) {
+                headers = ['排名', '学生', '班级', '教师', '出勤次数', '总课次', '出勤率'];
+            } else if (isScored && showPerfect) {
+                headers = ['排名', '学生', '班级', '教师', '次数', '满分次数', '满分率', '最高分', '最低分'];
+            } else if (isScored && !showPerfect) {
+                headers = ['排名', '学生', '班级', '教师', '次数', '最高分', '最低分', '均分'];
+            } else {
+                headers = ['排名', '学生', '班级', '教师', '次数', '完成率'];
+            }
+            var rows = [headers];
             queryResults.forEach(function(r, i) {
-                rows.push([String(i + 1), r.name, r.className, r.teacherName, String(r.count), String(r.maxSeen), String(r.minSeen), String(r.avgScore)]);
+                if (isAttendance) {
+                    rows.push([String(i + 1), r.name, r.className, r.teacherName, String(r.present), String(r.total), r.rate + '%']);
+                } else if (isScored && showPerfect) {
+                    rows.push([String(i + 1), r.name, r.className, r.teacherName, String(r.count), String(r.perfectCount || 0), (r.perfectRate || 0) + '%', String(r.maxSeen), String(r.minSeen)]);
+                } else if (isScored && !showPerfect) {
+                    rows.push([String(i + 1), r.name, r.className, r.teacherName, String(r.count), String(r.maxSeen), String(r.minSeen), String(r.avgScore)]);
+                } else {
+                    rows.push([String(i + 1), r.name, r.className, r.teacherName, String(r.count), String(Math.round(r.avgScore * 100)) + '%']);
+                }
             });
             var ws = XLSX.utils.aoa_to_sheet(rows);
             var wb = XLSX.utils.book_new();
@@ -1940,7 +2241,7 @@
 
         function updateExportLabel() {
             const btn = document.getElementById('exportBtn');
-            if (!btn) return;
+            if (!btn) return; // 顶部导出按钮已移除，此函数保留兼容
             const icon = '<i class="iconfont icon-download"></i> ';
             if (currentView === 'analysis' && analysisTeacherId && analysisClassId) {
                 btn.innerHTML = icon + '导出此班级';
@@ -2107,6 +2408,8 @@
                 set queryTeacher(v) { queryTeacher = v; },
                 get queryClass() { return queryClass; },
                 set queryClass(v) { queryClass = v; },
+                get queryGrade() { return queryGrade; },
+                set queryGrade(v) { queryGrade = v; },
                 get querySort() { return querySort; },
                 set querySort(v) { querySort = v; },
                 get queryLimit() { return queryLimit; },

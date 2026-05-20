@@ -574,7 +574,8 @@
             var chineseMap = { '1': '一', '2': '二', '3': '三', '4': '四', '5': '五', '6': '六' };
             var arabic = String(grade);
             var chinese = chineseMap[arabic] || '';
-            return className.indexOf(arabic) !== -1 || (chinese && className.indexOf(chinese) !== -1);
+            var arabicRegex = new RegExp(arabic + '[A-Za-z级]');
+            return arabicRegex.test(className) || (chinese && className.indexOf(chinese) !== -1);
         }
         // Build dynamic subject list from actual column names across all feedback data
         function getDynamicSubjects() {

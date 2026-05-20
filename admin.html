@@ -430,6 +430,7 @@
         let queryRecent = 'all';
         let queryTeacher = 'all';
         let queryClass = 'all';
+        let queryGrade = 'all';
         let querySort = 'count_desc'; // 'count_desc' | 'avg_desc' | 'latest_desc'
         let queryLimit = '50';
         let queryResults = null;
@@ -1829,11 +1830,19 @@
             html += '<select id="qRecent" onchange="queryRecent=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">' + recentOpts + '</select>';
             // Teacher
             html += '<select id="qTeacher" onchange="queryTeacher=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">' + teacherOpts + '</select>';
-            // Class filter
+            // Class type filter
             html += '<select id="qClass" onchange="queryClass=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
-            html += '<option value="all" ' + (queryClass === 'all' ? 'selected' : '') + '>全部班级</option>';
+            html += '<option value="all" ' + (queryClass === 'all' ? 'selected' : '') + '>全部班型</option>';
             html += '<option value="A" ' + (queryClass === 'A' ? 'selected' : '') + '>A 班</option>';
             html += '<option value="B" ' + (queryClass === 'B' ? 'selected' : '') + '>B 班</option>';
+            html += '<option value="S" ' + (queryClass === 'S' ? 'selected' : '') + '>S 班</option>';
+            html += '</select>';
+            // Grade filter
+            html += '<select id="qGrade" onchange="queryGrade=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
+            html += '<option value="all" ' + (queryGrade === 'all' ? 'selected' : '') + '>全部年级</option>';
+            [1, 2, 3, 4, 5, 6].forEach(function(g) {
+                html += '<option value="' + g + '" ' + (queryGrade === String(g) ? 'selected' : '') + '>' + g + ' 年级</option>';
+            });
             html += '</select>';
             // Sort (skip for attendance, always sorted by rate asc)
             if (!isAttendance) {
@@ -1908,6 +1917,7 @@
                     Object.keys(perClass).forEach(function(cid) {
                         var cls = classMap[cid];
                         if (queryClass !== 'all' && cls.name.indexOf(queryClass) === -1) return;
+                        if (queryGrade !== 'all' && cls.name.charAt(0) !== String(queryGrade)) return;
                         var allKeys = perClass[cid].sort(naturalSort);
                         var keys = allKeys;
                         if (queryRecent !== 'all') {
@@ -1977,6 +1987,7 @@
                     if (!cls) return;
                     // Class type filter
                     if (queryClass !== 'all' && cls.name.indexOf(queryClass) === -1) return;
+                        if (queryGrade !== 'all' && cls.name.charAt(0) !== String(queryGrade)) return;
 
                     var entry = fb[k];
                     if (!entry || !entry.dateColumns) return;
@@ -2387,6 +2398,8 @@
                 set queryTeacher(v) { queryTeacher = v; },
                 get queryClass() { return queryClass; },
                 set queryClass(v) { queryClass = v; },
+                get queryGrade() { return queryGrade; },
+                set queryGrade(v) { queryGrade = v; },
                 get querySort() { return querySort; },
                 set querySort(v) { querySort = v; },
                 get queryLimit() { return queryLimit; },

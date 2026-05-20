@@ -434,6 +434,7 @@
         let queryLimit = '50';
         let queryResults = null;
         let queryLoading = false;
+        let queryError = null;
 
         // ========== Theme ==========
         function initTheme() {
@@ -1850,7 +1851,9 @@
             html += '</div></div>';
 
             // Results
-            if (queryLoading) {
+            if (queryError) {
+                html += '<div class="card"><div class="empty-state" style="color:var(--danger);">查询出错：' + escapeHtml(queryError) + '</div></div>';
+            } else if (queryLoading) {
                 html += '<div class="card"><div class="empty-state">⏳ 正在查询...（可能需要几秒）</div></div>';
             } else if (queryResults) {
                 html += renderQueryResults();
@@ -1862,10 +1865,18 @@
         }
 
         function runQuery() {
-            queryLoading = true; queryResults = null; renderQuery();
+            queryLoading = true; queryResults = null; queryError = null; renderQuery();
             setTimeout(function() {
-                queryResults = computeQuery();
-                queryLoading = false; renderQuery();
+                try {
+                    queryResults = computeQuery();
+                    queryLoading = false;
+                } catch(e) {
+                    queryLoading = false;
+                    queryResults = null;
+                    queryError = e.message || String(e);
+                    console.error('Query error:', e);
+                }
+                renderQuery();
             }, 100);
         }
 

@@ -568,6 +568,14 @@
             });
         }
         function sanitizeSheetName(name) { return String(name).replace(/[:\\\/?*\[\]]/g, '-').replace(/^['']/g, '').replace(/['']$/g, '').substring(0, 31); }
+        // Check if class name contains the given grade (supports Arabic 1-6 and Chinese 一二三四五六)
+        function classContainsGrade(className, grade) {
+            if (grade === 'all') return true;
+            var chineseMap = { '1': '一', '2': '二', '3': '三', '4': '四', '5': '五', '6': '六' };
+            var arabic = String(grade);
+            var chinese = chineseMap[arabic] || '';
+            return className.indexOf(arabic) !== -1 || (chinese && className.indexOf(chinese) !== -1);
+        }
         // Build dynamic subject list from actual column names across all feedback data
         function getDynamicSubjects() {
             var subjectSet = {};
@@ -1727,8 +1735,9 @@
 
             var dictationPerfect = countPerfect('听写');
             var quizPerfect = countPerfect('小测');
-            // 小书童口语达人：A班 ≥80，B班 ≥90
-            var xstThreshold = cls.name.indexOf('A') >= 0 ? 80 : (cls.name.indexOf('B') >= 0 ? 90 : 100);
+            // 小书童口语达人：A班 ≥80，B班/S班 ≥90
+            var clsNameLower = cls.name.toLowerCase();
+            var xstThreshold = clsNameLower.indexOf('a') >= 0 ? 80 : (clsNameLower.indexOf('b') >= 0 || clsNameLower.indexOf('s') >= 0 ? 90 : 100);
             var xstPerfect = countByThreshold('小书童', xstThreshold);
 
             return {
@@ -1916,8 +1925,8 @@
 
                     Object.keys(perClass).forEach(function(cid) {
                         var cls = classMap[cid];
-                        if (queryClass !== 'all' && cls.name.indexOf(queryClass) === -1) return;
-                        if (queryGrade !== 'all' && cls.name.charAt(0) !== String(queryGrade)) return;
+                        if (queryClass !== 'all' && cls.name.toLowerCase().indexOf(queryClass.toLowerCase()) === -1) return;
+                        if (!classContainsGrade(cls.name, queryGrade)) return;
                         var allKeys = perClass[cid].sort(naturalSort);
                         var keys = allKeys;
                         if (queryRecent !== 'all') {
@@ -1986,8 +1995,8 @@
                     var cls = classMap[classId];
                     if (!cls) return;
                     // Class type filter
-                    if (queryClass !== 'all' && cls.name.indexOf(queryClass) === -1) return;
-                        if (queryGrade !== 'all' && cls.name.charAt(0) !== String(queryGrade)) return;
+                    if (queryClass !== 'all' && cls.name.toLowerCase().indexOf(queryClass.toLowerCase()) === -1) return;
+                    if (!classContainsGrade(cls.name, queryGrade)) return;
 
                     var entry = fb[k];
                     if (!entry || !entry.dateColumns) return;

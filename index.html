@@ -1350,6 +1350,10 @@
             var prefix = (currentGender==='male'?'♂️ ':'')+(currentGender==='female'?'♀️ ':'');
             document.getElementById('headerUserName').textContent = prefix + name;
             await loadUserData();
+            // 确保 gender + district 写入 teacher_profiles（注册时可能因触发器延迟失败）
+            if (currentGender || currentDistrict) {
+                supabase.from('teacher_profiles').upsert({ user_id: user.id, name: name, gender: currentGender || null, district: currentDistrict || null }, { onConflict: 'user_id' }).then(function(){}, function(){});
+            }
             saveUserProfile(user, name);
         }
 
@@ -2344,15 +2348,13 @@
                 _userName = newName;
             }
 
-            // 保存性别
-            if (newGender !== currentGender) {
-                currentGender = newGender;
-                supabase.from('teacher_profiles').upsert({ user_id: _userId, gender: newGender || null }, { onConflict: 'user_id' }).then(function(){},function(){});
-            }
-            // 保存大区
-            if (newDistrict !== currentDistrict) {
-                currentDistrict = newDistrict;
-                supabase.from('teacher_profiles').upsert({ user_id: _userId, district: newDistrict || null }, { onConflict: 'user_id' }).then(function(){},function(){});
+            // 保存性别和大区（合并一次 upsert，确保 name 不为空）
+            if (newGender !== currentGender || newDistrict !== currentDistrict) {
+                if (newGender !== currentGender) currentGender = newGender;
+                if (newDistrict !== currentDistrict) currentDistrict = newDistrict;
+                var upsertData = { user_id: _userId, gender: currentGender || null, district: currentDistrict || null };
+                if (!newName) upsertData.name = _userName; // INSERT 需要 name，UPDATE 不碍事
+                supabase.from('teacher_profiles').upsert(upsertData, { onConflict: 'user_id' }).then(function(){},function(){});
             }
 
             // 更新头部

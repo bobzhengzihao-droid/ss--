@@ -2256,7 +2256,7 @@
 
         var _settingsEditGender = '', _settingsEditDistrict = '', _settingsEditName = '';
 
-        function refreshSettingsUI(){
+        window.refreshSettingsUI = function(){
             // 头像
             var avatar=document.getElementById('settingsAvatarEmoji');
             var g = currentGender || '';
@@ -2272,7 +2272,7 @@
             if(dv) dv.textContent = currentDistrict||'未设置';
         }
 
-        function settingsEnterEdit(){
+        window.settingsEnterEdit = function(){
             _settingsEditGender = currentGender || '';
             _settingsEditDistrict = currentDistrict || '';
             _settingsEditName = _userName || '';
@@ -2290,7 +2290,7 @@
             settingsRefreshGenderCards();
         }
 
-        function settingsCancel(){
+        window.settingsCancel = function(){
             currentGender = _settingsEditGender;
             currentDistrict = _settingsEditDistrict;
             // 还原 UI
@@ -2305,7 +2305,7 @@
             refreshSettingsUI();
         }
 
-        async function settingsSave(){
+        window.settingsSave = async function(){
             var newName = document.getElementById('settingsNameInput')?.value?.trim() || '';
             var newGender = _settingsEditGender;
             var newDistrict = document.getElementById('settingsDistrict')?.value || '';
@@ -2360,7 +2360,7 @@
             if(avatar) avatar.textContent = val==='male'?'♂️':(val==='female'?'♀️':'👤');
         };
 
-        function settingsRefreshGenderCards(){
+        window.settingsRefreshGenderCards = function(){
             var maleCard=document.getElementById('genderCardMale');
             var femaleCard=document.getElementById('genderCardFemale');
             if(maleCard) maleCard.classList.toggle('active', _settingsEditGender==='male');

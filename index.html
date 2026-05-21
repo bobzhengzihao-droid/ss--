@@ -702,8 +702,11 @@
         .settings-back { background: none; border: none; font-size: 14px; color: var(--accent); cursor: pointer; font-weight: 500; padding: 4px 0; }
         .settings-back:active { opacity: 0.6; }
         .settings-title { font-weight: 700; font-size: 15px; color: var(--text); }
-        .settings-avatar { display: flex; justify-content: center; padding: 20px 0 4px; }
-        .settings-avatar span { font-size: 56px; line-height: 1; transition: all 0.2s; }
+        .settings-avatar { display: flex; justify-content: center; padding: 20px 0 8px; }
+        .settings-avatar-circle { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 36px; line-height: 1; transition: all 0.3s; }
+        .avatar-male { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); box-shadow: 0 4px 12px rgba(37,99,235,0.2); }
+        .avatar-female { background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%); box-shadow: 0 4px 12px rgba(244,114,182,0.2); }
+        .avatar-unset { background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
         .settings-name-row { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px 14px; min-height: 28px; }
         .settings-name-row span { font-size: 16px; font-weight: 600; color: var(--text); }
         .settings-section { padding: 6px 16px; }
@@ -2251,16 +2254,19 @@
                 <div class="table-wrapper" id="statTableWrapper"></div>
             </div>`;
             document.getElementById('view-analysis').innerHTML=`<div class="card"><div class="card-title">📈 汇总分析</div><div style="display:flex;gap:8px"><span>学生：</span><select id="analysisStudentSelect" class="input" style="padding:8px;border-radius:12px;flex:1" onchange="refreshAnalysis()"><option value="">-- 请选择 --</option></select></div><div class="check-group" id="analysisDateCheckGroup"></div><div class="check-group" id="analysisColumnCheckGroup"></div></div><div class="card" id="analysisChartsArea"><div id="analysisReportTitle" style="text-align:center;font-size:1.1rem;font-weight:700;margin-bottom:12px">学习分析报告</div><div id="lineChartsContainer"></div><div id="radarSection" style="margin-top:16px;"><div class="check-group" style="margin-bottom:8px"><span>雷达图课次：</span><select id="radarDateSelect" class="input" style="width:120px;padding:6px;border-radius:12px" onchange="refreshRadarColumns();saveRadarCols()"></select></div><div class="check-group" id="radarColumnCheckGroup" style="margin:8px 0"></div><div style="height:320px"><canvas id="radarChartCanvas" height="320"></canvas></div></div><div style="margin-top:16px"><input type="password" id="apiKeyInput" class="input" placeholder="DeepSeek API Key" style="width:100%;padding:6px;margin-bottom:6px;font-size:11px"><textarea id="examDescTextarea" class="ai-textarea" placeholder="手动输入试卷描述或题型知识点（可选）" rows="3"></textarea><div style="display:flex; gap:6px; align-items: center; margin:8px 0;"><label class="btn btn-outline btn-sm" style="cursor:pointer;">📎 上传试卷文件<input type="file" id="examFileInput" accept=".txt,.docx,.pdf" style="display:none" onchange="document.getElementById('fileNameDisplay').textContent = this.files[0]?.name || ''"></label><span id="fileNameDisplay" style="font-size:12px; color:var(--text-light);"></span></div><button class="btn btn-sm" onclick="runAIAnalysis()">🤖 测试分析</button></div><div id="aiResult" style="margin-top:12px;padding:12px;background:var(--input-bg);border-radius:12px;font-size:14px;white-space:pre-wrap;"></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-sm" onclick="downloadPDFReport()">📥 下载PDF报告</button></div></div><div id="analysisTablesContainer"></div>`;
-            document.getElementById('view-settings').innerHTML='<div class="card settings-card"><div class="settings-header"><button class="settings-back" onclick="switchView(\'classes\')">← 返回</button><span class="settings-title">个人设置</span><span style="width:40px;"></span></div><div class="settings-avatar"><span id="settingsAvatarEmoji">👤</span></div><div class="settings-name-row" id="settingsNameRow"><span id="settingsNameDisplay"></span></div><div class="settings-section"><div class="settings-label">性别</div><div id="settingsGenderView" class="settings-value"></div><div id="settingsGenderEdit" class="settings-gender-row" style="display:none;"><div class="settings-gender-card" id="genderCardMale" onclick="settingsPickGender(\'male\')"><span class="gender-icon">♂️</span><span>男</span></div><div class="settings-gender-card" id="genderCardFemale" onclick="settingsPickGender(\'female\')"><span class="gender-icon">♀️</span><span>女</span></div></div></div><div class="settings-section"><div class="settings-label">所属大区</div><span id="settingsDistrictView" class="settings-value"></span><select class="input settings-select" id="settingsDistrict" style="display:none;"><option value="">请选择大区</option><option value="东一区">东一区</option><option value="东二区">东二区</option><option value="西一区">西一区</option><option value="西二区">西二区</option><option value="南一区">南一区</option><option value="南二区">南二区</option><option value="武侯区">武侯区</option></select></div><div class="settings-actions" id="settingsActionsView"><button class="btn btn-outline btn-sm" onclick="settingsEnterEdit()">✏️ 编辑资料</button><button class="btn btn-outline btn-sm" onclick="changeMyPassword()">🔒 修改密码</button></div><div class="settings-actions" id="settingsActionsEdit" style="display:none;"><button class="btn btn-sm" onclick="settingsSave()">✅ 保存</button><button class="btn btn-outline btn-sm" onclick="settingsCancel()">取消</button></div><div class="settings-actions"><button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger);" onclick="handleLogout()">🚪 退出登录</button></div></div>';
+            document.getElementById('view-settings').innerHTML='<div class="card settings-card"><div class="settings-header"><button class="settings-back" onclick="switchView(\'classes\')">← 返回</button><span class="settings-title">个人设置</span><span style="width:40px;"></span></div><div class="settings-avatar"><div class="settings-avatar-circle avatar-unset" id="settingsAvatarCircle"><span id="settingsAvatarEmoji">👤</span></div></div><div class="settings-name-row" id="settingsNameRow"><span id="settingsNameDisplay"></span></div><div class="settings-section"><div class="settings-label">性别</div><div id="settingsGenderView" class="settings-value"></div><div id="settingsGenderEdit" class="settings-gender-row" style="display:none;"><div class="settings-gender-card" id="genderCardMale" onclick="settingsPickGender(\'male\')"><span class="gender-icon">♂️</span><span>男</span></div><div class="settings-gender-card" id="genderCardFemale" onclick="settingsPickGender(\'female\')"><span class="gender-icon">♀️</span><span>女</span></div></div></div><div class="settings-section"><div class="settings-label">所属大区</div><span id="settingsDistrictView" class="settings-value"></span><select class="input settings-select" id="settingsDistrict" style="display:none;"><option value="">请选择大区</option><option value="东一区">东一区</option><option value="东二区">东二区</option><option value="西一区">西一区</option><option value="西二区">西二区</option><option value="南一区">南一区</option><option value="南二区">南二区</option><option value="武侯区">武侯区</option></select></div><div class="settings-actions" id="settingsActionsView"><button class="btn btn-outline btn-sm" onclick="settingsEnterEdit()">✏️ 编辑资料</button><button class="btn btn-outline btn-sm" onclick="changeMyPassword()">🔒 修改密码</button></div><div class="settings-actions" id="settingsActionsEdit" style="display:none;"><button class="btn btn-sm" onclick="settingsSave()">✅ 保存</button><button class="btn btn-outline btn-sm" onclick="settingsCancel()">取消</button></div><div class="settings-actions"><button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger);" onclick="handleLogout()">🚪 退出登录</button></div></div>';
         }
 
         var _settingsEditGender = '', _settingsEditDistrict = '', _settingsEditName = '';
 
-        window.refreshSettingsUI = function(){
-            // 头像
+        function _updateAvatar(g){
             var avatar=document.getElementById('settingsAvatarEmoji');
-            var g = currentGender || '';
-            if(avatar) avatar.textContent = (g==='male'?'♂️':(g==='female'?'♀️':'👤'));
+            var circle=document.getElementById('settingsAvatarCircle');
+            if(avatar) avatar.textContent = g==='male'?'♂️':(g==='female'?'♀️':'👤');
+            if(circle){circle.className='settings-avatar-circle '+(g==='male'?'avatar-male':(g==='female'?'avatar-female':'avatar-unset'));}
+        }
+        window.refreshSettingsUI = function(){
+            _updateAvatar(currentGender||'');
             // 名字
             var nameDisplay=document.getElementById('settingsNameDisplay');
             if(nameDisplay) nameDisplay.textContent=_userName||'未设置';
@@ -2355,9 +2361,7 @@
         window.settingsPickGender = function(val){
             _settingsEditGender = val;
             settingsRefreshGenderCards();
-            // 实时更新头像
-            var avatar=document.getElementById('settingsAvatarEmoji');
-            if(avatar) avatar.textContent = val==='male'?'♂️':(val==='female'?'♀️':'👤');
+            _updateAvatar(val);
         };
 
         window.settingsRefreshGenderCards = function(){

@@ -1401,12 +1401,12 @@
             campusConfig.forEach(function(d, di){
                 html += '<div style="background:var(--bg);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:8px;">';
                 html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">';
-                html += '<span style="font-weight:700;font-size:14px;">'+escapeHtml(d.district)+'</span>';
-                html += '<button class="btn btn-xs" style="color:var(--danger);" onclick="deleteDistrict('+di+')">删除大区</button>';
+                html += '<span style="font-weight:700;font-size:14px;cursor:pointer;" onclick="renameDistrict('+di+')" title="点击改名">'+escapeHtml(d.district)+' ✎</span>';
+                html += '<button class="btn btn-xs" style="color:var(--danger);" onclick="deleteDistrict('+di+')">删除</button>';
                 html += '</div>';
                 html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;">';
                 (d.campuses||[]).forEach(function(c, ci){
-                    html += '<span style="display:inline-flex;align-items:center;gap:3px;background:var(--card-bg);border:1px solid var(--border);border-radius:20px;padding:3px 8px;font-size:12px;">'+escapeHtml(c)+'<button onclick="deleteCampus('+di+','+ci+')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--text-muted);padding:0 2px;line-height:1;">×</button></span>';
+                    html += '<span style="display:inline-flex;align-items:center;gap:2px;background:var(--card-bg);border:1px solid var(--border);border-radius:20px;padding:3px 8px;font-size:12px;"><span style="cursor:pointer;" onclick="renameCampus('+di+','+ci+')">'+escapeHtml(c)+'</span><button onclick="deleteCampus('+di+','+ci+')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--text-muted);padding:0 2px;line-height:1;">×</button></span>';
                 });
                 html += '</div>';
                 html += '<button class="btn btn-xs btn-outline" onclick="addCampus('+di+')">+ 新增校区</button>';
@@ -1437,6 +1437,22 @@
             if (!name || !name.trim()) return;
             if (!campusConfig[di].campuses) campusConfig[di].campuses = [];
             campusConfig[di].campuses.push(name.trim());
+            saveCampusConfig();
+            renderCampuses();
+        };
+        window.renameDistrict = async function(di){
+            var old = campusConfig[di].district;
+            var name = await showPrompt('新大区名：', old);
+            if (!name || !name.trim() || name.trim() === old) return;
+            campusConfig[di].district = name.trim();
+            saveCampusConfig();
+            renderCampuses();
+        };
+        window.renameCampus = async function(di, ci){
+            var old = campusConfig[di].campuses[ci];
+            var name = await showPrompt('新校区名：', old);
+            if (!name || !name.trim() || name.trim() === old) return;
+            campusConfig[di].campuses[ci] = name.trim();
             saveCampusConfig();
             renderCampuses();
         };

@@ -2052,7 +2052,7 @@
             document.getElementById('feedbackTableHead').innerHTML=`<tr><th>序号</th><th>姓名</th>${dateColumns.map(c=>`<th>${escapeHtml(c)}</th>`).join('')}</tr>`;
             const tb=document.getElementById('feedbackTableBody');
             if(!records.length){tb.innerHTML=`<tr><td colspan="${2+dateColumns.length}" class="empty-state">无学生</td></tr>`;return;}
-            tb.innerHTML=records.map((r,idx)=>`<tr style="height:${cls.rowHeight}px;"><td>${idx+1}</td><td>${escapeHtml(r.name)}</td>${r.values.map((v,i)=>`<td style="background-color:${(r.colors&&r.colors[i])||''};"><input class="cell-input" data-row="${idx}" data-col="${i}" value="${escapeHtml(v)}" onfocus="selectCell(this)" oninput="autoResizeInput(this)" onkeydown="handleKeyDown(event)"></td>`).join('')}</tr>`).join('');
+            tb.innerHTML=records.map(function(r,idx){var stuObj=cls.students.find(function(s){return studentMatchName(s)===r.name;});var displayName=stuObj?studentDisplay(stuObj):r.name;return '<tr style="height:'+cls.rowHeight+'px;"><td>'+(idx+1)+'</td><td>'+escapeHtml(displayName)+'</td>'+r.values.map(function(v,i){return '<td style="background-color:'+(r.colors&&r.colors[i]||'')+';"><input class="cell-input" data-row="'+idx+'" data-col="'+i+'" value="'+escapeHtml(v)+'" onfocus="selectCell(this)" oninput="autoResizeInput(this)" onkeydown="handleKeyDown(event)"></td>';}).join('')+'</tr>';}).join('');
             tb.querySelectorAll('.cell-input').forEach(inp => {
                 inp.addEventListener('input',()=>{clearTimeout(saveTimer);saveTimer=setTimeout(()=>{pushUndo();saveCurrentDay();updateSaveStatus('✅ 已自动保存');},600);});
                 autoResizeInput(inp);
@@ -2111,7 +2111,7 @@
             document.getElementById('fullTableHead').innerHTML=`<tr><th>序号</th><th>姓名</th>${entry.dateColumns.map(c=>`<th>${escapeHtml(c)}</th>`).join('')}</tr>`;
             const tb=document.getElementById('fullTableBody');
             if(!records.length)tb.innerHTML=`<tr><td colspan="${2+entry.dateColumns.length}" class="empty-state">无数据</td></tr>`;
-            else tb.innerHTML=records.map((r,idx)=>`<tr style="height:${cls.rowHeight}px;"><td>${idx+1}</td><td>${escapeHtml(r.name)}</td>${r.values.map((v,i)=>`<td style="background-color:${(r.colors&&r.colors[i])||''};">${escapeHtml(v)}</td>`).join('')}</tr>`).join('');
+            else tb.innerHTML=records.map(function(r,idx){var stuObj=cls.students.find(function(s){return studentMatchName(s)===r.name;});var displayName=stuObj?studentDisplay(stuObj):r.name;return '<tr style="height:'+cls.rowHeight+'px;"><td>'+(idx+1)+'</td><td>'+escapeHtml(displayName)+'</td>'+r.values.map(function(v,i){return '<td style="background-color:'+(r.colors&&r.colors[i]||'')+';">'+escapeHtml(v)+'</td>';}).join('')+'</tr>';}).join('');
         }
 
         function getDateList(){const prefix=currentClassId+'|';return Object.keys(feedback).filter(k=>k.startsWith(prefix)).map(k=>k.split('|')[1]).sort(naturalSort);}
@@ -2331,7 +2331,7 @@
             selDates=selDates.filter(d=>allDates.includes(d));if(!selDates.length)selDates=allDates;
             selCols=selCols.filter(c=>cls.columns.some(col=>columnContainsKeyword(col,c)));if(!selCols.length)selCols=cls.columns.slice(0,3).map(stripMaxScore);
             if(!radarDate&&allDates.length)radarDate=allDates[allDates.length-1];
-            document.getElementById('analysisStudentSelect').innerHTML='<option value="">-- 请选择 --</option>'+cls.students.map(s=>`<option value="${escapeHtml(s)}" ${s===selStudent?'selected':''}>${escapeHtml(s)}</option>`).join('');
+            document.getElementById('analysisStudentSelect').innerHTML='<option value="">-- 请选择 --</option>'+cls.students.map(function(s){var mn=studentMatchName(s);return '<option value="'+escapeHtml(mn)+'"'+(mn===selStudent?' selected':'')+'>'+escapeHtml(studentDisplay(s))+'</option>';}).join('');
             document.getElementById('analysisDateCheckGroup').innerHTML='<span>课次：</span>'+(allDates.length?allDates.map(d=>`<label><input type="checkbox" value="${escapeHtml(d)}" ${selDates.includes(d)?'checked':''} onchange="refreshAnalysis()"> ${escapeHtml(d)}</label>`).join(''):'<span class="empty-state">暂无</span>');
             document.getElementById('analysisColumnCheckGroup').innerHTML='<span>板块：</span>'+cls.columns.map(col=>{const pure=stripMaxScore(col);const checked=selCols.some(c=>columnContainsKeyword(col,c));return `<label><input type="checkbox" value="${escapeHtml(pure)}" ${checked?'checked':''} onchange="refreshAnalysis()"> ${escapeHtml(pure)}</label>`;}).join('');
             const radarDateSelect=document.getElementById('radarDateSelect');

@@ -432,6 +432,7 @@
         let queryClass = 'all';
         let queryGrade = 'all';
         let queryDistrict = 'all';
+        let campusConfig = [];
         let querySort = 'count_desc'; // 'count_desc' | 'avg_desc' | 'latest_desc'
         let queryLimit = '50';
         let queryResults = null;
@@ -686,6 +687,7 @@
                 return;
             }
             await loadAllData();
+            loadCampusConfig();
             // Init super admin
             var storedSuper = localStorage.getItem('_fb_super_admin_id');
             if (storedSuper) {
@@ -848,6 +850,7 @@
             sidebarHTML += '<a onclick="switchView(\'awards\')" data-nav="awards"><i class="iconfont2 icon-trophy"></i><span class="nav-label">评优</span></a>';
             sidebarHTML += '<a onclick="switchView(\'analysis\')" data-nav="analysis"><i class="iconfont icon-chart"></i><span class="nav-label">分析</span></a>';
             sidebarHTML += '<a onclick="switchView(\'query\')" data-nav="query"><i class="iconfont4 icon-chaxun"></i><span class="nav-label">查询</span></a>';
+            sidebarHTML += '<a onclick="switchView(\'campuses\')" data-nav="campuses"><span class="sidebar-emoji">🏫</span><span class="nav-label">校区管理</span></a>';
 
             document.getElementById('app').innerHTML = `
                 <div class="app-layout">
@@ -876,6 +879,7 @@
                             <div id="view-analysis" class="subview"></div>
                             <div id="view-query" class="subview"></div>
                             <div id="view-profile" class="subview"></div>
+                            <div id="view-campuses" class="subview"></div>
                         </div>
                     </div>
                     <div class="mobile-nav" id="mobileNav">
@@ -919,6 +923,7 @@
             else if (view === 'awards') renderAwards();
             else if (view === 'query') renderQuery();
             else if (view === 'profile') renderProfile();
+            else if (view === 'campuses') renderCampuses();
             updateExportLabel();
             // Close mobile sidebar
             if (window.innerWidth <= 768) { var s = document.getElementById('sidebar'); if (s) s.classList.remove('open'); var o = document.getElementById('sidebarOverlay'); if (o) o.classList.remove('open'); }
@@ -1365,6 +1370,80 @@
             var { error } = await supabase.auth.updateUser({ password: p1 });
             if (error) { await showConfirm('修改失败：' + error.message); return; }
             await showConfirm('密码已修改，下次登录请使用新密码');
+        };
+
+        function loadCampusConfig() {
+            var hdrs = { 'apikey': SERVICE_ROLE_KEY, 'Authorization': 'Bearer ' + SERVICE_ROLE_KEY };
+            fetch(SUPABASE_URL + '/rest/v1/data_store?select=value&key=eq._campuses&limit=1', { headers: hdrs })
+                .then(function(r){return r.json();})
+                .then(function(rows){
+                    if (rows.length && rows[0].value) campusConfig = rows[0].value;
+                }).catch(function(){});
+        }
+
+        function saveCampusConfig() {
+            var hdrs = { 'apikey': SERVICE_ROLE_KEY, 'Authorization': 'Bearer ' + SERVICE_ROLE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+            fetch(SUPABASE_URL + '/rest/v1/data_store?key=eq._campuses&select=user_id&limit=1', { headers: hdrs })
+                .then(function(r){return r.json();})
+                .then(function(rows){
+                    if (rows.length) {
+                        var uid = rows[0].user_id;
+                        fetch(SUPABASE_URL + '/rest/v1/data_store?user_id=eq.' + uid + '&key=eq._campuses', {
+                            method: 'PATCH', headers: hdrs, body: JSON.stringify({ value: campusConfig })
+                        }).catch(function(){});
+                    }
+                }).catch(function(){});
+        }
+
+        function renderCampuses() {
+            if (!campusConfig.length) loadCampusConfig();
+            var html = '<div class="card"><div class="card-title" style="justify-content:space-between"><span>🏫 校区管理</span><button class="btn btn-sm" onclick="addDistrict()">+ 新增大区</button></div>';
+            campusConfig.forEach(function(d, di){
+                html += '<div style="background:var(--bg);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:8px;">';
+                html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">';
+                html += '<span style="font-weight:700;font-size:14px;">'+escapeHtml(d.district)+'</span>';
+                html += '<button class="btn btn-xs" style="color:var(--danger);" onclick="deleteDistrict('+di+')">删除大区</button>';
+                html += '</div>';
+                html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;">';
+                (d.campuses||[]).forEach(function(c, ci){
+                    html += '<span style="display:inline-flex;align-items:center;gap:3px;background:var(--card-bg);border:1px solid var(--border);border-radius:20px;padding:3px 8px;font-size:12px;">'+escapeHtml(c)+'<button onclick="deleteCampus('+di+','+ci+')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--text-muted);padding:0 2px;line-height:1;">×</button></span>';
+                });
+                html += '</div>';
+                html += '<button class="btn btn-xs btn-outline" onclick="addCampus('+di+')">+ 新增校区</button>';
+                html += '</div>';
+            });
+            if (!campusConfig.length) html += '<div class="empty-state">暂无校区数据，点击上方按钮新增</div>';
+            html += '</div>';
+            document.getElementById('view-campuses').innerHTML = html;
+        }
+        window.renderCampuses = renderCampuses;
+
+        window.addDistrict = async function(){
+            var name = await showPrompt('大区名称：', '');
+            if (!name || !name.trim()) return;
+            campusConfig.push({ district: name.trim(), campuses: [] });
+            saveCampusConfig();
+            renderCampuses();
+        };
+        window.deleteDistrict = async function(di){
+            var d = campusConfig[di];
+            if (!await showConfirm('删除大区「'+d.district+'」及其所有校区？')) return;
+            campusConfig.splice(di, 1);
+            saveCampusConfig();
+            renderCampuses();
+        };
+        window.addCampus = async function(di){
+            var name = await showPrompt('校区名称：', '');
+            if (!name || !name.trim()) return;
+            if (!campusConfig[di].campuses) campusConfig[di].campuses = [];
+            campusConfig[di].campuses.push(name.trim());
+            saveCampusConfig();
+            renderCampuses();
+        };
+        window.deleteCampus = function(di, ci){
+            campusConfig[di].campuses.splice(ci, 1);
+            saveCampusConfig();
+            renderCampuses();
         };
 
         function buildAnalysisStatTable(cls, dates, columns) {
@@ -1941,7 +2020,7 @@
                         var cls = classMap[cid];
                         if (queryClass !== 'all' && cls.name.toLowerCase().indexOf(queryClass.toLowerCase()) === -1) return;
                         if (!classContainsGrade(cls.name, queryGrade)) return;
-                        if (queryDistrict !== 'all' && (t.district || '') !== queryDistrict) return;
+                        if (queryDistrict !== 'all' && (cls.district || '') !== queryDistrict) return;
                         var allKeys = perClass[cid].sort(naturalSort);
                         var keys = allKeys;
                         if (queryRecent !== 'all') {
@@ -2012,7 +2091,7 @@
                     // Class type filter
                     if (queryClass !== 'all' && cls.name.toLowerCase().indexOf(queryClass.toLowerCase()) === -1) return;
                     if (!classContainsGrade(cls.name, queryGrade)) return;
-                    if (queryDistrict !== 'all' && (t.district || '') !== queryDistrict) return;
+                    if (queryDistrict !== 'all' && (cls.district || '') !== queryDistrict) return;
 
                     var entry = fb[k];
                     if (!entry || !entry.dateColumns) return;

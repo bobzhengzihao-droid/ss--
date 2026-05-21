@@ -981,9 +981,18 @@
 
             localStorage.setItem('_fb_name_email_' + name, email);
 
-            // 保存 gender + district 到 teacher_profiles
-            if (signUpData.user) {
-                supabase.from('teacher_profiles').upsert({ user_id: signUpData.user.id, gender: gender || null, district: district || null }, { onConflict: 'user_id' }).then(function(){}, function(){});
+            // 保存 gender + district 到 teacher_profiles（用 REST PATCH）
+            if (signUpData.user && (gender || district)) {
+                try {
+                    var { data: { session: regSess } } = await supabase.auth.getSession();
+                    if (regSess) {
+                        await fetch(SUPABASE_URL + '/rest/v1/teacher_profiles?user_id=eq.' + encodeURIComponent(signUpData.user.id), {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + regSess.access_token, 'Prefer': 'return=minimal' },
+                            body: JSON.stringify({ gender: gender || null, district: district || null })
+                        });
+                    }
+                } catch(e) { console.warn('register teacher_profiles save failed:', e.message); }
             }
 
             return { email, name, user: signUpData.user, gender, district };
@@ -1350,9 +1359,18 @@
             var prefix = (currentGender==='male'?'♂️ ':'')+(currentGender==='female'?'♀️ ':'');
             document.getElementById('headerUserName').textContent = prefix + name;
             await loadUserData();
-            // 确保 gender + district 写入 teacher_profiles（注册时可能因触发器延迟失败）
+            // 确保 gender + district 写入 teacher_profiles（用 REST API 直接写，绕开 JS 客户端可能的问题）
             if (currentGender || currentDistrict) {
-                supabase.from('teacher_profiles').upsert({ user_id: user.id, name: name, gender: currentGender || null, district: currentDistrict || null }, { onConflict: 'user_id' }).then(function(){}, function(){});
+                try {
+                    var { data: { session: s } } = await supabase.auth.getSession();
+                    if (s) {
+                        await fetch(SUPABASE_URL + '/rest/v1/teacher_profiles?user_id=eq.' + encodeURIComponent(user.id), {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + s.access_token, 'Prefer': 'return=minimal' },
+                            body: JSON.stringify({ gender: currentGender || null, district: currentDistrict || null })
+                        });
+                    }
+                } catch(e) { console.warn('save teacher_profiles failed:', e.message); }
             }
             saveUserProfile(user, name);
         }
@@ -2343,18 +2361,29 @@
                 if (currentEmail) {
                     try { localStorage.setItem('_fb_name_email_' + newName, currentEmail); } catch(e) {}
                 }
-                var { error: tpErr } = await supabase.from('teacher_profiles').upsert({ user_id: _userId, name: newName }, { onConflict: 'user_id' });
-                if (tpErr) { await showConfirm('改名失败：'+tpErr.message); return; }
+                var patchResp = await fetch(SUPABASE_URL + '/rest/v1/teacher_profiles?user_id=eq.' + encodeURIComponent(_userId), {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + session.access_token, 'Prefer': 'return=minimal' },
+                    body: JSON.stringify({ name: newName })
+                });
+                if (!patchResp.ok) { var patchErr = await patchResp.json().catch(function(){return {};}); await showConfirm('改名失败：'+ (patchErr.message || patchResp.status)); return; }
                 _userName = newName;
             }
 
-            // 保存性别和大区（合并一次 upsert，确保 name 不为空）
+            // 保存性别和大区（用 REST API 直接 PATCH）
             if (newGender !== currentGender || newDistrict !== currentDistrict) {
                 if (newGender !== currentGender) currentGender = newGender;
                 if (newDistrict !== currentDistrict) currentDistrict = newDistrict;
-                var upsertData = { user_id: _userId, gender: currentGender || null, district: currentDistrict || null };
-                if (!newName) upsertData.name = _userName; // INSERT 需要 name，UPDATE 不碍事
-                supabase.from('teacher_profiles').upsert(upsertData, { onConflict: 'user_id' }).then(function(){},function(){});
+                try {
+                    var { data: { session: ss } } = await supabase.auth.getSession();
+                    if (ss) {
+                        await fetch(SUPABASE_URL + '/rest/v1/teacher_profiles?user_id=eq.' + encodeURIComponent(_userId), {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + ss.access_token, 'Prefer': 'return=minimal' },
+                            body: JSON.stringify({ gender: currentGender || null, district: currentDistrict || null })
+                        });
+                    }
+                } catch(e) { console.warn('save settings failed:', e.message); }
             }
 
             // 更新头部

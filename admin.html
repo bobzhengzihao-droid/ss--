@@ -431,6 +431,7 @@
         let queryTeacher = 'all';
         let queryClass = 'all';
         let queryGrade = 'all';
+        let queryDistrict = 'all';
         let querySort = 'count_desc'; // 'count_desc' | 'avg_desc' | 'latest_desc'
         let queryLimit = '50';
         let queryResults = null;
@@ -753,10 +754,10 @@
             // 2. Load teacher_profiles for name/email lookup + admin status
             let profiles = {};
             try {
-                const tpResp = await fetch(SUPABASE_URL + '/rest/v1/teacher_profiles?select=user_id,name,is_admin', { headers: hdrs });
+                const tpResp = await fetch(SUPABASE_URL + '/rest/v1/teacher_profiles?select=user_id,name,is_admin,gender,district', { headers: hdrs });
                 if (tpResp.ok) {
                     const tpRows = await tpResp.json();
-                    (tpRows || []).forEach(p => { if (p.user_id) profiles[p.user_id] = { name: p.name || '', isAdmin: !!p.is_admin }; });
+                    (tpRows || []).forEach(p => { if (p.user_id) profiles[p.user_id] = { name: p.name || '', isAdmin: !!p.is_admin, gender: p.gender || '', district: p.district || '' }; });
                 }
             } catch(e) { /* non-critical */ }
 
@@ -796,6 +797,8 @@
                 if (p) {
                     if (!u.name) u.name = p.name;
                     u.isAdmin = p.isAdmin;
+                    u.gender = p.gender || '';
+                    u.district = p.district || '';
                 }
             });
 
@@ -1127,7 +1130,7 @@
                 const fbCount = Object.keys(t.feedback || {}).length;
                 return `<div class="t-item" id="tcard-${t.id}">
                     <div class="t-header" onclick="toggleTeacherDetail('${t.id}')">
-                        <div><div class="t-name">${escapeHtml(t.name || '未命名')}</div>
+                        <div><div class="t-name">${(t.gender==='male'?'♂️ ':'')+(t.gender==='female'?'♀️ ':'')}${escapeHtml(t.name || '未命名')}${t.district?' <span style="font-size:10px;color:#2563eb;background:#eff6ff;padding:1px 6px;border-radius:10px;">'+escapeHtml(t.district)+'</span>':''}</div>
                         <div class="t-meta">${clsCount} 班级 · ${fbCount} 课次 · ${t.email || ''}${t.lastActive ? ' · 最后活跃 ' + new Date(t.lastActive).toLocaleString('zh-CN') : ''}</div></div>
                         <span style="font-size:18px;color:var(--text-muted)">›</span>
                     </div>
@@ -1855,6 +1858,13 @@
                 html += '<option value="' + g + '" ' + (queryGrade === String(g) ? 'selected' : '') + '>' + g + ' 年级</option>';
             });
             html += '</select>';
+            // District filter
+            html += '<select id="qDistrict" onchange="queryDistrict=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
+            html += '<option value="all" ' + (queryDistrict === 'all' ? 'selected' : '') + '>全部大区</option>';
+            ['东一区','东二区','西一区','西二区','南一区','南二区','武侯区'].forEach(function(d) {
+                html += '<option value="' + d + '" ' + (queryDistrict === d ? 'selected' : '') + '>' + d + '</option>';
+            });
+            html += '</select>';
             // Sort (skip for attendance, always sorted by rate asc)
             if (!isAttendance) {
                 html += '<select id="qSort" onchange="querySort=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
@@ -1929,6 +1939,7 @@
                         var cls = classMap[cid];
                         if (queryClass !== 'all' && cls.name.toLowerCase().indexOf(queryClass.toLowerCase()) === -1) return;
                         if (!classContainsGrade(cls.name, queryGrade)) return;
+                        if (queryDistrict !== 'all' && (t.district || '') !== queryDistrict) return;
                         var allKeys = perClass[cid].sort(naturalSort);
                         var keys = allKeys;
                         if (queryRecent !== 'all') {
@@ -1999,6 +2010,7 @@
                     // Class type filter
                     if (queryClass !== 'all' && cls.name.toLowerCase().indexOf(queryClass.toLowerCase()) === -1) return;
                     if (!classContainsGrade(cls.name, queryGrade)) return;
+                    if (queryDistrict !== 'all' && (t.district || '') !== queryDistrict) return;
 
                     var entry = fb[k];
                     if (!entry || !entry.dateColumns) return;

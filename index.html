@@ -1252,9 +1252,6 @@
             document.getElementById('regGenderFemale').style.border = val==='female'?selBorder:defBorder;
             document.getElementById('regGenderFemale').style.background = val==='female'?selBg:'';
         };
-            document.getElementById('loginMsg').textContent = '';
-            document.getElementById('loginMsg').className = 'login-msg';
-        };
 
         window.handleLogin = async function() {
             if (!supabaseReady) {

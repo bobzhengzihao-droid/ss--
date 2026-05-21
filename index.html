@@ -2288,7 +2288,7 @@
             if(nameDisplay) nameDisplay.textContent=_userName||'未设置';
             // 性别查看模式
             var gv=document.getElementById('settingsGenderView');
-            if(gv) gv.textContent = g==='male'?'♂️ 男':(g==='female'?'♀️ 女':'未设置');
+            if(gv) gv.textContent = (currentGender==='male'?'♂️ 男':(currentGender==='female'?'♀️ 女':'未设置'));
             // 大区查看模式
             var dv=document.getElementById('settingsDistrictView');
             if(dv) dv.textContent = currentDistrict||'未设置';
@@ -2372,6 +2372,7 @@
             var nameRow=document.getElementById('settingsNameRow');
             nameRow.innerHTML='<span id="settingsNameDisplay">'+escapeHtml(_userName||'未设置')+'</span>';
             refreshSettingsUI();
+            await showConfirm('✅ 设置已保存');
         }
 
         window.settingsPickGender = function(val){

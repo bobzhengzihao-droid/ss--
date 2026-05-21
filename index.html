@@ -816,10 +816,11 @@
             <input class="login-input" id="loginName" placeholder="姓名或邮箱" autocomplete="username">
             <input class="login-input" id="loginPassword" type="password" placeholder="密码" autocomplete="current-password">
             <div id="regExtra" style="display:none;">
-                <div style="display:flex;gap:8px;margin-bottom:8px;">
-                    <span style="font-size:12px;color:var(--text-muted);padding:8px 0;">性别：</span>
-                    <label style="display:flex;align-items:center;gap:4px;padding:6px 12px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:13px;" id="genderMaleLabel"><input type="radio" name="regGender" value="male" style="display:none;"><span>♂️ 男</span></label>
-                    <label style="display:flex;align-items:center;gap:4px;padding:6px 12px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:13px;" id="genderFemaleLabel"><input type="radio" name="regGender" value="female" style="display:none;"><span>♀️ 女</span></label>
+                <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
+                    <span style="font-size:12px;color:var(--text-muted);">性别：</span>
+                    <input type="hidden" id="regGenderValue" value="">
+                    <div id="regGenderMale" onclick="regPickGender('male')" style="display:flex;align-items:center;gap:4px;padding:6px 12px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:13px;user-select:none;"><span>♂️</span>男</div>
+                    <div id="regGenderFemale" onclick="regPickGender('female')" style="display:flex;align-items:center;gap:4px;padding:6px 12px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:13px;user-select:none;"><span>♀️</span>女</div>
                 </div>
                 <select class="login-input" id="regDistrict" style="margin-bottom:8px;"><option value="">请选择大区</option><option value="东一区">东一区</option><option value="东二区">东二区</option><option value="西一区">西一区</option><option value="西二区">西二区</option><option value="南一区">南一区</option><option value="南二区">南二区</option><option value="武侯区">武侯区</option></select>
             </div>
@@ -1235,6 +1236,22 @@
             document.getElementById('regExtra').style.display = tab === 'register' ? '' : 'none';
             document.getElementById('regCode').style.display = tab === 'register' ? '' : 'none';
             document.getElementById('loginBtn').textContent = tab === 'login' ? '登 录' : '注 册';
+            // 重置性别选择
+            document.getElementById('regGenderValue').value = '';
+            document.getElementById('regGenderMale').style.border='1.5px solid var(--border)';document.getElementById('regGenderMale').style.background='';
+            document.getElementById('regGenderFemale').style.border='1.5px solid var(--border)';document.getElementById('regGenderFemale').style.background='';
+            document.getElementById('loginMsg').textContent = '';
+            document.getElementById('loginMsg').className = 'login-msg';
+        };
+
+        window.regPickGender = function(val){
+            document.getElementById('regGenderValue').value = val;
+            var selBorder='1.5px solid var(--accent)',selBg='#eff6ff',defBorder='1.5px solid var(--border)';
+            document.getElementById('regGenderMale').style.border = val==='male'?selBorder:defBorder;
+            document.getElementById('regGenderMale').style.background = val==='male'?selBg:'';
+            document.getElementById('regGenderFemale').style.border = val==='female'?selBorder:defBorder;
+            document.getElementById('regGenderFemale').style.background = val==='female'?selBg:'';
+        };
             document.getElementById('loginMsg').textContent = '';
             document.getElementById('loginMsg').className = 'login-msg';
         };
@@ -1264,8 +1281,7 @@
                     if (password.length < 4) { msgEl.textContent = '密码至少4位'; msgEl.className = 'login-msg error'; return; }
 
                     // 读取性别和大区
-                    var regGender = document.querySelector('input[name="regGender"]:checked');
-                    var gender = regGender ? regGender.value : '';
+                    var gender = document.getElementById('regGenderValue').value;
                     var district = document.getElementById('regDistrict').value;
 
                     let regData;

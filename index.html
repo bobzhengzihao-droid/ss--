@@ -1153,10 +1153,9 @@
             { type:'color', color:'#93c5fd', label:'蓝' }, { type:'color', color:'#86efac', label:'绿' },
             { type:'color', color:'', label:'清除' }
         ];
-        function defaultClasses() { return [{ id:'c1', name:'一年级1班', students:['容俊岳','史贝晨','唐禄恒','唐瑞航','汪栎宸','胥瑾年','依依','黄梓乔','梅舒雯','张昱天','嘟嘟','龙钰栗','凌梓心','牟家锐','王沛霖','江成蹊','姚煜昕','小妤'].map(function(s){return {name:s,officialName:s,displayName:s};}), columns:['听写(满分12)','小测(满分10)','自学资料','笔记','语音作业','小书童(满分100)','备注'], rowHeight:36, tableColors:{ headerBg:'#eff6ff',headerText:'#1e40af',border:'#bfdbfe',rowEven:'#f8fafc' } }]; }
+        function defaultClasses() { return [{ id:'c1', name:'一年级1班', students:['容俊岳','史贝晨','唐禄恒','唐瑞航','汪栎宸','胥瑾年','依依','黄梓乔','梅舒雯','张昱天','嘟嘟','龙钰栗','凌梓心','牟家锐','王沛霖','江成蹊','姚煜昕','小妤'], columns:['听写(满分12)','小测(满分10)','自学资料','笔记','语音作业','小书童(满分100)','备注'], rowHeight:36, tableColors:{ headerBg:'#eff6ff',headerText:'#1e40af',border:'#bfdbfe',rowEven:'#f8fafc' } }]; }
 
         let classes = defaultClasses(), feedback = {}, tools = [...DEFAULT_TOOLS], analysisSel = {};
-        let campusList = [], currentGender = null, _userName = '';
         let currentClassId = null, currentDateLabel = 'Day1', saveTimer, activeCell = null;
         let activeStudentModal = null;
         const lineChartInstances = {}; let radarChartInstance = null;
@@ -1166,11 +1165,6 @@
 
         // ========== 工具函数 ==========
         function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
-        function _studentObj(s) { if (typeof s === 'string') return { name: s, officialName: s, displayName: s }; return { name: s.name || '', officialName: s.officialName || s.name || '', displayName: s.displayName || s.name || '' }; }
-        function studentDisplay(s) { var o = _studentObj(s); return o.displayName || o.name; }
-        function studentMatchName(s) { return typeof s === 'string' ? s : (s.name || ''); }
-        function normalizeStudents(arr) { if (!Array.isArray(arr)) return []; return arr.map(function(s) { return _studentObj(s); }); }
-        function getCampusName(cid) { var c = campusList.find(function(x) { return x.id === parseInt(cid); }); return c ? c.name : ''; }
         // 自定义对话框（替代原生prompt/confirm，避免夸克等移动浏览器拦截）
         function showConfirm(msg) { return new Promise(resolve => { const overlay = document.createElement('div'); overlay.className = 'custom-dialog-overlay'; overlay.innerHTML = `<div class="custom-dialog"><div class="custom-dialog-msg">${msg}</div><div class="custom-dialog-btns"><button class="custom-dialog-btn-cancel">取消</button><button class="custom-dialog-btn-ok">确定</button></div></div>`; const ok = () => { overlay.remove(); resolve(true); }; const cancel = () => { overlay.remove(); resolve(false); }; overlay.querySelector('.custom-dialog-btn-ok').onclick = ok; overlay.querySelector('.custom-dialog-btn-cancel').onclick = cancel; overlay.addEventListener('click', e => { if (e.target === overlay) cancel(); }); document.body.appendChild(overlay); }); }
         function showPrompt(msg, defaultVal) { return new Promise(resolve => { const overlay = document.createElement('div'); overlay.className = 'custom-dialog-overlay'; overlay.innerHTML = `<div class="custom-dialog"><div class="custom-dialog-msg">${escapeHtml(msg)}</div><input class="custom-dialog-input" value="${escapeHtml(defaultVal||'')}"><div class="custom-dialog-btns"><button class="custom-dialog-btn-cancel">取消</button><button class="custom-dialog-btn-ok">确定</button></div></div>`; const input = overlay.querySelector('.custom-dialog-input'); const ok = () => { overlay.remove(); resolve(input.value); }; const cancel = () => { overlay.remove(); resolve(null); }; overlay.querySelector('.custom-dialog-btn-ok').onclick = ok; overlay.querySelector('.custom-dialog-btn-cancel').onclick = cancel; overlay.addEventListener('click', e => { if (e.target === overlay) cancel(); }); input.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); if (e.key === 'Escape') cancel(); }); document.body.appendChild(overlay); setTimeout(() => { input.focus(); input.select(); }, 80); }); }
@@ -1295,14 +1289,13 @@
         async function onLoginSuccess(user, actualEmail) {
             _userId = user.id;
             const name = user.user_metadata?.name || user.email?.split('@')[0] || '';
-            _userName = name;
+            // 记住本设备的实际邮箱，解决同名登录问题
             if (actualEmail) {
                 try { localStorage.setItem('_fb_name_email_' + name, actualEmail); } catch(e) {}
             }
             document.body.classList.add('logged-in');
             document.getElementById('loginOverlay').style.display = 'none';
-            var prefix = (currentGender==='male'?'♂️ ':'')+(currentGender==='female'?'♀️ ':'');
-            document.getElementById('headerUserName').textContent = prefix + name;
+            document.getElementById('headerUserName').textContent = '👤 ' + name;
             await loadUserData();
             // 保存用户档案到 data_store（异步，不影响登录体验）
             saveUserProfile(user, name);
@@ -1338,7 +1331,7 @@
             const menu = document.createElement('div');
             menu.id = 'userMenu';
             menu.className = 'user-menu';
-            menu.innerHTML = '<span style="padding:8px 12px;font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:6px;">性别：<select onchange="toggleGender(this.value)" style="padding:3px 6px;border-radius:20px;border:1px solid var(--border);font-size:11px;"><option value=""'+(currentGender?'':' selected')+'>未设置</option><option value="male"'+((currentGender==='male')?' selected':'')+'>男</option><option value="female"'+((currentGender==='female')?' selected':'')+'>女</option></select></span><button onclick="changeMyName();document.getElementById(\'userMenu\').remove();">✏️ 修改姓名</button><button onclick="changeMyPassword();document.getElementById(\'userMenu\').remove();">🔒 修改密码</button><button onclick="handleLogout()">🚪 退出登录</button>';
+            menu.innerHTML = `<button onclick="changeMyPassword();document.getElementById(\'userMenu\').remove();">🔒 修改密码</button><button onclick="handleLogout()">🚪 退出登录</button>`;
             const rect = e.target.getBoundingClientRect();
             menu.style.top = (rect.bottom + 4) + 'px';
             menu.style.right = (window.innerWidth - rect.right) + 'px';
@@ -1354,43 +1347,6 @@
             const { error } = await supabase.auth.updateUser({ password: p1 });
             if (error) { alert('修改失败：' + error.message); return; }
             alert('密码已修改，下次登录请使用新密码');
-        };
-
-        window.toggleGender = function(val) {
-            currentGender = val || null;
-            supabase.from('teacher_profiles').update({ gender: currentGender }).eq('user_id', _userId).then(function(){},function(){});
-            var nameEl = document.getElementById('headerUserName');
-            if (nameEl) nameEl.textContent = (currentGender==='male'?'♂️ ':'')+(currentGender==='female'?'♀️ ':'')+' '+ (_userName || '');
-        };
-
-        window.changeMyName = async function() {
-            var newName = prompt('请输入新姓名：', _userName || '');
-            if (!newName || !newName.trim()) return;
-            newName = newName.trim();
-            var pw = prompt('请输入当前密码以确认：', '');
-            if (!pw) return;
-            try {
-                var { data: { session } } = await supabase.auth.getSession();
-                var token = session ? session.access_token : '';
-                var resp = await fetch(SUPABASE_URL + '/functions/v1/update-profile-name', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'apikey': SUPABASE_ANON_KEY },
-                    body: JSON.stringify({ newName: newName, password: pw })
-                });
-                var result = await resp.json();
-                if (resp.ok && result.success) {
-                    _userName = newName;
-                    try { localStorage.setItem('_fb_name_email_' + newName, result.newEmail); } catch(e) {}
-                    var nameEl = document.getElementById('headerUserName');
-                    var prefix = (currentGender==='male'?'♂️ ':'')+(currentGender==='female'?'♀️ ':'');
-                    if (nameEl) nameEl.textContent = prefix + newName;
-                    alert('姓名已修改。新邮箱：' + result.newEmail + '\n下次请使用新姓名登录。');
-                } else {
-                    alert('修改失败：' + (result.error || '未知错误'));
-                }
-            } catch(e) {
-                alert('网络错误：' + e.message);
-            }
         };
 
         // ===== 管理员认证 =====
@@ -1933,17 +1889,13 @@
         };
 
         async function loadUserData() {
-            // 加载校区列表 + 性别
-            try { var resp = await supabase.from('campuses').select('*').eq('is_active', true).order('sort_order'); if (resp.data) campusList = resp.data; } catch(e) {}
-            try { var gp = await supabase.from('teacher_profiles').select('gender').eq('user_id', _userId).maybeSingle(); if (gp && gp.data && gp.data.gender) currentGender = gp.data.gender; } catch(e) {}
-
             let storedClasses = await dbGet('classes');
             if (!storedClasses) {
                 const backup = localStorage.getItem('_fullBackup');
-                if (backup) { try { const data = JSON.parse(backup); if (data.classes && data.classes.length) { classes = data.classes.map(function(cls){return Object.assign({},cls,{students:normalizeStudents(cls.students||[])});}); feedback = data.feedback || {}; tools = data.tools || [...DEFAULT_TOOLS]; analysisSel = data.analysisSel || {}; alert('✅ 已从本地备份自动恢复数据'); } } catch(e) {} }
+                if (backup) { try { const data = JSON.parse(backup); if (data.classes && data.classes.length) { classes = data.classes; feedback = data.feedback || {}; tools = data.tools || [...DEFAULT_TOOLS]; analysisSel = data.analysisSel || {}; alert('✅ 已从本地备份自动恢复数据'); } } catch(e) {} }
                 if (!classes || !classes.length) { classes = defaultClasses(); feedback = {}; tools = [...DEFAULT_TOOLS]; analysisSel = {}; await saveAllDataNow(); }
             } else {
-                classes = storedClasses.map(function(cls){return Object.assign({},cls,{students:normalizeStudents(cls.students||[])});});
+                classes = storedClasses;
                 feedback = (await dbGet('feedback')) || {};
                 tools = (await dbGet('tools')) || [...DEFAULT_TOOLS];
                 analysisSel = (await dbGet('analysisSel')) || {};
@@ -1987,7 +1939,7 @@
                 }
                 feedback[key] = {
                     records: cls.students.map(s => ({
-                        name: studentMatchName(s),
+                        name: s,
                         values: templateColumns.map(() => ''),
                         colors: templateColumns.map(() => '')
                     })),
@@ -2000,7 +1952,7 @@
                 else {
                     if(!entry.dateColumns) entry.dateColumns=[...cls.columns];
                     if(!entry.maxScores) entry.maxScores=entry.dateColumns.map(extractMaxScore);
-                    if(!entry.records) entry.records=cls.students.map(function(s){return {name:studentMatchName(s),values:entry.dateColumns.map(function(){return '';}),colors:entry.dateColumns.map(function(){return '';})}});
+                    if(!entry.records) entry.records=cls.students.map(s=>({name:s,values:entry.dateColumns.map(()=>''),colors:entry.dateColumns.map(()=>'')}));
                 }
             }
             saveFeedbackDebounced(); return feedback[key];
@@ -2010,10 +1962,10 @@
             const cls=getCurrentClass();if(!cls)return[];
             const entry=getEntry(cls.id,currentDateLabel);if(!entry)return[];
             let records=entry.records||[];
-            cls.students.forEach(function(s){var mn=studentMatchName(s);if(!records.find(function(r){return r.name===mn;}))records.push({name:mn,values:cls.columns.map(function(){return '';}),colors:cls.columns.map(function(){return '';})});});
-            records=records.filter(function(r){return cls.students.some(function(s){return studentMatchName(s)===r.name;});});
-            records.forEach(function(r){while(r.values.length<entry.dateColumns.length)r.values.push('');while(r.colors.length<entry.dateColumns.length)r.colors.push('');});
-            const order={};cls.students.forEach(function(s,i){order[studentMatchName(s)]=i;});
+            cls.students.forEach(n=>{if(!records.find(r=>r.name===n))records.push({name:n,values:cls.columns.map(()=>''),colors:cls.columns.map(()=>'')});});
+            records=records.filter(r=>cls.students.includes(r.name));
+            records.forEach(r=>{while(r.values.length<entry.dateColumns.length)r.values.push('');while(r.colors.length<entry.dateColumns.length)r.colors.push('');});
+            const order={};cls.students.forEach((n,i)=>order[n]=i);
             records.sort((a,b)=>(order[a.name]??99)-(order[b.name]??99));
             entry.records=records;
             return records;
@@ -2052,7 +2004,7 @@
             document.getElementById('feedbackTableHead').innerHTML=`<tr><th>序号</th><th>姓名</th>${dateColumns.map(c=>`<th>${escapeHtml(c)}</th>`).join('')}</tr>`;
             const tb=document.getElementById('feedbackTableBody');
             if(!records.length){tb.innerHTML=`<tr><td colspan="${2+dateColumns.length}" class="empty-state">无学生</td></tr>`;return;}
-            tb.innerHTML=records.map(function(r,idx){var stuObj=cls.students.find(function(s){return studentMatchName(s)===r.name;});var displayName=stuObj?studentDisplay(stuObj):r.name;return '<tr style="height:'+cls.rowHeight+'px;"><td>'+(idx+1)+'</td><td>'+escapeHtml(displayName)+'</td>'+r.values.map(function(v,i){return '<td style="background-color:'+(r.colors&&r.colors[i]||'')+';"><input class="cell-input" data-row="'+idx+'" data-col="'+i+'" value="'+escapeHtml(v)+'" onfocus="selectCell(this)" oninput="autoResizeInput(this)" onkeydown="handleKeyDown(event)"></td>';}).join('')+'</tr>';}).join('');
+            tb.innerHTML=records.map((r,idx)=>`<tr style="height:${cls.rowHeight}px;"><td>${idx+1}</td><td>${escapeHtml(r.name)}</td>${r.values.map((v,i)=>`<td style="background-color:${(r.colors&&r.colors[i])||''};"><input class="cell-input" data-row="${idx}" data-col="${i}" value="${escapeHtml(v)}" onfocus="selectCell(this)" oninput="autoResizeInput(this)" onkeydown="handleKeyDown(event)"></td>`).join('')}</tr>`).join('');
             tb.querySelectorAll('.cell-input').forEach(inp => {
                 inp.addEventListener('input',()=>{clearTimeout(saveTimer);saveTimer=setTimeout(()=>{pushUndo();saveCurrentDay();updateSaveStatus('✅ 已自动保存');},600);});
                 autoResizeInput(inp);
@@ -2111,7 +2063,7 @@
             document.getElementById('fullTableHead').innerHTML=`<tr><th>序号</th><th>姓名</th>${entry.dateColumns.map(c=>`<th>${escapeHtml(c)}</th>`).join('')}</tr>`;
             const tb=document.getElementById('fullTableBody');
             if(!records.length)tb.innerHTML=`<tr><td colspan="${2+entry.dateColumns.length}" class="empty-state">无数据</td></tr>`;
-            else tb.innerHTML=records.map(function(r,idx){var stuObj=cls.students.find(function(s){return studentMatchName(s)===r.name;});var displayName=stuObj?studentDisplay(stuObj):r.name;return '<tr style="height:'+cls.rowHeight+'px;"><td>'+(idx+1)+'</td><td>'+escapeHtml(displayName)+'</td>'+r.values.map(function(v,i){return '<td style="background-color:'+(r.colors&&r.colors[i]||'')+';">'+escapeHtml(v)+'</td>';}).join('')+'</tr>';}).join('');
+            else tb.innerHTML=records.map((r,idx)=>`<tr style="height:${cls.rowHeight}px;"><td>${idx+1}</td><td>${escapeHtml(r.name)}</td>${r.values.map((v,i)=>`<td style="background-color:${(r.colors&&r.colors[i])||''};">${escapeHtml(v)}</td>`).join('')}</tr>`).join('');
         }
 
         function getDateList(){const prefix=currentClassId+'|';return Object.keys(feedback).filter(k=>k.startsWith(prefix)).map(k=>k.split('|')[1]).sort(naturalSort);}
@@ -2154,7 +2106,15 @@
 
         // ========== 班级管理 ==========
         function renderClassList(){
-            document.getElementById('classListContainer').innerHTML=classes.length?classes.map(function(c,i){var campusName=getCampusName(c.campus_id);var campusBadge=campusName?' <span style="font-size:10px;color:#2563eb;background:#eff6ff;padding:1px 6px;border-radius:10px;font-weight:500;">'+escapeHtml(campusName)+'</span>':'';return '<div class="class-card-wrapper" data-index="'+i+'"><div class="class-card" onclick="enterFeedbackForClass(\''+c.id+'\')"><span style="display:flex;align-items:center;gap:2px;min-width:0;"><span class="drag-handle">⠿</span><span class="class-card-name">'+escapeHtml(c.name)+campusBadge+'</span></span><div onclick="event.stopPropagation()" style="display:flex; gap:4px; flex-wrap:wrap;"><button class="btn btn-xs" onclick="toggleStudentModal(\''+c.id+'\')">👥 名单</button><button class="btn btn-xs" onclick="editClassName(\''+c.id+'\')">✏️</button><button class="btn btn-xs" style="color:var(--danger);" onclick="deleteClass(\''+c.id+'\')">🗑️</button></div></div><div class="student-modal" id="studentModal-'+c.id+'"></div></div>';}).join(''):'<div class="empty-state">暂无班级</div>';
+            document.getElementById('classListContainer').innerHTML=classes.length?classes.map((c,i)=>`
+                <div class="class-card-wrapper" data-index="${i}"><div class="class-card" onclick="enterFeedbackForClass('${c.id}')">
+                    <span style="display:flex;align-items:center;gap:2px;min-width:0;"><span class="drag-handle">⠿</span><span class="class-card-name">${escapeHtml(c.name)}</span></span>
+                    <div onclick="event.stopPropagation()" style="display:flex; gap:4px; flex-wrap:wrap;">
+                        <button class="btn btn-xs" onclick="toggleStudentModal('${c.id}')">👥 名单</button>
+                        <button class="btn btn-xs" onclick="editClassName('${c.id}')">✏️</button>
+                        <button class="btn btn-xs" style="color:var(--danger);" onclick="deleteClass('${c.id}')">🗑️</button>
+                    </div>
+                </div><div class="student-modal" id="studentModal-${c.id}"></div></div>`).join(''):'<div class="empty-state">暂无班级</div>';
             document.querySelectorAll('.drag-handle').forEach(el => {
                 el.addEventListener('mousedown', startClassDrag);
                 el.addEventListener('touchstart', startClassDrag, { passive: false });
@@ -2253,15 +2213,15 @@
                     <button class="btn btn-xs" style="color:var(--danger);" onclick="deleteStudentInModal('${classId}',${i})">🗑️</button>
                 </div></div>`).join(''):'<div class="empty-state">暂无学生</div>'}</div>`;
         }
-        window.addStudentInModal=function(classId){const cls=classes.find(c=>c.id===classId);if(!cls)return;const name=document.getElementById(`studentInput-${classId}`).value.trim();if(!name){showConfirm('请输入姓名');return;}if(cls.students.some(function(s){return studentMatchName(s)===name;})){showConfirm('已存在');return;}cls.students.push({name:name,officialName:name,displayName:name});updateClassStudents(cls);document.getElementById(`studentInput-${classId}`).value='';renderStudentListInModal(classId);};
-        window.editStudentInModal=function(classId,idx){const cls=classes.find(function(c){return c.id===classId;});if(!cls)return;const oldObj=cls.students[idx];const oldName=studentMatchName(oldObj);const span=document.getElementById('stuName-'+classId+'-'+idx);const btn=document.getElementById('stuEditBtn-'+classId+'-'+idx);if(!span||!btn)return;if(span.querySelector('input'))return;const input=document.createElement('input');input.type='text';input.value=oldName;input.style.cssText='font-size:14px;padding:4px 8px;border:1px solid var(--accent);border-radius:8px;outline:none;width:100%;min-width:80px;';span.innerHTML='';span.appendChild(input);btn.textContent='✅';input.focus();input.select();const save=function(){const newName=input.value.trim();input.removeEventListener('blur',save);if(!newName||newName===oldName){span.textContent=studentDisplay(oldObj);btn.textContent='✏️';return;}if(cls.students.some(function(s,i){return i!==idx&&studentMatchName(s)===newName;})){span.textContent=studentDisplay(oldObj);btn.textContent='✏️';showConfirm('姓名重复');return;}cls.students[idx]=Object.assign({},oldObj,{name:newName,officialName:newName,displayName:newName});updateClassStudents(cls);renameInFeedback(classId,oldName,newName);renderStudentListInModal(classId);};input.addEventListener('blur',save);input.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();input.blur();}if(e.key==='Escape'){span.innerHTML='';span.textContent=studentDisplay(oldObj);btn.textContent='✏️';}});};
-        window.deleteStudentInModal=async function(classId,idx){const cls=classes.find(function(c){return c.id===classId;});if(!cls)return;const name=studentMatchName(cls.students[idx]);if(!await showConfirm('确定删除「'+name+'」？\n该学生在所有课次中的反馈数据也会一并清除。'))return;cls.students.splice(idx,1);updateClassStudents(cls);syncStudentDeletion(classId,name);renderStudentListInModal(classId);};
-        window.importStudentsInModal=function(classId,event){const file=event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=async function(e){try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});const sh=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(sh,{header:1});const names=rows.map(r=>String(r[0]||'').trim()).filter(n=>n);if(!names.length)return alert('未读取到姓名');const cls=classes.find(c=>c.id===classId);if(!cls)return;var existingNames=new Set(cls.students.map(function(s){return studentMatchName(s);}));if(await showConfirm('确定替换？取消则追加'))cls.students=names.map(function(n){return {name:n,officialName:n,displayName:n};});else{names.forEach(function(n){if(!existingNames.has(n))cls.students.push({name:n,officialName:n,displayName:n});});}updateClassStudents(cls);renderStudentListInModal(classId);}catch(ex){alert('解析失败');}};reader.readAsArrayBuffer(file);};
+        window.addStudentInModal=function(classId){const cls=classes.find(c=>c.id===classId);if(!cls)return;const name=document.getElementById(`studentInput-${classId}`).value.trim();if(!name)return alert('请输入姓名');if(cls.students.includes(name))return alert('已存在');cls.students.push(name);updateClassStudents(cls);document.getElementById(`studentInput-${classId}`).value='';renderStudentListInModal(classId);};
+        window.editStudentInModal=function(classId,idx){const cls=classes.find(c=>c.id===classId);if(!cls)return;const old=cls.students[idx];const span=document.getElementById(`stuName-${classId}-${idx}`);const btn=document.getElementById(`stuEditBtn-${classId}-${idx}`);if(!span||!btn)return;if(span.querySelector('input'))return;const input=document.createElement('input');input.type='text';input.value=old;input.style.cssText='font-size:14px;padding:4px 8px;border:1px solid var(--accent);border-radius:8px;outline:none;width:100%;min-width:80px;';span.innerHTML='';span.appendChild(input);btn.textContent='✅';input.focus();input.select();const save=()=>{const newName=input.value.trim();input.removeEventListener('blur',save);if(!newName||newName===old){span.textContent=old;btn.textContent='✏️';return;}if(cls.students.includes(newName)){span.textContent=old;btn.textContent='✏️';alert('姓名重复');return;}cls.students[idx]=newName;updateClassStudents(cls);renameInFeedback(classId,old,newName);renderStudentListInModal(classId);};input.addEventListener('blur',save);input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();input.blur();}if(e.key==='Escape'){input.value=old;input.blur();}});};
+        window.deleteStudentInModal=async function(classId,idx){const cls=classes.find(c=>c.id===classId);if(!cls)return;const name=cls.students[idx];if(!await showConfirm(`确定删除「${name}」？\n该学生在所有课次中的反馈数据也会一并清除。`))return;cls.students.splice(idx,1);updateClassStudents(cls);syncStudentDeletion(classId,name);renderStudentListInModal(classId);};
+        window.importStudentsInModal=function(classId,event){const file=event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=async function(e){try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});const sh=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(sh,{header:1});const names=rows.map(r=>String(r[0]||'').trim()).filter(n=>n);if(!names.length)return alert('未读取到姓名');const cls=classes.find(c=>c.id===classId);if(!cls)return;if(await showConfirm('确定替换？取消则追加'))cls.students=names;else{const exist=new Set(cls.students);names.forEach(n=>{if(!exist.has(n))cls.students.push(n);});}updateClassStudents(cls);renderStudentListInModal(classId);}catch(ex){alert('解析失败');}};reader.readAsArrayBuffer(file);};
         function updateClassStudents(cls){classes=classes.map(c=>c.id===cls.id?cls:c);dbSet('classes',classes);}
         function syncStudentDeletion(classId,name){const prefix=classId+'|';for(const k in feedback)if(k.startsWith(prefix)){const entry=feedback[k];const recs=Array.isArray(entry)?entry:entry.records;const filtered=recs.filter(r=>r.name!==name);if(Array.isArray(entry))feedback[k]=filtered;else{entry.records=filtered;if(!entry.records.length)delete feedback[k];}}saveFeedbackDebounced();}
         function renameInFeedback(classId,old,newName){const prefix=classId+'|';for(const k in feedback)if(k.startsWith(prefix)){const recs=Array.isArray(feedback[k])?feedback[k]:feedback[k].records;recs.forEach(r=>{if(r.name===old)r.name=newName;});}saveFeedbackDebounced();}
-        window.addClass=function(){const n=document.getElementById('newClassName').value.trim();if(!n)return alert('请输入班级名称');var campusSel=document.getElementById('newClassCampus');var cid=campusSel&&campusSel.value?parseInt(campusSel.value):null;const nc={id:'c'+Date.now(),name:n,students:[],campus_id:cid||undefined,columns:['听写(满分12)','小测(满分10)','自学资料','笔记','语音作业','小书童(满分100)','备注'],rowHeight:36,tableColors:{headerBg:'#eff6ff',headerText:'#1e40af',border:'#bfdbfe',rowEven:'#f8fafc'}};classes.push(nc);dbSet('classes',classes);document.getElementById('newClassName').value='';currentClassId=nc.id;renderClassList();setTimeout(function(){window.toggleStudentModal(nc.id);},80);};
-        window.editClassName=async function(id){const c=classes.find(function(x){return x.id===id;});if(!c)return;const n=await showPrompt('新班级名称',c.name);if(n&&n.trim()){c.name=n.trim();};if(campusList.length){var curCampusId=c.campus_id||'';var opts=campusList.map(function(cp){return (cp.id===curCampusId?'1. ':'0. ')+cp.name;}).join(', ');var newCampus=await showPrompt('校区（输入序号，留空不变）\n可选项：'+opts,'');if(newCampus&&newCampus.trim()){var idx=parseInt(newCampus.trim())-1;if(idx>=0&&idx<campusList.length)c.campus_id=campusList[idx].id;}}dbSet('classes',classes);renderClassList();updateCurrentClassDisplay();};
+        window.addClass=function(){const n=document.getElementById('newClassName').value.trim();if(!n)return alert('请输入班级名称');const nc={id:'c'+Date.now(),name:n,students:[],columns:['听写(满分12)','小测(满分10)','自学资料','笔记','语音作业','小书童(满分100)','备注'],rowHeight:36,tableColors:{headerBg:'#eff6ff',headerText:'#1e40af',border:'#bfdbfe',rowEven:'#f8fafc'}};classes.push(nc);dbSet('classes',classes);document.getElementById('newClassName').value='';currentClassId=nc.id;renderClassList();setTimeout(()=>window.toggleStudentModal(nc.id),80);};
+        window.editClassName=async function(id){const c=classes.find(x=>x.id===id);if(!c)return;const n=await showPrompt('新班级名称',c.name);if(n&&n.trim()){c.name=n.trim();dbSet('classes',classes);renderClassList();updateCurrentClassDisplay();}};
         window.deleteClass=async function(id){if(!await showConfirm('删除班级及反馈？'))return;classes=classes.filter(x=>x.id!==id);await dbSet('classes',classes);const prefix=id+'|';for(const k in feedback)if(k.startsWith(prefix))delete feedback[k];await dbSet('feedback',feedback);currentClassId=classes.length?classes[0].id:null;renderClassList();if(currentClassId)switchView('classes');};
 
         // ========== 导出 ==========
@@ -2331,7 +2291,7 @@
             selDates=selDates.filter(d=>allDates.includes(d));if(!selDates.length)selDates=allDates;
             selCols=selCols.filter(c=>cls.columns.some(col=>columnContainsKeyword(col,c)));if(!selCols.length)selCols=cls.columns.slice(0,3).map(stripMaxScore);
             if(!radarDate&&allDates.length)radarDate=allDates[allDates.length-1];
-            document.getElementById('analysisStudentSelect').innerHTML='<option value="">-- 请选择 --</option>'+cls.students.map(function(s){var mn=studentMatchName(s);return '<option value="'+escapeHtml(mn)+'"'+(mn===selStudent?' selected':'')+'>'+escapeHtml(studentDisplay(s))+'</option>';}).join('');
+            document.getElementById('analysisStudentSelect').innerHTML='<option value="">-- 请选择 --</option>'+cls.students.map(s=>`<option value="${escapeHtml(s)}" ${s===selStudent?'selected':''}>${escapeHtml(s)}</option>`).join('');
             document.getElementById('analysisDateCheckGroup').innerHTML='<span>课次：</span>'+(allDates.length?allDates.map(d=>`<label><input type="checkbox" value="${escapeHtml(d)}" ${selDates.includes(d)?'checked':''} onchange="refreshAnalysis()"> ${escapeHtml(d)}</label>`).join(''):'<span class="empty-state">暂无</span>');
             document.getElementById('analysisColumnCheckGroup').innerHTML='<span>板块：</span>'+cls.columns.map(col=>{const pure=stripMaxScore(col);const checked=selCols.some(c=>columnContainsKeyword(col,c));return `<label><input type="checkbox" value="${escapeHtml(pure)}" ${checked?'checked':''} onchange="refreshAnalysis()"> ${escapeHtml(pure)}</label>`;}).join('');
             const radarDateSelect=document.getElementById('radarDateSelect');
@@ -2659,7 +2619,7 @@
 
         // ========== 页面构建 ==========
         function buildAllViews(){
-            document.getElementById('view-classes').innerHTML='<div class="card"><div class="card-title">📚 班级管理</div><div style="display:flex;gap:6px;flex-wrap:wrap;"><input class="input" id="newClassName" placeholder="新班级名称" style="flex:1;min-width:120px;"><select id="newClassCampus" class="input" style="width:auto;min-width:100px;flex-shrink:0;"><option value="">选择校区</option>'+campusList.map(function(c){return '<option value="'+c.id+'">'+escapeHtml(c.name)+'</option>';}).join('')+'</select><button class="btn" onclick="addClass()">➕ 新建</button></div><div id="classListContainer"></div></div>';
+            document.getElementById('view-classes').innerHTML=`<div class="card"><div class="card-title">📚 班级管理</div><div style="display:flex;gap:6px"><input class="input" id="newClassName" placeholder="新班级名称" style="flex:1"><button class="btn" onclick="addClass()">➕ 新建</button></div><div id="classListContainer"></div></div>`;
             document.getElementById('view-feedback').innerHTML=`<div class="card" style="padding:10px 12px;"><div class="card-title">📝 每日反馈</div><div class="feedback-actions"><span style="font-size:13px;">新建课次：</span><input class="input" id="dateLabelInput" style="width:72px;" placeholder="Day1"><button class="btn btn-sm" onclick="goToDate()">+ 新建</button><button class="btn btn-sm" onclick="undo()" style="background:#2563eb">↩️ 撤销</button></div><div id="dateSelector" class="date-selector-row" style="margin-top:6px;"></div><div style="display:flex;justify-content:space-between;margin-top:6px;"><span id="saveStatus" class="save-indicator">✅ 已自动保存</span><button class="btn btn-outline btn-xs" onclick="switchToFullTable()">📊 完整表格</button></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">🎨 表格样式 ▼</button><div class="collapsible-content"><div class="style-row"><span>表头背景:</span><input type="color" id="styleHeaderBg" onchange="applyStyleColor('headerBg',this.value)"><span>表头文字:</span><input type="color" id="styleHeaderText" onchange="applyStyleColor('headerText',this.value)"><span>边框:</span><input type="color" id="styleBorder" onchange="applyStyleColor('border',this.value)"><span>斑马纹:</span><input type="color" id="styleRowEven" onchange="applyStyleColor('rowEven',this.value)"></div><div class="style-row"><span>行高:</span><input type="number" id="styleRowHeight" min="24" max="60" style="width:60px" onchange="applyRowHeight()"></div></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">📐 列设置 ▼</button><div class="collapsible-content"><div id="columnEditor" style="display:flex;gap:4px;flex-wrap:wrap"></div></div></div><div class="card" style="padding:6px"><div class="table-wrapper"><table id="feedbackTable"><thead id="feedbackTableHead"></thead><tbody id="feedbackTableBody"></tbody></table></div></div>`;
             document.getElementById('view-fulltable').innerHTML=`<div class="card"><div class="card-title">📄 完整反馈表</div><div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="switchView('feedback')">↩️ 返回</button><button class="btn btn-sm" onclick="printTable()">🖨️ 打印</button><button class="btn btn-sm" onclick="exportStyledExcel()">📊 Excel</button><button class="btn btn-sm" onclick="exportAsImage()">🖼️ 图片</button></div></div>
             <div class="card" style="padding:6px"><div class="table-wrapper" id="fullTableWrapper"><div class="title-wrapper"><input id="fullTableTitleInput" style="font-size:1.2rem;font-weight:700;border:none;background:transparent;text-align:center;width:100%" placeholder="标题"></div><table id="fullTable"><thead id="fullTableHead"></thead><tbody id="fullTableBody"></tbody></table></div></div>

@@ -1053,6 +1053,7 @@
 
         // ========== 数据库封装（Supabase 优先 + IndexedDB 备份）==========
         let _userId = null, _lastAccessToken = null, currentGender = '', currentDistrict = '';
+        let campusConfig = [];
         function _cacheKey(k) { return '_fb_' + (_userId || 'anon') + '_' + k; }
 
         async function _saveKey(key, value) {
@@ -1427,6 +1428,8 @@
 
         // 管理员入口 → 独立页面
         async function loadUserData() {
+            // 加载校区配置（之后班级创建/编辑用）
+            try { var { data: cc } = await supabase.from('data_store').select('value').eq('key', '_campuses').limit(1); if (cc && cc.length && cc[0].value) campusConfig = cc[0].value; } catch(e) {}
             // 0. 先读本地数据（毫秒级），马上渲染界面
             let localClasses = null, localFeedback = null, localTools = null, localAnalysis = null;
             try {
@@ -1761,7 +1764,7 @@
         function renderClassList(){
             document.getElementById('classListContainer').innerHTML=classes.length?classes.map((c,i)=>`
                 <div class="class-card-wrapper" data-index="${i}"><div class="class-card" onclick="enterFeedbackForClass('${c.id}')">
-                    <span style="display:flex;align-items:center;gap:2px;min-width:0;"><span class="drag-handle">⠿</span><span class="class-card-name">${escapeHtml(c.name)}</span></span>
+                    <span style="display:flex;align-items:center;gap:2px;min-width:0;"><span class="drag-handle">⠿</span><span class="class-card-name">${escapeHtml(c.name)}</span>${c.campus?' <span style="font-size:9px;color:#2563eb;background:#eff6ff;padding:1px 6px;border-radius:8px;font-weight:500;">'+escapeHtml(c.campus)+'</span>':''}</span>
                     <div onclick="event.stopPropagation()" style="display:flex; gap:4px; flex-wrap:wrap;">
                         <button class="btn btn-xs" onclick="toggleStudentModal('${c.id}')">👥 名单</button>
                         <button class="btn btn-xs" onclick="editClassName('${c.id}')">✏️</button>
@@ -1873,8 +1876,17 @@
         function updateClassStudents(cls){classes=classes.map(c=>c.id===cls.id?cls:c);dbSet('classes',classes);}
         function syncStudentDeletion(classId,name){const prefix=classId+'|';for(const k in feedback)if(k.startsWith(prefix)){const entry=feedback[k];const recs=Array.isArray(entry)?entry:entry.records;const filtered=recs.filter(r=>r.name!==name);if(Array.isArray(entry))feedback[k]=filtered;else{entry.records=filtered;entry._updatedAt=Date.now();if(!entry.records.length)delete feedback[k];}var parts=k.split('|');_markDirty(parts[0],parts.slice(1).join('|'));}saveFeedbackDebounced();}
         function renameInFeedback(classId,old,newName){const prefix=classId+'|';for(const k in feedback)if(k.startsWith(prefix)){const recs=Array.isArray(feedback[k])?feedback[k]:feedback[k].records;recs.forEach(r=>{if(r.name===old)r.name=newName;});feedback[k]._updatedAt=Date.now();var parts=k.split('|');_markDirty(parts[0],parts.slice(1).join('|'));}saveFeedbackDebounced();}
-        window.addClass=function(){const n=document.getElementById('newClassName').value.trim();if(!n){showConfirm('请输入班级名称');return;}const nc={id:'c'+Date.now(),name:n,students:[],columns:['听写(满分12)','小测(满分10)','自学资料','笔记','语音作业','小书童(满分100)','备注'],rowHeight:36,tableColors:{headerBg:'#eff6ff',headerText:'#1e40af',border:'#bfdbfe',rowEven:'#f8fafc'}};classes.push(nc);dbSet('classes',classes);document.getElementById('newClassName').value='';currentClassId=nc.id;renderClassList();setTimeout(()=>window.toggleStudentModal(nc.id),80);};
-        window.editClassName=async function(id){const c=classes.find(x=>x.id===id);if(!c)return;const n=await showPrompt('新班级名称',c.name);if(n&&n.trim()){c.name=n.trim();dbSet('classes',classes);renderClassList();updateCurrentClassDisplay();}};
+        window.updateCampusSelect = function(){
+            var dist = document.getElementById('newClassDistrict').value;
+            var sel = document.getElementById('newClassCampus');
+            var entry = campusConfig.find(function(d){return d.district===dist;});
+            sel.innerHTML = '<option value="">选择校区</option>';
+            if (entry && entry.campuses) {
+                entry.campuses.forEach(function(c){ sel.innerHTML += '<option value="'+escapeHtml(c)+'">'+escapeHtml(c)+'</option>'; });
+            }
+        };
+        window.addClass=function(){const n=document.getElementById('newClassName').value.trim();if(!n){showConfirm('请输入班级名称');return;}var dist=document.getElementById('newClassDistrict').value;var camp=document.getElementById('newClassCampus').value;if(!dist||!camp){showConfirm('请选择大区和校区');return;}const nc={id:'c'+Date.now(),name:n,district:dist,campus:camp,students:[],columns:['听写(满分12)','小测(满分10)','自学资料','笔记','语音作业','小书童(满分100)','备注'],rowHeight:36,tableColors:{headerBg:'#eff6ff',headerText:'#1e40af',border:'#bfdbfe',rowEven:'#f8fafc'}};classes.push(nc);dbSet('classes',classes);document.getElementById('newClassName').value='';currentClassId=nc.id;renderClassList();setTimeout(function(){window.toggleStudentModal(nc.id);},80);};
+        window.editClassName=async function(id){const c=classes.find(function(x){return x.id===id;});if(!c)return;const n=await showPrompt('新班级名称',c.name);if(n&&n.trim()){c.name=n.trim();};if(campusConfig.length){var curDist=c.district||'';var distList=campusConfig.map(function(d,i){return (i+1)+'. '+d.district;}).join('\n');var distChoice=await showPrompt('大区（输入序号，留空不变）：\n'+distList,'');if(distChoice&&distChoice.trim()){var di=parseInt(distChoice.trim())-1;if(di>=0&&di<campusConfig.length){c.district=campusConfig[di].district;var curCamp=c.campus||'';var campList=(campusConfig[di].campuses||[]).map(function(cp,i){return (i+1)+'. '+cp;}).join('\n');var campChoice=await showPrompt('校区（输入序号，留空不变）：\n'+campList,'');if(campChoice&&campChoice.trim()){var ci=parseInt(campChoice.trim())-1;if(ci>=0&&ci<(campusConfig[di].campuses||[]).length){c.campus=campusConfig[di].campuses[ci];}}}}}dbSet('classes',classes);renderClassList();updateCurrentClassDisplay();};
         window.deleteClass=async function(id){if(!await showConfirm('删除班级及反馈？'))return;classes=classes.filter(x=>x.id!==id);await dbSet('classes',classes);const prefix=id+'|';for(const k in feedback)if(k.startsWith(prefix)){var parts=k.split('|');dbSet(_fbStoreKey(parts[0],parts.slice(1).join('|')),null);delete feedback[k];}currentClassId=classes.length?classes[0].id:null;renderClassList();if(currentClassId)switchView('classes');};
 
         // ========== 导出 ==========
@@ -2273,7 +2285,10 @@
 
         // ========== 页面构建 ==========
         function buildAllViews(){
-            document.getElementById('view-classes').innerHTML=`<div class="card"><div class="card-title">📚 班级管理</div><div style="display:flex;gap:6px"><input class="input" id="newClassName" placeholder="新班级名称" style="flex:1"><button class="btn" onclick="addClass()">➕ 新建</button></div><div id="classListContainer"></div></div>`;
+            var districtOpts = '<option value="">选择大区</option>';
+            campusConfig.forEach(function(d){ districtOpts += '<option value="'+escapeHtml(d.district)+'">'+escapeHtml(d.district)+'</option>'; });
+            var campusOpts = '<option value="">请先选大区</option>';
+            document.getElementById('view-classes').innerHTML='<div class="card"><div class="card-title">📚 班级管理</div><div style="display:flex;gap:6px;flex-wrap:wrap;"><input class="input" id="newClassName" placeholder="新班级名称" style="flex:1;min-width:120px;"><select class="input" id="newClassDistrict" onchange="updateCampusSelect()" style="width:auto;min-width:100px;flex-shrink:0;">'+districtOpts+'</select><select class="input" id="newClassCampus" style="width:auto;min-width:120px;flex-shrink:0;">'+campusOpts+'</select><button class="btn" onclick="addClass()">➕ 新建</button></div><div id="classListContainer"></div></div>';
             document.getElementById('view-feedback').innerHTML=`<div class="card" style="padding:10px 12px;"><div class="card-title">📝 每日反馈</div><div class="feedback-actions"><span style="font-size:13px;">新建课次：</span><input class="input" id="dateLabelInput" style="width:72px;" placeholder="Day1"><button class="btn btn-sm" onclick="goToDate()">+ 新建</button><button class="btn btn-sm" onclick="undo()" style="background:#2563eb">↩️ 撤销</button></div><div id="dateSelector" class="date-selector-row" style="margin-top:6px;"></div><div style="display:flex;justify-content:space-between;margin-top:6px;"><span id="saveStatus" class="save-indicator"></span><button id="manualSyncBtn" class="btn btn-outline btn-xs" style="display:none;color:#d97706;border-color:#d97706;" onclick="manualSync()">🔄 手动同步</button><button class="btn btn-outline btn-xs" onclick="switchToFullTable()">📊 完整表格</button></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">🎨 表格样式 ▼</button><div class="collapsible-content"><div class="style-row"><span>表头背景:</span><input type="color" id="styleHeaderBg" onchange="applyStyleColor('headerBg',this.value)"><span>表头文字:</span><input type="color" id="styleHeaderText" onchange="applyStyleColor('headerText',this.value)"><span>边框:</span><input type="color" id="styleBorder" onchange="applyStyleColor('border',this.value)"><span>斑马纹:</span><input type="color" id="styleRowEven" onchange="applyStyleColor('rowEven',this.value)"></div><div class="style-row"><span>行高:</span><input type="number" id="styleRowHeight" min="24" max="60" style="width:60px" onchange="applyRowHeight()"></div></div></div><div class="collapsible"><button class="capsule-btn" onclick="toggleCollapse(this)">📐 列设置 ▼</button><div class="collapsible-content"><div id="columnEditor" style="display:flex;gap:4px;flex-wrap:wrap"></div></div></div><div class="card" style="padding:6px"><div class="table-wrapper"><table id="feedbackTable"><thead id="feedbackTableHead"></thead><tbody id="feedbackTableBody"></tbody></table></div></div>`;
             document.getElementById('view-fulltable').innerHTML=`<div class="card"><div class="card-title">📄 完整反馈表</div><div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="switchView('feedback')">↩️ 返回</button><button class="btn btn-sm" onclick="printTable()">🖨️ 打印</button><button class="btn btn-sm" onclick="exportStyledExcel()">📊 Excel</button><button class="btn btn-sm" onclick="exportAsImage()">🖼️ 图片</button></div></div>
             <div class="card" style="padding:6px"><div class="table-wrapper" id="fullTableWrapper"><div class="title-wrapper"><input id="fullTableTitleInput" style="font-size:1.2rem;font-weight:700;border:none;background:transparent;text-align:center;width:100%" placeholder="标题"></div><table id="fullTable"><thead id="fullTableHead"></thead><tbody id="fullTableBody"></tbody></table></div></div>

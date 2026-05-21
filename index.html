@@ -1488,8 +1488,13 @@
             } catch(e) { console.warn('[DATA] Cloud fetch failed:', e.message); }
 
             // 3. 合并：云端为主，本地补漏
-            if (cloudClasses && cloudClasses.length) classes = cloudClasses;
-            else if (!classes || !classes.length) classes = defaultClasses();
+            if (cloudClasses && cloudClasses.length) {
+                classes = cloudClasses;
+                // 云端有真数据 → 清除本地旧缓存，防止下次离线加载脏数据
+                if (cloudClasses.length > 1 || cloudClasses[0].id !== 'c1') {
+                    try { _idb.set(_cacheKey('_fullBackup'), null); _idb.set(_cacheKey('classes'), cloudClasses); } catch(e) {}
+                }
+            } else if (!classes || !classes.length) classes = defaultClasses();
 
             // 合并 feedback：云端为基础，本地逐 key 比较时间戳决定取舍
             const mergedFb = Object.assign({}, cloudFeedback || {});
@@ -2720,40 +2725,15 @@
             });
             window.addEventListener('beforeunload', () => {
                 if (_userId) {
-                    // 立即写 localStorage
                     try { localStorage.setItem(_cacheKey('feedback'), JSON.stringify(feedback)); } catch(e) {}
                     try { localStorage.setItem(_cacheKey('_fullBackup'), JSON.stringify({classes, feedback, tools, analysisSel, time: Date.now()})); } catch(e) {}
-                    // fetch keepalive: 浏览器保证页面关闭后也会完成请求
-                    _beaconSave();
                 }
             });
             window.addEventListener('pagehide', () => {
-                // Safari 等浏览器中 pagehide 比 beforeunload 更可靠
-                if (_userId) _beaconSave();
-            });
-            function _beaconSave() {
-                if (!_lastAccessToken || !_userId) return;
-                var body = JSON.stringify([
-                    { user_id: _userId, key: 'feedback', value: feedback, updated_at: new Date().toISOString() },
-                    { user_id: _userId, key: 'classes', value: classes, updated_at: new Date().toISOString() }
-                ]);
-                if (body.length > 60000) {
-                    body = JSON.stringify([
-                        { user_id: _userId, key: 'feedback', value: feedback, updated_at: new Date().toISOString() }
-                    ]);
+                if (_userId) {
+                    try { localStorage.setItem(_cacheKey('_fullBackup'), JSON.stringify({classes, feedback, tools, analysisSel, time: Date.now()})); } catch(e) {}
                 }
-                fetch(SUPABASE_URL + '/rest/v1/data_store?on_conflict=user_id,key', {
-                    method: 'POST',
-                    headers: {
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': 'Bearer ' + _lastAccessToken,
-                        'Content-Type': 'application/json',
-                        'Prefer': 'resolution=merge-duplicates'
-                    },
-                    body: body,
-                    keepalive: true
-                }).catch(function(){});
-            }
+            });
 
             // 检查是否已有 Supabase 会话
             try {

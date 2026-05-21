@@ -983,7 +983,7 @@
 
             // 保存 gender + district 到 teacher_profiles
             if (signUpData.user) {
-                supabase.from('teacher_profiles').update({ gender: gender || null, district: district || null }).eq('user_id', signUpData.user.id).then(function(){}, function(){});
+                supabase.from('teacher_profiles').upsert({ user_id: signUpData.user.id, gender: gender || null, district: district || null }, { onConflict: 'user_id' }).then(function(){}, function(){});
             }
 
             return { email, name, user: signUpData.user, gender, district };
@@ -2342,7 +2342,7 @@
                 if (currentEmail) {
                     try { localStorage.setItem('_fb_name_email_' + newName, currentEmail); } catch(e) {}
                 }
-                var { error: tpErr } = await supabase.from('teacher_profiles').update({ name: newName }).eq('user_id', _userId);
+                var { error: tpErr } = await supabase.from('teacher_profiles').upsert({ user_id: _userId, name: newName }, { onConflict: 'user_id' });
                 if (tpErr) { await showConfirm('改名失败：'+tpErr.message); return; }
                 _userName = newName;
             }
@@ -2350,12 +2350,12 @@
             // 保存性别
             if (newGender !== currentGender) {
                 currentGender = newGender;
-                supabase.from('teacher_profiles').update({ gender: newGender || null }).eq('user_id', _userId).then(function(){},function(){});
+                supabase.from('teacher_profiles').upsert({ user_id: _userId, gender: newGender || null }, { onConflict: 'user_id' }).then(function(){},function(){});
             }
             // 保存大区
             if (newDistrict !== currentDistrict) {
                 currentDistrict = newDistrict;
-                supabase.from('teacher_profiles').update({ district: newDistrict || null }).eq('user_id', _userId).then(function(){},function(){});
+                supabase.from('teacher_profiles').upsert({ user_id: _userId, district: newDistrict || null }, { onConflict: 'user_id' }).then(function(){},function(){});
             }
 
             // 更新头部

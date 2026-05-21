@@ -1059,11 +1059,13 @@
             const noActive = teachers.filter(t => !t.lastActive);
             const all = sorted.concat(noActive);
             if (!all.length) return '<div class="empty-state">暂无教师数据</div>';
-            let html = '<table class="detail-table"><thead><tr><th>教师</th><th class="num">班级数</th><th class="num">学生数</th><th>最近活跃</th></tr></thead><tbody>';
+            let html = '<table class="detail-table"><thead><tr><th>教师</th><th>性别</th><th>大区</th><th class="num">班级数</th><th class="num">学生数</th><th>最近活跃</th></tr></thead><tbody>';
             all.forEach(t => {
                 const clsCount = Array.isArray(t.classes) ? t.classes.length : 0;
-                const stuCount = Array.isArray(t.classes) ? t.classes.reduce((s, c) => s + (c.students ? c.students.length : 0), 0) : 0;
-                html += `<tr><td>${escapeHtml(t.name || t.email || '未命名')}</td><td class="num">${clsCount}</td><td class="num">${stuCount}</td><td>${t.lastActive ? new Date(t.lastActive).toLocaleString('zh-CN') : '<span style="color:var(--text-muted)">-</span>'}</td></tr>`;
+                const stuCount = Array.isArray(t.classes) ? t.classes.reduce(function(s,c){return s+(c.students?c.students.length:0);},0) : 0;
+                var genderIcon = t.gender==='male'?'♂️':(t.gender==='female'?'♀️':'');
+                var districtText = t.district||'<span style="color:var(--text-muted)">-</span>';
+                html += '<tr><td>'+escapeHtml(t.name||t.email||'未命名')+'</td><td>'+genderIcon+'</td><td>'+districtText+'</td><td class="num">'+clsCount+'</td><td class="num">'+stuCount+'</td><td>'+(t.lastActive?new Date(t.lastActive).toLocaleString('zh-CN'):'<span style="color:var(--text-muted)">-</span>')+'</td></tr>';
             });
             html += '</tbody></table>';
             return html;

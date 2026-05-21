@@ -789,6 +789,14 @@
             </div>
             <input class="login-input" id="loginName" placeholder="姓名或邮箱" autocomplete="username">
             <input class="login-input" id="loginPassword" type="password" placeholder="密码" autocomplete="current-password">
+            <div id="regExtra" style="display:none;">
+                <div style="display:flex;gap:8px;margin-bottom:8px;">
+                    <span style="font-size:12px;color:var(--text-muted);padding:8px 0;">性别：</span>
+                    <label style="display:flex;align-items:center;gap:4px;padding:6px 12px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:13px;" id="genderMaleLabel"><input type="radio" name="regGender" value="male" style="display:none;"><span>♂️ 男</span></label>
+                    <label style="display:flex;align-items:center;gap:4px;padding:6px 12px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:13px;" id="genderFemaleLabel"><input type="radio" name="regGender" value="female" style="display:none;"><span>♀️ 女</span></label>
+                </div>
+                <select class="login-input" id="regDistrict" style="margin-bottom:8px;"><option value="">请选择大区</option><option value="东一区">东一区</option><option value="东二区">东二区</option><option value="西一区">西一区</option><option value="西二区">西二区</option><option value="南一区">南一区</option><option value="南二区">南二区</option><option value="武侯区">武侯区</option></select>
+            </div>
             <input class="login-input" id="regCode" type="text" placeholder="注册码" style="display:none;">
             <button class="login-btn" id="loginBtn" onclick="handleLogin()">登 录</button>
             <div class="login-msg" id="loginMsg"></div>
@@ -800,7 +808,7 @@
     <div class="container" id="app">
         <div class="header">
             <div class="class-selector"><span>🏫</span><span class="class-name-display" id="currentClassName" onclick="switchView('classes')">未选择</span></div>
-            <span id="headerUserName" onclick="showUserMenu(event)" style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;cursor:pointer;" title="用户菜单"></span>
+            <span id="headerUserName" onclick="switchView('settings')" style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;cursor:pointer;" title="个人设置"></span>
             <button class="btn btn-xs btn-outline" onclick="exportAllData()">💾 备份</button>
             <button class="btn btn-xs btn-outline" onclick="importAllDataPrompt()">📥 导入</button>
         </div>
@@ -808,6 +816,7 @@
         <div id="view-feedback" class="view" style="display:none;"></div>
         <div id="view-fulltable" class="view" style="display:none;"></div>
         <div id="view-analysis" class="view" style="display:none;"></div>
+        <div id="view-settings" class="view" style="display:none;"></div>
     </div><!-- /.container -->
     </div><!-- /#mainApp -->
 
@@ -925,18 +934,16 @@
             throw lastError || new Error('姓名或密码错误');
         }
 
-        async function registerDirect(name, password, code) {
-            // 1. Check name uniqueness via teacher_profiles (public read)
+        async function registerDirect(name, password, code, gender, district) {
             const { data: existing } = await supabase.from('teacher_profiles')
                 .select('name').eq('name', name).maybeSingle();
             if (existing) throw new Error('该姓名已注册，请直接登录');
 
-            // 2. Create user via Supabase Auth (triggers auto-confirm + profile creation)
             const email = nameToEmail(name);
             const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
                 email: email,
                 password: password,
-                options: { data: { name: name } }
+                options: { data: { name: name, gender: gender || '', district: district || '' } }
             });
             if (signUpError) {
                 if (signUpError.message && (signUpError.message.includes('already') || signUpError.message.includes('exists'))) {
@@ -945,10 +952,14 @@
                 throw new Error(signUpError.message || '注册失败');
             }
 
-            // 3. Save email mapping for future logins
             localStorage.setItem('_fb_name_email_' + name, email);
 
-            return { email, name, user: signUpData.user };
+            // 保存 gender + district 到 teacher_profiles
+            if (signUpData.user) {
+                supabase.from('teacher_profiles').update({ gender: gender || null, district: district || null }).eq('user_id', signUpData.user.id).then(function(){}, function(){});
+            }
+
+            return { email, name, user: signUpData.user, gender, district };
         }
 
         // ========== IndexedDB 封装（替代 localStorage）==========
@@ -1005,7 +1016,7 @@
         })();
 
         // ========== 数据库封装（Supabase 优先 + IndexedDB 备份）==========
-        let _userId = null, _lastAccessToken = null;
+        let _userId = null, _lastAccessToken = null, currentGender = '', currentDistrict = '';
         function _cacheKey(k) { return '_fb_' + (_userId || 'anon') + '_' + k; }
 
         async function _saveKey(key, value) {
@@ -1195,6 +1206,7 @@
         window.switchLoginTab = function(tab) {
             document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
             document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
+            document.getElementById('regExtra').style.display = tab === 'register' ? '' : 'none';
             document.getElementById('regCode').style.display = tab === 'register' ? '' : 'none';
             document.getElementById('loginBtn').textContent = tab === 'login' ? '登 录' : '注 册';
             document.getElementById('loginMsg').textContent = '';
@@ -1225,15 +1237,20 @@
                     if (code !== REG_CODE) { msgEl.textContent = '注册码不正确'; msgEl.className = 'login-msg error'; return; }
                     if (password.length < 4) { msgEl.textContent = '密码至少4位'; msgEl.className = 'login-msg error'; return; }
 
+                    // 读取性别和大区
+                    var regGender = document.querySelector('input[name="regGender"]:checked');
+                    var gender = regGender ? regGender.value : '';
+                    var district = document.getElementById('regDistrict').value;
+
                     let regData;
                     if (isLocal) {
                         try {
-                            regData = await apiPost('/api/auth/register', { name, password, code });
+                            regData = await apiPost('/api/auth/register', { name, password, code, gender, district });
                         } catch(apiError) {
-                            regData = await registerDirect(name, password, code);
+                            regData = await registerDirect(name, password, code, gender, district);
                         }
                     } else {
-                        regData = await registerDirect(name, password, code);
+                        regData = await registerDirect(name, password, code, gender, district);
                     }
                     msgEl.textContent = '注册成功，正在自动登录...'; msgEl.className = 'login-msg success';
                     if (isLocal) {
@@ -1273,18 +1290,26 @@
 
         async function onLoginSuccess(user, actualEmail) {
             _userId = user.id;
-            // 存下 access_token 用于 beforeunload 时的 keepalive 发送
             try { const { data: { session } } = await supabase.auth.getSession(); if (session) _lastAccessToken = session.access_token; } catch(e) {}
             const name = user.user_metadata?.name || user.email?.split('@')[0] || '';
-            // 记住本设备的实际邮箱，解决同名登录问题
             if (actualEmail) {
                 try { localStorage.setItem('_fb_name_email_' + name, actualEmail); } catch(e) {}
             }
+            // 读取性别和大区（优先 user_metadata 注册时写入，其次 teacher_profiles）
+            currentGender = user.user_metadata?.gender || '';
+            currentDistrict = user.user_metadata?.district || '';
+            try {
+                var { data: tp } = await supabase.from('teacher_profiles').select('gender,district').eq('user_id', user.id).maybeSingle();
+                if (tp) {
+                    if (!currentGender && tp.gender) currentGender = tp.gender;
+                    if (!currentDistrict && tp.district) currentDistrict = tp.district;
+                }
+            } catch(e) {}
             document.body.classList.add('logged-in');
             document.getElementById('loginOverlay').style.display = 'none';
-            document.getElementById('headerUserName').textContent = '👤 ' + name;
+            var prefix = (currentGender==='male'?'♂️ ':'')+(currentGender==='female'?'♀️ ':'');
+            document.getElementById('headerUserName').textContent = prefix + name;
             await loadUserData();
-            // 保存用户档案到 data_store（异步，不影响登录体验）
             saveUserProfile(user, name);
         }
 
@@ -1292,7 +1317,7 @@
             if (!name || !supabaseReady) return;
             const email = user.email || '';
             supabase.from('data_store').upsert({
-                user_id: user.id, key: '_profile', value: { name, email, updated: new Date().toISOString() },
+                user_id: user.id, key: '_profile', value: { name, email, gender: currentGender || '', district: currentDistrict || '', updated: new Date().toISOString() },
                 updated_at: new Date().toISOString()
             }, { onConflict: 'user_id,key' }).then(function(){}, function(){});
         }
@@ -2202,14 +2227,39 @@
                 <div class="table-wrapper" id="statTableWrapper"></div>
             </div>`;
             document.getElementById('view-analysis').innerHTML=`<div class="card"><div class="card-title">📈 汇总分析</div><div style="display:flex;gap:8px"><span>学生：</span><select id="analysisStudentSelect" class="input" style="padding:8px;border-radius:12px;flex:1" onchange="refreshAnalysis()"><option value="">-- 请选择 --</option></select></div><div class="check-group" id="analysisDateCheckGroup"></div><div class="check-group" id="analysisColumnCheckGroup"></div></div><div class="card" id="analysisChartsArea"><div id="analysisReportTitle" style="text-align:center;font-size:1.1rem;font-weight:700;margin-bottom:12px">学习分析报告</div><div id="lineChartsContainer"></div><div id="radarSection" style="margin-top:16px;"><div class="check-group" style="margin-bottom:8px"><span>雷达图课次：</span><select id="radarDateSelect" class="input" style="width:120px;padding:6px;border-radius:12px" onchange="refreshRadarColumns();saveRadarCols()"></select></div><div class="check-group" id="radarColumnCheckGroup" style="margin:8px 0"></div><div style="height:320px"><canvas id="radarChartCanvas" height="320"></canvas></div></div><div style="margin-top:16px"><input type="password" id="apiKeyInput" class="input" placeholder="DeepSeek API Key" style="width:100%;padding:6px;margin-bottom:6px;font-size:11px"><textarea id="examDescTextarea" class="ai-textarea" placeholder="手动输入试卷描述或题型知识点（可选）" rows="3"></textarea><div style="display:flex; gap:6px; align-items: center; margin:8px 0;"><label class="btn btn-outline btn-sm" style="cursor:pointer;">📎 上传试卷文件<input type="file" id="examFileInput" accept=".txt,.docx,.pdf" style="display:none" onchange="document.getElementById('fileNameDisplay').textContent = this.files[0]?.name || ''"></label><span id="fileNameDisplay" style="font-size:12px; color:var(--text-light);"></span></div><button class="btn btn-sm" onclick="runAIAnalysis()">🤖 测试分析</button></div><div id="aiResult" style="margin-top:12px;padding:12px;background:var(--input-bg);border-radius:12px;font-size:14px;white-space:pre-wrap;"></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-sm" onclick="downloadPDFReport()">📥 下载PDF报告</button></div></div><div id="analysisTablesContainer"></div>`;
+            document.getElementById('view-settings').innerHTML='<div class="card"><div class="card-title">⚙️ 个人设置</div><div style="display:flex;flex-direction:column;gap:14px;"><div><span style="font-size:13px;color:var(--text-muted);">性别</span><div style="display:flex;gap:8px;margin-top:6px;"><label id="setGenderMaleLabel" style="display:flex;align-items:center;gap:4px;padding:8px 16px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:14px;"><input type="radio" name="settingsGender" value="male" onchange="saveSettingsGender(this.value)" style="display:none;"><span>♂️ 男</span></label><label id="setGenderFemaleLabel" style="display:flex;align-items:center;gap:4px;padding:8px 16px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:14px;"><input type="radio" name="settingsGender" value="female" onchange="saveSettingsGender(this.value)" style="display:none;"><span>♀️ 女</span></label></div></div><div><span style="font-size:13px;color:var(--text-muted);">所属大区</span><div style="margin-top:6px;"><select class="input" id="settingsDistrict" onchange="saveSettingsDistrict(this.value)" style="width:100%;padding:8px 12px;"><option value="">请选择大区</option><option value="东一区">东一区</option><option value="东二区">东二区</option><option value="西一区">西一区</option><option value="西二区">西二区</option><option value="南一区">南一区</option><option value="南二区">南二区</option><option value="武侯区">武侯区</option></select></div></div><div style="display:flex;gap:8px;margin-top:8px;"><button class="btn btn-outline btn-sm" onclick="changeMyPassword()">🔒 修改密码</button><button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger);" onclick="handleLogout()">🚪 退出登录</button></div><button class="btn btn-sm" onclick="switchView(\'classes\')" style="margin-top:4px;">↩️ 返回班级</button></div></div>';
         }
+
+        function refreshSettingsUI(){
+            var maleLabel=document.getElementById('setGenderMaleLabel');
+            var femaleLabel=document.getElementById('setGenderFemaleLabel');
+            var selColor='1.5px solid var(--accent)',selBg='#eff6ff';
+            if(maleLabel){maleLabel.style.border=currentGender==='male'?selColor:'1.5px solid var(--border)';maleLabel.style.background=currentGender==='male'?selBg:'';}
+            if(femaleLabel){femaleLabel.style.border=currentGender==='female'?selColor:'1.5px solid var(--border)';femaleLabel.style.background=currentGender==='female'?selBg:'';}
+            var distEl=document.getElementById('settingsDistrict');
+            if(distEl)distEl.value=currentDistrict||'';
+        }
+
+        window.saveSettingsGender = function(val){
+            currentGender = val;
+            supabase.from('teacher_profiles').update({ gender: val }).eq('user_id', _userId).then(function(){},function(){});
+            var nameEl = document.getElementById('headerUserName');
+            if(nameEl){var name=_userName||(nameEl.textContent||'').replace(/[♂♀] /,'').trim();nameEl.textContent=(val==='male'?'♂️ ':'')+(val==='female'?'♀️ ':'')+' '+name;}
+            refreshSettingsUI();
+        };
+
+        window.saveSettingsDistrict = function(val){
+            currentDistrict = val;
+            supabase.from('teacher_profiles').update({ district: val }).eq('user_id', _userId).then(function(){},function(){});
+            refreshSettingsUI();
+        };
 
         async function switchView(viewName){
             activeCell=null; document.querySelectorAll('.view').forEach(v=>v.style.display='none');
             document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
-            const map={'classes':'view-classes','feedback':'view-feedback','fulltable':'view-fulltable','analysis':'view-analysis'};
+            const map={'classes':'view-classes','feedback':'view-feedback','fulltable':'view-fulltable','analysis':'view-analysis','settings':'view-settings'};
             if(map[viewName])document.getElementById(map[viewName]).style.display='block';
-            const nav=document.querySelector(`.nav-tab[data-view="${viewName}"]`);if(nav)nav.classList.add('active');
+            if(viewName!=='settings'){const nav=document.querySelector('.nav-tab[data-view="'+viewName+'"]');if(nav)nav.classList.add('active');}
             const floatBtn=document.getElementById('floatBtn');floatBtn.style.display=viewName==='feedback'?'flex':'none';
             if(viewName!=='feedback')closePopup();
             if(viewName==='classes')renderClassList();
@@ -2219,6 +2269,7 @@
                 switchStatType();
             }
             else if(viewName==='analysis')renderAnalysisOptions();
+            else if(viewName==='settings')refreshSettingsUI();
             updateCurrentClassDisplay(); document.querySelectorAll('.student-modal').forEach(m=>m.classList.remove('open'));activeStudentModal=null;
         }
         window.switchView=switchView;window.switchToFullTable=()=>switchView('fulltable');

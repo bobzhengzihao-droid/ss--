@@ -431,7 +431,10 @@
         let queryTeacher = 'all';
         let queryClass = 'all';
         let queryGrade = 'all';
-        let querySort = 'count_desc'; // 'count_desc' | 'avg_desc' | 'latest_desc'
+        let querySort = 'count_desc';
+        let queryCampus = 'all';
+        let queryDistrict = 'all';
+        let allCampuses = []; // 'count_desc' | 'avg_desc' | 'latest_desc'
         let queryLimit = '50';
         let queryResults = null;
         let queryLoading = false;
@@ -517,6 +520,12 @@
 
         // ========== Utilities ==========
         function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+        function _studentObj(s) { if (typeof s === 'string') return { name: s, officialName: s, displayName: s }; return { name: s.name || '', officialName: s.officialName || s.name || '', displayName: s.displayName || s.name || '' }; }
+        function studentDisplay(s) { var o = _studentObj(s); return o.displayName || o.name; }
+        function studentMatchName(s) { return typeof s === 'string' ? s : (s.name || ''); }
+        function normalizeStudents(arr) { if (!Array.isArray(arr)) return []; return arr.map(function(s) { return _studentObj(s); }); }
+        function getCampusName(cid) { if (!cid) return ''; var c = allCampuses.find(function(x) { return x.id === parseInt(cid); }); return c ? c.name : ''; }
+        function getCampusDistrict(cid) { if (!cid) return ''; var c = allCampuses.find(function(x) { return x.id === parseInt(cid); }); return c ? c.district : ''; }
         function naturalSort(a,b) { const re=/(\d+)/g, aP=a.split(re).filter(Boolean), bP=b.split(re).filter(Boolean); for(let i=0;i<Math.max(aP.length,bP.length);i++){const av=aP[i]||'',bv=bP[i]||'',an=parseInt(av,10),bn=parseInt(bv,10); if(!isNaN(an)&&!isNaN(bn)){if(an!==bn)return an-bn;} else if(av!==bv)return av.localeCompare(bv);} return 0; }
         function stripMaxScore(c) { c = c.replace(/（/g, '(').replace(/）/g, ')'); return c.replace(/\(.*\)/, '').trim(); }
         function columnContainsKeyword(colName, keyword) {
@@ -760,6 +769,12 @@
                 }
             } catch(e) { /* non-critical */ }
 
+            // 3. Load campuses
+            try {
+                const campResp = await fetch(SUPABASE_URL + '/rest/v1/campuses?select=*&order=sort_order', { headers: hdrs });
+                if (campResp.ok) allCampuses = await campResp.json();
+            } catch(e) { /* non-critical */ }
+
             const userMap = {};
             (allRows || []).forEach(row => {
                 if (!userMap[row.user_id]) userMap[row.user_id] = { id: row.user_id, name: '', email: '', classes: [], feedback: {}, lastActive: '' };
@@ -799,7 +814,17 @@
                 }
             });
 
-            Object.entries(userMap).forEach(([id, u]) => {
+            // Normalize students to object format
+            Object.values(userMap).forEach(function(u) {
+                if (Array.isArray(u.classes)) {
+                    u.classes.forEach(function(c) {
+                        c.students = normalizeStudents(c.students || []);
+                    });
+                }
+            });
+
+            Object.entries(userMap).forEach(function(entry) {
+                var id = entry[0], u = entry[1];
                 if (u.classes.length > 0 || Object.keys(u.feedback).length > 0 || u.name) allTeachers[id] = u;
             });
         }
@@ -845,6 +870,7 @@
             sidebarHTML += '<a onclick="switchView(\'awards\')" data-nav="awards"><i class="iconfont2 icon-trophy"></i><span class="nav-label">评优</span></a>';
             sidebarHTML += '<a onclick="switchView(\'analysis\')" data-nav="analysis"><i class="iconfont icon-chart"></i><span class="nav-label">分析</span></a>';
             sidebarHTML += '<a onclick="switchView(\'query\')" data-nav="query"><i class="iconfont4 icon-chaxun"></i><span class="nav-label">查询</span></a>';
+            sidebarHTML += '<a onclick="switchView(\'campuses\')" data-nav="campuses"><span class="sidebar-emoji">🏫</span><span class="nav-label">校区</span></a>';
 
             document.getElementById('app').innerHTML = `
                 <div class="app-layout">
@@ -873,6 +899,7 @@
                             <div id="view-analysis" class="subview"></div>
                             <div id="view-query" class="subview"></div>
                             <div id="view-profile" class="subview"></div>
+                            <div id="view-campuses" class="subview"></div>
                         </div>
                     </div>
                     <div class="mobile-nav" id="mobileNav">
@@ -916,6 +943,7 @@
             else if (view === 'awards') renderAwards();
             else if (view === 'query') renderQuery();
             else if (view === 'profile') renderProfile();
+            else if (view === 'campuses') renderCampuses();
             updateExportLabel();
             // Close mobile sidebar
             if (window.innerWidth <= 768) { var s = document.getElementById('sidebar'); if (s) s.classList.remove('open'); var o = document.getElementById('sidebarOverlay'); if (o) o.classList.remove('open'); }
@@ -985,6 +1013,7 @@
                     <div class="stat-card" onclick="showDetailModal('teachers')"><div class="stat-icon" style="background:#eff6ff"><i class="iconfont icon-user-group"></i></div><div><div class="stat-value">${teachers.length}</div><div class="stat-label">教师总数</div></div></div>
                     <div class="stat-card" onclick="showDetailModal('classes')"><div class="stat-icon" style="background:#f0fdf4">🏫</div><div><div class="stat-value">${totalClasses}</div><div class="stat-label">班级总数</div></div></div>
                     <div class="stat-card" onclick="showDetailModal('students')"><div class="stat-icon" style="background:#fef3c7">🧑‍🎓</div><div><div class="stat-value">${totalStudents}</div><div class="stat-label">学生总数</div></div></div>
+                    <div class="stat-card" onclick="switchView('campuses')"><div class="stat-icon" style="background:#e8f5e9">🏫</div><div><div class="stat-value">${allCampuses.filter(function(c){return c.is_active;}).length}</div><div class="stat-label">活跃校区</div></div></div>
                     <div class="stat-card" onclick="showDetailModal('lessons')"><div class="stat-icon" style="background:#fce7f3"><i class="iconfont icon-table"></i></div><div><div class="stat-value">${totalLessons}</div><div class="stat-label">反馈课次</div></div></div>
                 </div>
                 <div class="card"><div class="card-title"><i class="iconfont icon-time"></i> 最近活跃</div>
@@ -1031,6 +1060,11 @@
                 bodyHtml = buildLessonsModal(teachers);
                 footerLink = "switchView('query');closeModal();";
                 footerText = '查看全部反馈 →';
+            } else if (type === 'campuses') {
+                title = '🏫 校区明细';
+                bodyHtml = buildCampusesModal();
+                footerLink = "switchView('campuses');closeModal();";
+                footerText = '管理校区 →';
             }
 
             _modalOverlay = document.createElement('div');
@@ -1094,8 +1128,8 @@
                 t.classes.forEach(c => {
                     if (!c.students || !c.students.length) return;
                     html += `<div class="detail-group"><div class="detail-group-label">${escapeHtml(c.name || '未命名')} · ${escapeHtml(t.name || '未命名')} · ${c.students.length}人</div><div class="tag-group">`;
-                    c.students.forEach(s => {
-                        html += `<span class="tag-capsule">${escapeHtml(typeof s === 'string' ? s : (s.name || String(s)))}</span>`;
+                    c.students.forEach(function(s) {
+                        html += '<span class="tag-capsule">' + escapeHtml(studentDisplay(s)) + '</span>';
                     });
                     html += '</div></div>';
                 });
@@ -1112,6 +1146,16 @@
                 const dates = Object.keys(t.feedback || {}).sort();
                 const lastDate = dates.length ? dates[dates.length - 1] : null;
                 html += `<tr><td>${escapeHtml(t.name || t.email || '未命名')}</td><td class="num">${count}</td><td>${lastDate ? escapeHtml(lastDate) : '<span style="color:var(--text-muted)">-</span>'}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            return html;
+        }
+
+        function buildCampusesModal() {
+            if (!allCampuses.length) return '<div class="empty-state">暂无校区数据</div>';
+            var html = '<table class="detail-table"><thead><tr><th>片区</th><th>校区名称</th><th>排序</th><th>状态</th></tr></thead><tbody>';
+            allCampuses.forEach(function(c) {
+                html += '<tr><td>' + escapeHtml(c.district || '-') + '</td><td>' + escapeHtml(c.name) + '</td><td>' + c.sort_order + '</td><td>' + (c.is_active ? '✅ 启用' : '⏸ 停用') + '</td></tr>';
             });
             html += '</tbody></table>';
             return html;
@@ -1153,7 +1197,8 @@
             classes.forEach(cls => {
                 const prefix = cls.id + '|';
                 const clsFb = fbKeys.filter(k => k.startsWith(prefix));
-                html += `<div class="t-class-item" onclick="browseTeacherData('${id}','${cls.id}')">📋 ${escapeHtml(cls.name)} — ${cls.students ? cls.students.length : 0} 学生 · ${clsFb.length} 课次</div>`;
+                var cCampus='';if(cls.campus_id)cCampus=' <span style="font-size:10px;color:#2563eb;background:#eff6ff;padding:1px 6px;border-radius:10px;">'+escapeHtml(getCampusName(cls.campus_id)||'校区#'+cls.campus_id)+'</span> ';
+                html += '<div class="t-class-item" onclick="browseTeacherData(\''+id+'\',\''+cls.id+'\')">📋 '+escapeHtml(cls.name)+cCampus+'— '+(cls.students?cls.students.length:0)+' 学生 · '+clsFb.length+' 课次</div>';
             });
             if (!classes.length) html = '<div class="empty-state">暂无班级</div>';
             html += `<div class="t-actions">
@@ -1210,10 +1255,11 @@
                     html += '<thead><tr><th style="background:' + hBg + ';color:' + hTxt + ';border:1px solid ' + tBorder + ';padding:8px 10px;text-align:center;font-weight:600;">学生</th>';
                     columns.forEach(c => html += '<th style="background:' + hBg + ';color:' + hTxt + ';border:1px solid ' + tBorder + ';padding:8px 10px;text-align:center;font-weight:600;">' + escapeHtml(c) + '</th>');
                     html += '</tr></thead><tbody>';
-                    (cls.students || []).forEach((name, ri) => {
-                        const rec = Array.isArray(records) ? records.find(r => r.name === name) : null;
+                    (cls.students || []).forEach(function(s, ri){
+                        var mn=studentMatchName(s);
+                        const rec = Array.isArray(records) ? records.find(function(r){return r.name === mn;}) : null;
                         const rowBg = (ri % 2 === 0) ? '' : rowEvenBg;
-                        html += '<tr><td style="border:1px solid ' + tBorder + ';padding:6px 8px;text-align:center;background:' + rowBg + ';">' + escapeHtml(name) + '</td>';
+                        html += '<tr><td style="border:1px solid ' + tBorder + ';padding:6px 8px;text-align:center;background:' + rowBg + ';">' + escapeHtml(studentDisplay(s)) + '</td>';
                         columns.forEach((col, ci) => {
                             const val = rec && rec.values ? (rec.values[ci] || '') : '';
                             const bg = rec && rec.colors ? (rec.colors[ci] || '') : '';
@@ -1319,6 +1365,74 @@
         window.renderQuery = renderQuery;
         window.runQuery = runQuery;
 
+        function renderCampuses() {
+            var html = '<div class="card"><div class="card-title" style="justify-content:space-between"><span>🏫 校区管理</span><button class="btn btn-sm" onclick="addCampus()">+ 新增</button></div>';
+            html += '<div id="campusTableWrap"><div class="table-wrap"><table><thead><tr><th>ID</th><th>片区</th><th>校区名称</th><th>排序</th><th>状态</th><th>操作</th></tr></thead><tbody>';
+            allCampuses.forEach(function(c) {
+                html += '<tr>';
+                html += '<td>' + c.id + '</td>';
+                html += '<td><input type="text" value="' + escapeHtml(c.district || '') + '" onchange="updateCampus(' + c.id + ',\'district\',this.value)" style="width:80px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;"></td>';
+                html += '<td><input type="text" value="' + escapeHtml(c.name || '') + '" onchange="updateCampus(' + c.id + ',\'name\',this.value)" style="width:120px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;"></td>';
+                html += '<td><input type="number" value="' + c.sort_order + '" onchange="updateCampus(' + c.id + ',\'sort_order\',parseInt(this.value)||0)" style="width:50px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;"></td>';
+                html += '<td><button class="btn btn-sm ' + (c.is_active ? 'btn-outline' : 'btn-danger') + '" onclick="toggleCampusActive(' + c.id + ',' + !c.is_active + ')" style="font-size:10px;padding:2px 8px;">' + (c.is_active ? '启用' : '停用') + '</button></td>';
+                html += '<td><button class="btn btn-sm btn-danger" onclick="deleteCampus(' + c.id + ')" style="font-size:10px;padding:2px 8px;">删除</button></td>';
+                html += '</tr>';
+            });
+            if (!allCampuses.length) html += '<tr><td colspan="6" class="empty-state">暂无校区数据</td></tr>';
+            html += '</tbody></table></div></div></div>';
+            document.getElementById('view-campuses').innerHTML = html;
+        }
+        window.renderCampuses = renderCampuses;
+
+        window.addCampus = async function() {
+            var district = await showPrompt('片区名称（如：东一区）：', '');
+            if (!district || !district.trim()) return;
+            var name = await showPrompt('校区名称（如：建设路校区）：', '');
+            if (!name || !name.trim()) return;
+            var sortOrder = await showPrompt('排序序号：', '0');
+            try {
+                var resp = await fetch(SUPABASE_URL + '/rest/v1/campuses', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'apikey': SERVICE_ROLE_KEY, 'Authorization': 'Bearer ' + SERVICE_ROLE_KEY },
+                    body: JSON.stringify({ district: district.trim(), name: name.trim(), sort_order: parseInt(sortOrder) || 0, is_active: true })
+                });
+                if (resp.ok) { await refresh(); switchView('campuses'); }
+                else { var e = await resp.json(); await showConfirm('新增失败：' + (e.message || '未知错误')); }
+            } catch(ex) { await showConfirm('网络错误：' + ex.message); }
+        };
+
+        window.updateCampus = function(id, field, value) {
+            var body = {};
+            body[field] = value;
+            fetch(SUPABASE_URL + '/rest/v1/campuses?id=eq.' + id, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'apikey': SERVICE_ROLE_KEY, 'Authorization': 'Bearer ' + SERVICE_ROLE_KEY },
+                body: JSON.stringify(body)
+            }).then(function() { refresh(); }).catch(function() {});
+        };
+
+        window.toggleCampusActive = function(id, active) {
+            fetch(SUPABASE_URL + '/rest/v1/campuses?id=eq.' + id, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'apikey': SERVICE_ROLE_KEY, 'Authorization': 'Bearer ' + SERVICE_ROLE_KEY },
+                body: JSON.stringify({ is_active: active })
+            }).then(function() { refresh(); }).catch(function() {});
+        };
+
+        window.deleteCampus = async function(id) {
+            var c = allCampuses.find(function(x) { return x.id === id; });
+            var name = c ? c.name : '#' + id;
+            if (!await showConfirm('确定删除「' + name + '」？')) return;
+            try {
+                var resp = await fetch(SUPABASE_URL + '/rest/v1/campuses?id=eq.' + id, {
+                    method: 'DELETE',
+                    headers: { 'apikey': SERVICE_ROLE_KEY, 'Authorization': 'Bearer ' + SERVICE_ROLE_KEY }
+                });
+                if (resp.ok) { await refresh(); switchView('campuses'); }
+                else { var e = await resp.json(); await showConfirm('删除失败：' + (e.message || '未知错误')); }
+            } catch(ex) { await showConfirm('网络错误：' + ex.message); }
+        };
+
         function renderProfile() {
             var admins = [];
             Object.values(allTeachers).forEach(function(u) { if (u.isAdmin) admins.push(u); });
@@ -1380,18 +1494,19 @@
                     refIdx = firstEntry.dateColumns.findIndex(c => columnContainsKeyword(c, keyword));
                 }
 
-                (cls.students || []).forEach(name => {
-                    html += `<tr><td>${escapeHtml(name)}</td>`;
-                    dates.forEach(d => {
+                (cls.students || []).forEach(function(s){
+                    var mn = studentMatchName(s);
+                    html += '<tr><td>'+escapeHtml(studentDisplay(s))+'</td>';
+                    dates.forEach(function(d){
                         const entry = getAnalysisFeedbackEntry(cls.id, d);
                         let val = '', bg = '', displayVal = '';
                         if (entry && entry.dateColumns) {
                             let idx = refIdx;
                             if (idx === -1 || idx >= entry.dateColumns.length || !columnContainsKeyword(entry.dateColumns[idx], keyword)) {
-                                idx = entry.dateColumns.findIndex(c => columnContainsKeyword(c, keyword));
+                                idx = entry.dateColumns.findIndex(function(c){return columnContainsKeyword(c, keyword);});
                             }
                             if (idx !== -1) {
-                                const rec = entry.records ? entry.records.find(r => r.name === name) : null;
+                                const rec = entry.records ? entry.records.find(function(r){return r.name === mn;}) : null;
                                 if (rec) {
                                     val = rec.values ? (rec.values[idx] || '') : '';
                                     bg = rec.colors ? (rec.colors[idx] || '') : '';
@@ -1598,6 +1713,9 @@
 
         function computeAwards(t, cls) {
             var students = cls.students || [];
+            var matchNames = students.map(function(s) { return studentMatchName(s); });
+            var displayMap = {};
+            students.forEach(function(s) { displayMap[studentMatchName(s)] = studentDisplay(s); });
             var columns = cls.columns || [];
             // Get all fb keys for this class
             var fb = t.feedback || {};
@@ -1626,18 +1744,18 @@
 
             // === Full Attendance ===
             var attendance = {};
-            students.forEach(function(s) { attendance[s] = 0; });
+            matchNames.forEach(function(s) { attendance[s] = 0; });
             keys.forEach(function(k) {
                 var entry = fb[k];
                 if (!entry) return;
-                students.forEach(function(s) {
+                matchNames.forEach(function(s) {
                     if (isStudentPresent(entry, s)) attendance[s]++;
                 });
             });
             var fullAttendance = [];
-            students.forEach(function(s) {
+            matchNames.forEach(function(s) {
                 var rate = keys.length > 0 ? Math.round(attendance[s] / keys.length * 100) : 0;
-                fullAttendance.push({ name: s, present: attendance[s], total: keys.length, rate: rate + '%' });
+                fullAttendance.push({ name: displayMap[s] || s, present: attendance[s], total: keys.length, rate: rate + '%' });
             });
             fullAttendance.sort(function(a, b) {
                 var ra = parseInt(a.rate) || 0, rb = parseInt(b.rate) || 0;
@@ -1650,7 +1768,7 @@
                 var half = Math.floor(keys.length / 2);
                 var firstHalf = keys.slice(0, half);
                 var secondHalf = keys.slice(half);
-                students.forEach(function(s) {
+                matchNames.forEach(function(s) {
                     function avgScore(ks) {
                         var sum = 0, cnt = 0;
                         ks.forEach(function(k) {
@@ -1673,7 +1791,7 @@
                     var firstAvg = avgScore(firstHalf);
                     var secondAvg = avgScore(secondHalf);
                     if (firstAvg > 0 && secondAvg > 0 && secondAvg > firstAvg) {
-                        progressList.push({ name: s, change: secondAvg - firstAvg, firstAvg: firstAvg, secondAvg: secondAvg });
+                        progressList.push({ name: displayMap[s] || s, change: secondAvg - firstAvg, firstAvg: firstAvg, secondAvg: secondAvg });
                     }
                 });
             }
@@ -1683,7 +1801,7 @@
             // === Perfect Score Categories ===
             function countPerfect(keyword) {
                 var results = {};
-                students.forEach(function(s) { results[s] = 0; });
+                matchNames.forEach(function(s) { results[s] = 0; });
                 keys.forEach(function(k) {
                     var entry = fb[k];
                     if (!entry || !entry.dateColumns) return;
@@ -1692,7 +1810,7 @@
                     var maxS = extractMaxScore(entry.dateColumns[ci]);
                     if (maxS <= 0) return;
                     var recs = entry.records || [];
-                    students.forEach(function(s) {
+                    matchNames.forEach(function(s) {
                         var rec = recs.find(function(r) { return r.name === s; });
                         if (!rec || !rec.values || rec.values[ci] === '' || rec.values[ci] === null) return;
                         var score = convertToNumber(rec.values[ci], maxS);
@@ -1701,7 +1819,7 @@
                 });
                 var list = [];
                 Object.keys(results).forEach(function(name) {
-                    if (results[name] > 0) list.push({ name: name, count: results[name] });
+                    if (results[name] > 0) list.push({ name: displayMap[name] || name, count: results[name] });
                 });
                 list.sort(function(a, b) { return b.count - a.count; });
                 list.forEach(function(p, i) { p.rank = i + 1; });
@@ -1710,16 +1828,16 @@
 
             function countByThreshold(keyword, threshold) {
                 var results = {};
-                students.forEach(function(s) { results[s] = 0; });
+                matchNames.forEach(function(s) { results[s] = 0; });
                 keys.forEach(function(k) {
                     var entry = fb[k];
                     if (!entry || !entry.dateColumns) return;
                     var ci = findColIdx(entry, keyword);
                     if (ci === -1) return;
                     var maxS = extractMaxScore(entry.dateColumns[ci]);
-                    if (maxS <= 0) return; // 非配分列（如✅标记），不参与阈值比较
+                    if (maxS <= 0) return;
                     var recs = entry.records || [];
-                    students.forEach(function(s) {
+                    matchNames.forEach(function(s) {
                         var rec = recs.find(function(r) { return r.name === s; });
                         if (!rec || !rec.values || rec.values[ci] === '' || rec.values[ci] === null) return;
                         var score = convertToNumber(rec.values[ci], maxS);
@@ -1728,7 +1846,7 @@
                 });
                 var list = [];
                 Object.keys(results).forEach(function(name) {
-                    if (results[name] > 0) list.push({ name: name, count: results[name] });
+                    if (results[name] > 0) list.push({ name: displayMap[name] || name, count: results[name] });
                 });
                 list.sort(function(a, b) { return b.count - a.count; });
                 list.forEach(function(p, i) { p.rank = i + 1; });
@@ -1855,6 +1973,23 @@
                 html += '<option value="' + g + '" ' + (queryGrade === String(g) ? 'selected' : '') + '>' + g + ' 年级</option>';
             });
             html += '</select>';
+            // Campus filter
+            html += '<select id="qCampus" onchange="queryCampus=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
+            html += '<option value="all" ' + (queryCampus === 'all' ? 'selected' : '') + '>全部校区</option>';
+            html += '<option value="none" ' + (queryCampus === 'none' ? 'selected' : '') + '>未分配校区</option>';
+            allCampuses.filter(function(c){return c.is_active;}).forEach(function(c) {
+                html += '<option value="' + c.id + '" ' + (queryCampus === String(c.id) ? 'selected' : '') + '>' + escapeHtml(c.name) + '</option>';
+            });
+            html += '</select>';
+            // District filter
+            html += '<select id="qDistrict" onchange="queryDistrict=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
+            html += '<option value="all" ' + (queryDistrict === 'all' ? 'selected' : '') + '>全部片区</option>';
+            var districts = new Set();
+            allCampuses.forEach(function(c) { if (c.district) districts.add(c.district); });
+            districts.forEach(function(d) {
+                html += '<option value="' + d + '" ' + (queryDistrict === String(d) ? 'selected' : '') + '>' + escapeHtml(d) + '</option>';
+            });
+            html += '</select>';
             // Sort (skip for attendance, always sorted by rate asc)
             if (!isAttendance) {
                 html += '<select id="qSort" onchange="querySort=this.value" style="padding:6px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;background:var(--bg);">';
@@ -1929,6 +2064,9 @@
                         var cls = classMap[cid];
                         if (queryClass !== 'all' && cls.name.toLowerCase().indexOf(queryClass.toLowerCase()) === -1) return;
                         if (!classContainsGrade(cls.name, queryGrade)) return;
+                        if (queryCampus === 'none' && cls.campus_id) return;
+                        if (queryCampus !== 'all' && queryCampus !== 'none' && String(cls.campus_id) !== queryCampus) return;
+                        if (queryDistrict !== 'all' && getCampusDistrict(cls.campus_id) !== queryDistrict) return;
                         var allKeys = perClass[cid].sort(naturalSort);
                         var keys = allKeys;
                         if (queryRecent !== 'all') {
@@ -1940,18 +2078,19 @@
                         if (!keys.length) return;
 
                         cls.students.forEach(function(s) {
+                            var mn = studentMatchName(s);
                             var present = 0;
                             keys.forEach(function(k) {
-                                if (isStudentPresent(fb[k], s)) present++;
+                                if (isStudentPresent(fb[k], mn)) present++;
                             });
                             var rate = Math.round(present / keys.length * 100);
                             results.push({
-                                key: cid + '|' + s,
-                                name: s, className: cls.name, classId: cid,
+                                key: cid + '|' + mn,
+                                name: studentDisplay(s), className: cls.name, classId: cid,
                                 teacherName: t.name || t.email || '', teacherId: t.id,
                                 present: present, total: keys.length, rate: rate,
                                 details: keys.map(function(k) {
-                                    return { date: k.split('|').slice(1).join('|'), present: isStudentPresent(fb[k], s) };
+                                    return { date: k.split('|').slice(1).join('|'), present: isStudentPresent(fb[k], mn) };
                                 })
                             });
                         });
@@ -1999,6 +2138,9 @@
                     // Class type filter
                     if (queryClass !== 'all' && cls.name.toLowerCase().indexOf(queryClass.toLowerCase()) === -1) return;
                     if (!classContainsGrade(cls.name, queryGrade)) return;
+                    if (queryCampus === 'none' && cls.campus_id) return;
+                    if (queryCampus !== 'all' && queryCampus !== 'none' && String(cls.campus_id) !== queryCampus) return;
+                    if (queryDistrict !== 'all' && getCampusDistrict(cls.campus_id) !== queryDistrict) return;
 
                     var entry = fb[k];
                     if (!entry || !entry.dateColumns) return;
@@ -2312,7 +2454,7 @@
             if (!fbKeys.length) {
                 // No feedback data: export just student list
                 const rows = [['学生']];
-                (cls.students || []).forEach(s => rows.push([s]));
+                (cls.students || []).forEach(function(s){ rows.push([studentDisplay(s)]); });
                 const ws = XLSX.utils.aoa_to_sheet(rows);
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(cls.name));
@@ -2322,17 +2464,19 @@
 
             // Long-table format: each row = student + lesson + score
             const rows = [['学生', '课次'].concat(columns)];
-            (cls.students || []).forEach(student => {
-                fbKeys.forEach(k => {
+            (cls.students || []).forEach(function(student){
+                var mn = studentMatchName(student);
+                var dn = studentDisplay(student);
+                fbKeys.forEach(function(k){
                     const dateLabel = k.substring(classId.length + 1);
                     const fb = t.feedback[k];
-                    const row = [student, dateLabel];
-                    columns.forEach(colName => {
+                    const row = [dn, dateLabel];
+                    columns.forEach(function(colName){
                         let val = '';
                         if (fb && fb.dateColumns) {
-                            const idx = fb.dateColumns.findIndex(c => columnContainsKeyword(c, colName));
+                            const idx = fb.dateColumns.findIndex(function(c){return columnContainsKeyword(c, colName);});
                             if (idx !== -1) {
-                                const rec = (fb.records || []).find(r => r.name === student);
+                                const rec = (fb.records || []).find(function(r){return r.name === mn;});
                                 if (rec && rec.values) val = rec.values[idx] || '';
                             }
                         }
@@ -2358,9 +2502,11 @@
             const columns = (fb && fb.dateColumns) ? fb.dateColumns.map(c => stripMaxScore(c)) : [];
 
             const rows = [['学生'].concat(columns)];
-            (cls.students || []).forEach(student => {
-                const rec = (fb && fb.records) ? fb.records.find(r => r.name === student) : null;
-                const row = [student];
+            (cls.students || []).forEach(function(student){
+                var mn = studentMatchName(student);
+                var dn = studentDisplay(student);
+                const rec = (fb && fb.records) ? fb.records.find(function(r){return r.name === mn;}) : null;
+                const row = [dn];
                 columns.forEach((_, ci) => {
                     row.push(rec && rec.values ? (rec.values[ci] || '') : '');
                 });

@@ -1287,9 +1287,11 @@
                     if (code !== REG_CODE) { msgEl.textContent = '注册码不正确'; msgEl.className = 'login-msg error'; return; }
                     if (password.length < 4) { msgEl.textContent = '密码至少4位'; msgEl.className = 'login-msg error'; return; }
 
-                    // 读取性别和大区
+                    // 读取性别和大区（必填）
                     var gender = document.getElementById('regGenderValue').value;
                     var district = document.getElementById('regDistrict').value;
+                    if (!gender) { msgEl.textContent = '请选择性别'; msgEl.className = 'login-msg error'; btn.disabled = false; btn.textContent = '注 册'; return; }
+                    if (!district) { msgEl.textContent = '请选择大区'; msgEl.className = 'login-msg error'; btn.disabled = false; btn.textContent = '注 册'; return; }
 
                     let regData;
                     if (isLocal) {

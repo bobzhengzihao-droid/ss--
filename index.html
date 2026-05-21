@@ -2000,7 +2000,7 @@
                 else {
                     if(!entry.dateColumns) entry.dateColumns=[...cls.columns];
                     if(!entry.maxScores) entry.maxScores=entry.dateColumns.map(extractMaxScore);
-                    if(!entry.records) entry.records=cls.students.map(function(s){return {name:studentMatchName(s),values:entry.dateColumns.map(function(){return '';}),colors:entry.dateColumns.map(function(){return '';});}});
+                    if(!entry.records) entry.records=cls.students.map(function(s){return {name:studentMatchName(s),values:entry.dateColumns.map(function(){return '';}),colors:entry.dateColumns.map(function(){return '';})}});
                 }
             }
             saveFeedbackDebounced(); return feedback[key];
@@ -2010,7 +2010,7 @@
             const cls=getCurrentClass();if(!cls)return[];
             const entry=getEntry(cls.id,currentDateLabel);if(!entry)return[];
             let records=entry.records||[];
-            cls.students.forEach(function(s){var mn=studentMatchName(s);if(!records.find(function(r){return r.name===mn;}))records.push({name:mn,values:cls.columns.map(function(){return '';}),colors:cls.columns.map(function(){return '';});});});
+            cls.students.forEach(function(s){var mn=studentMatchName(s);if(!records.find(function(r){return r.name===mn;}))records.push({name:mn,values:cls.columns.map(function(){return '';}),colors:cls.columns.map(function(){return '';})});});
             records=records.filter(function(r){return cls.students.some(function(s){return studentMatchName(s)===r.name;});});
             records.forEach(function(r){while(r.values.length<entry.dateColumns.length)r.values.push('');while(r.colors.length<entry.dateColumns.length)r.colors.push('');});
             const order={};cls.students.forEach(function(s,i){order[studentMatchName(s)]=i;});

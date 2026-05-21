@@ -696,6 +696,27 @@
         /* ===== SELECTION ===== */
         ::selection { background: #bfdbfe; color: var(--primary); }
 
+        /* ===== SETTINGS PAGE ===== */
+        .settings-card { padding: 0; overflow: hidden; border-radius: var(--radius); }
+        .settings-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border-light); }
+        .settings-back { background: none; border: none; font-size: 14px; color: var(--accent); cursor: pointer; font-weight: 500; padding: 4px 0; }
+        .settings-back:active { opacity: 0.6; }
+        .settings-title { font-weight: 700; font-size: 15px; color: var(--text); }
+        .settings-avatar { display: flex; justify-content: center; padding: 24px 0 8px; }
+        .settings-avatar span { font-size: 48px; line-height: 1; }
+        .settings-name-row { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px 16px; }
+        .settings-name-row span { font-size: 17px; font-weight: 600; color: var(--text); }
+        .settings-section { padding: 8px 16px; }
+        .settings-label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500; }
+        .settings-gender-row { display: flex; gap: 10px; }
+        .settings-gender-card { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 8px; border: 2px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s; background: var(--card-bg); font-size: 14px; font-weight: 500; color: var(--text-muted); }
+        .settings-gender-card:active { transform: scale(0.96); }
+        .settings-gender-card.active { border-color: var(--accent); background: #eff6ff; color: var(--accent); font-weight: 600; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
+        .gender-icon { font-size: 24px; line-height: 1; }
+        .settings-select { width: 100%; padding: 10px 12px; border-radius: var(--radius-xs); border: 1.5px solid var(--border); font-size: 14px; background: var(--card-bg); color: var(--text); outline: none; }
+        .settings-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
+        .settings-actions { display: flex; gap: 8px; padding: 16px; }
+
         /* ===== LOGIN OVERLAY ===== */
         .login-overlay {
             position: fixed; inset: 0; z-index: 99999;
@@ -1292,6 +1313,7 @@
             _userId = user.id;
             try { const { data: { session } } = await supabase.auth.getSession(); if (session) _lastAccessToken = session.access_token; } catch(e) {}
             const name = user.user_metadata?.name || user.email?.split('@')[0] || '';
+            _userName = name;
             if (actualEmail) {
                 try { localStorage.setItem('_fb_name_email_' + name, actualEmail); } catch(e) {}
             }
@@ -2227,24 +2249,31 @@
                 <div class="table-wrapper" id="statTableWrapper"></div>
             </div>`;
             document.getElementById('view-analysis').innerHTML=`<div class="card"><div class="card-title">📈 汇总分析</div><div style="display:flex;gap:8px"><span>学生：</span><select id="analysisStudentSelect" class="input" style="padding:8px;border-radius:12px;flex:1" onchange="refreshAnalysis()"><option value="">-- 请选择 --</option></select></div><div class="check-group" id="analysisDateCheckGroup"></div><div class="check-group" id="analysisColumnCheckGroup"></div></div><div class="card" id="analysisChartsArea"><div id="analysisReportTitle" style="text-align:center;font-size:1.1rem;font-weight:700;margin-bottom:12px">学习分析报告</div><div id="lineChartsContainer"></div><div id="radarSection" style="margin-top:16px;"><div class="check-group" style="margin-bottom:8px"><span>雷达图课次：</span><select id="radarDateSelect" class="input" style="width:120px;padding:6px;border-radius:12px" onchange="refreshRadarColumns();saveRadarCols()"></select></div><div class="check-group" id="radarColumnCheckGroup" style="margin:8px 0"></div><div style="height:320px"><canvas id="radarChartCanvas" height="320"></canvas></div></div><div style="margin-top:16px"><input type="password" id="apiKeyInput" class="input" placeholder="DeepSeek API Key" style="width:100%;padding:6px;margin-bottom:6px;font-size:11px"><textarea id="examDescTextarea" class="ai-textarea" placeholder="手动输入试卷描述或题型知识点（可选）" rows="3"></textarea><div style="display:flex; gap:6px; align-items: center; margin:8px 0;"><label class="btn btn-outline btn-sm" style="cursor:pointer;">📎 上传试卷文件<input type="file" id="examFileInput" accept=".txt,.docx,.pdf" style="display:none" onchange="document.getElementById('fileNameDisplay').textContent = this.files[0]?.name || ''"></label><span id="fileNameDisplay" style="font-size:12px; color:var(--text-light);"></span></div><button class="btn btn-sm" onclick="runAIAnalysis()">🤖 测试分析</button></div><div id="aiResult" style="margin-top:12px;padding:12px;background:var(--input-bg);border-radius:12px;font-size:14px;white-space:pre-wrap;"></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-sm" onclick="downloadPDFReport()">📥 下载PDF报告</button></div></div><div id="analysisTablesContainer"></div>`;
-            document.getElementById('view-settings').innerHTML='<div class="card"><div class="card-title">⚙️ 个人设置</div><div style="display:flex;flex-direction:column;gap:14px;"><div><span style="font-size:13px;color:var(--text-muted);">性别</span><div style="display:flex;gap:8px;margin-top:6px;"><label id="setGenderMaleLabel" style="display:flex;align-items:center;gap:4px;padding:8px 16px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:14px;"><input type="radio" name="settingsGender" value="male" onchange="saveSettingsGender(this.value)" style="display:none;"><span>♂️ 男</span></label><label id="setGenderFemaleLabel" style="display:flex;align-items:center;gap:4px;padding:8px 16px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:14px;"><input type="radio" name="settingsGender" value="female" onchange="saveSettingsGender(this.value)" style="display:none;"><span>♀️ 女</span></label></div></div><div><span style="font-size:13px;color:var(--text-muted);">所属大区</span><div style="margin-top:6px;"><select class="input" id="settingsDistrict" onchange="saveSettingsDistrict(this.value)" style="width:100%;padding:8px 12px;"><option value="">请选择大区</option><option value="东一区">东一区</option><option value="东二区">东二区</option><option value="西一区">西一区</option><option value="西二区">西二区</option><option value="南一区">南一区</option><option value="南二区">南二区</option><option value="武侯区">武侯区</option></select></div></div><div style="display:flex;gap:8px;margin-top:8px;"><button class="btn btn-outline btn-sm" onclick="changeMyPassword()">🔒 修改密码</button><button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger);" onclick="handleLogout()">🚪 退出登录</button></div><button class="btn btn-sm" onclick="switchView(\'classes\')" style="margin-top:4px;">↩️ 返回班级</button></div></div>';
+            document.getElementById('view-settings').innerHTML='<div class="card settings-card"><div class="settings-header"><button class="settings-back" onclick="switchView(\'classes\')">← 返回</button><span class="settings-title">个人设置</span><span style="width:40px;"></span></div><div class="settings-avatar"><span id="settingsAvatarEmoji">👤</span></div><div class="settings-name-row"><span id="settingsNameDisplay"></span><button class="btn btn-xs btn-outline" onclick="editMyName()" style="font-size:11px;">✏️ 改名</button></div><div class="settings-section"><div class="settings-label">性别</div><div class="settings-gender-row"><div class="settings-gender-card" id="genderCardMale" onclick="saveSettingsGender(\'male\')"><span class="gender-icon">♂️</span><span>男</span></div><div class="settings-gender-card" id="genderCardFemale" onclick="saveSettingsGender(\'female\')"><span class="gender-icon">♀️</span><span>女</span></div></div></div><div class="settings-section"><div class="settings-label">所属大区</div><select class="input settings-select" id="settingsDistrict" onchange="saveSettingsDistrict(this.value)"><option value="">请选择大区</option><option value="东一区">东一区</option><option value="东二区">东二区</option><option value="西一区">西一区</option><option value="西二区">西二区</option><option value="南一区">南一区</option><option value="南二区">南二区</option><option value="武侯区">武侯区</option></select></div><div class="settings-actions"><button class="btn btn-outline btn-sm" onclick="changeMyPassword()">🔒 修改密码</button><button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger);" onclick="handleLogout()">🚪 退出登录</button></div></div>';
         }
 
         function refreshSettingsUI(){
-            var maleLabel=document.getElementById('setGenderMaleLabel');
-            var femaleLabel=document.getElementById('setGenderFemaleLabel');
-            var selColor='1.5px solid var(--accent)',selBg='#eff6ff';
-            if(maleLabel){maleLabel.style.border=currentGender==='male'?selColor:'1.5px solid var(--border)';maleLabel.style.background=currentGender==='male'?selBg:'';}
-            if(femaleLabel){femaleLabel.style.border=currentGender==='female'?selColor:'1.5px solid var(--border)';femaleLabel.style.background=currentGender==='female'?selBg:'';}
+            // 性别卡片
+            var maleCard=document.getElementById('genderCardMale');
+            var femaleCard=document.getElementById('genderCardFemale');
+            if(maleCard){maleCard.classList.toggle('active',currentGender==='male');}
+            if(femaleCard){femaleCard.classList.toggle('active',currentGender==='female');}
+            // 大区
             var distEl=document.getElementById('settingsDistrict');
             if(distEl)distEl.value=currentDistrict||'';
+            // 名字
+            var nameDisplay=document.getElementById('settingsNameDisplay');
+            if(nameDisplay)nameDisplay.textContent=_userName||'未设置';
+            // 头像 emoji
+            var avatar=document.getElementById('settingsAvatarEmoji');
+            if(avatar){avatar.textContent=(currentGender==='male'?'♂️ ':'')+(currentGender==='female'?'♀️ ':'')+'👤';}
         }
 
         window.saveSettingsGender = function(val){
             currentGender = val;
             supabase.from('teacher_profiles').update({ gender: val }).eq('user_id', _userId).then(function(){},function(){});
             var nameEl = document.getElementById('headerUserName');
-            if(nameEl){var name=_userName||(nameEl.textContent||'').replace(/[♂♀] /,'').trim();nameEl.textContent=(val==='male'?'♂️ ':'')+(val==='female'?'♀️ ':'')+' '+name;}
+            if(nameEl){var name=_userName||'';nameEl.textContent=(val==='male'?'♂️ ':'')+(val==='female'?'♀️ ':'')+' '+name;}
             refreshSettingsUI();
         };
 
@@ -2252,6 +2281,33 @@
             currentDistrict = val;
             supabase.from('teacher_profiles').update({ district: val }).eq('user_id', _userId).then(function(){},function(){});
             refreshSettingsUI();
+        };
+
+        window.editMyName = async function(){
+            var oldName = _userName || '';
+            var newName = await showPrompt('新姓名：', oldName);
+            if (!newName || !newName.trim() || newName.trim() === oldName) return;
+            newName = newName.trim();
+            // 检查重名
+            var { data: exist } = await supabase.from('teacher_profiles').select('name').eq('name', newName).maybeSingle();
+            if (exist) { await showConfirm('该姓名已被使用'); return; }
+            // 获取当前邮箱
+            var { data: { session } } = await supabase.auth.getSession();
+            var currentEmail = (session && session.user) ? session.user.email : '';
+            // 保存旧邮箱到新名字的映射（保证用新名字登录时能找到邮箱）
+            if (currentEmail) {
+                try { localStorage.setItem('_fb_name_email_' + newName, currentEmail); } catch(e) {}
+                try { localStorage.removeItem('_fb_name_email_' + oldName); } catch(e) {}
+            }
+            // 更新 teacher_profiles
+            var { error: tpErr } = await supabase.from('teacher_profiles').update({ name: newName }).eq('user_id', _userId);
+            if (tpErr) { await showConfirm('更新失败：'+tpErr.message); return; }
+            // 更新本地
+            _userName = newName;
+            var prefix = (currentGender==='male'?'♂️ ':'')+(currentGender==='female'?'♀️ ':'');
+            document.getElementById('headerUserName').textContent = prefix + newName;
+            refreshSettingsUI();
+            await showConfirm('姓名已修改为「'+newName+'」');
         };
 
         async function switchView(viewName){

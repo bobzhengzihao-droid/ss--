@@ -1660,6 +1660,7 @@
                     maxScores: templateColumns.map(extractMaxScore),
                     _updatedAt: Date.now()
                 };
+                _markDirty(cls.id, date);
             } else {
                 const entry=feedback[key];
                 if(Array.isArray(entry)) feedback[key]={records:entry,dateColumns:[...cls.columns],maxScores:cls.columns.map(extractMaxScore),_updatedAt:Date.now()};

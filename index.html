@@ -1808,7 +1808,7 @@
             }
             container.innerHTML = `
                 <span style="font-size:13px;color:var(--text-light);">当前课次：</span>
-                <select class="date-select" id="dateSelectDropdown" onchange="selectDate(this.value)">
+                <select class="date-select" id="dateSelectDropdown" onchange="selectDate(this.value)" style="width:96px;">
                     ${dates.map(d => `<option value="${escapeHtml(d)}" ${d === currentDateLabel ? 'selected' : ''}>${escapeHtml(d)}</option>`).join('')}
                 </select>
                 <button class="date-action-btn" onclick="renameCurrentDate()" title="重命名">✏️</button>

@@ -1262,6 +1262,8 @@
             if (!t) { recoveryTeacherId = null; renderRecovery(); return; }
             var html = '<div class="breadcrumb"><span onclick="recoveryTeacherId=null;renderRecovery()">教师列表</span> › '+escapeHtml(t.name||'')+'</div>';
             html += '<div class="card"><div class="card-title">📦 '+escapeHtml(t.name||'')+' — 数据恢复</div>';
+            html += '<div id="recoveryContent" class="empty-state">加载中...</div></div>';
+            document.getElementById('view-recovery').innerHTML = html;
             // Load backup
             var hdrs = { 'apikey': SERVICE_ROLE_KEY, 'Authorization': 'Bearer ' + SERVICE_ROLE_KEY };
             fetch(SUPABASE_URL+'/rest/v1/data_store?select=value&user_id=eq.'+t.id+'&key=eq.classes_backup', { headers: hdrs })
@@ -1283,9 +1285,9 @@
                         recoveryHtml += '<div class="empty-state">该教师暂无备份数据</div>';
                     }
                     recoveryHtml += '<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">备份在每次班级数据写入时自动创建。30天后自动清除。</div>';
-                    document.getElementById('view-recovery').innerHTML = html + recoveryHtml + '</div>';
+                    document.getElementById('recoveryContent').innerHTML = recoveryHtml;
                 }).catch(function(){
-                    document.getElementById('view-recovery').innerHTML = html + '<div class="empty-state">加载失败</div></div>';
+                    document.getElementById('recoveryContent').innerHTML = '<div class="empty-state">加载失败</div>';
                 });
         }
         window.renderRecovery = renderRecovery;

@@ -1851,13 +1851,14 @@
                 var cl = (r.colors||[]).splice(from, 1)[0];
                 (r.colors||[]).splice(to, 0, cl||'');
             });
+            _markDirty(currentClassId, currentDateLabel);
             saveFeedbackDebounced();
             renderColumnEditor();
             renderFeedbackTable();
         };
-        window.updateColumnName=function(i,n){if(!n.trim()){showConfirm('列名不能为空');return;}pushUndo();const entry=initFeedbackEntry(currentDateLabel);entry.dateColumns[i]=n.trim();entry.maxScores[i]=extractMaxScore(n.trim());saveFeedbackDebounced();renderColumnEditor();renderFeedbackTable();};
-        window.addColumn=async function(){const n=await showPrompt('新列名称','新项目');if(!n||!n.trim())return;pushUndo();const entry=initFeedbackEntry(currentDateLabel);entry.dateColumns.push(n.trim());entry.maxScores.push(extractMaxScore(n.trim()));entry.records.forEach(r=>{r.values.push('');r.colors.push('');});saveFeedbackDebounced();renderColumnEditor();renderFeedbackTable();};
-        window.deleteColumn=async function(i){const entry=initFeedbackEntry(currentDateLabel);if(entry.dateColumns.length<=1){await showConfirm('至少保留一列');return;}if(!await showConfirm(`删除"${entry.dateColumns[i]}"？`))return;pushUndo();entry.dateColumns.splice(i,1);entry.maxScores.splice(i,1);entry.records.forEach(r=>{r.values.splice(i,1);r.colors.splice(i,1);});saveFeedbackDebounced();renderColumnEditor();renderFeedbackTable();};
+        window.updateColumnName=function(i,n){if(!n.trim()){showConfirm('列名不能为空');return;}pushUndo();const entry=initFeedbackEntry(currentDateLabel);entry.dateColumns[i]=n.trim();entry.maxScores[i]=extractMaxScore(n.trim());_markDirty(currentClassId,currentDateLabel);saveFeedbackDebounced();renderColumnEditor();renderFeedbackTable();};
+        window.addColumn=async function(){const n=await showPrompt('新列名称','新项目');if(!n||!n.trim())return;pushUndo();const entry=initFeedbackEntry(currentDateLabel);entry.dateColumns.push(n.trim());entry.maxScores.push(extractMaxScore(n.trim()));entry.records.forEach(r=>{r.values.push('');r.colors.push('');});_markDirty(currentClassId,currentDateLabel);saveFeedbackDebounced();renderColumnEditor();renderFeedbackTable();};
+        window.deleteColumn=async function(i){const entry=initFeedbackEntry(currentDateLabel);if(entry.dateColumns.length<=1){await showConfirm('至少保留一列');return;}if(!await showConfirm('删除"${entry.dateColumns[i]}"？'))return;pushUndo();entry.dateColumns.splice(i,1);entry.maxScores.splice(i,1);entry.records.forEach(r=>{r.values.splice(i,1);r.colors.splice(i,1);});_markDirty(currentClassId,currentDateLabel);saveFeedbackDebounced();renderColumnEditor();renderFeedbackTable();};
         window.toggleCollapse=function(btn){btn.nextElementSibling.style.display=btn.nextElementSibling.style.display==='block'?'none':'block';};
 
         // ========== 班级管理 ==========

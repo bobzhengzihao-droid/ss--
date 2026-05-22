@@ -1268,35 +1268,45 @@
             html += '<div class="card"><div class="card-title">📦 '+escapeHtml(t.name||'')+' — 数据恢复</div>';
             html += '<div id="recoveryContent" class="empty-state">加载中...</div></div>';
             document.getElementById('view-recovery').innerHTML = html;
-            // Load backup
+            // Load backups (3 rolling versions)
             var hdrs = { 'apikey': SERVICE_ROLE_KEY, 'Authorization': 'Bearer ' + SERVICE_ROLE_KEY };
-            fetch(SUPABASE_URL+'/rest/v1/data_store?select=value&user_id=eq.'+t.id+'&key=eq.classes_backup', { headers: hdrs })
-                .then(function(r){return r.json();})
-                .then(function(rows){
-                    var recoveryHtml = '';
-                    if (rows.length && rows[0].value && Array.isArray(rows[0].value)) {
+            var bKeys = ['classes_backup_1', 'classes_backup_2', 'classes_backup_3'];
+            var fetches = bKeys.map(function(bk){
+                return fetch(SUPABASE_URL+'/rest/v1/data_store?select=value&user_id=eq.'+t.id+'&key=eq.'+bk, { headers: hdrs }).then(function(r){return r.json();});
+            });
+            Promise.all(fetches).then(function(results){
+                var recoveryHtml = '';
+                var hasAny = false;
+                for (var i = 0; i < results.length; i++) {
+                    var rows = results[i];
+                    if (rows.length && rows[0].value) {
                         var backup = rows[0].value;
-                        var backupTime = backup._backupTime || '';
                         var backupClasses = backup.classes || backup;
-                        var clsCount = Array.isArray(backupClasses) ? backupClasses.length : 0;
-                        var stuCount = Array.isArray(backupClasses) ? backupClasses.reduce(function(s,c){return s+(c.students?c.students.length:0);},0) : 0;
-                        recoveryHtml += '<div style="background:#fef3c7;border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:12px;">';
-                        recoveryHtml += '<div style="font-size:13px;font-weight:600;">备份时间：'+escapeHtml(backupTime||'未知')+'</div>';
-                        recoveryHtml += '<div style="font-size:12px;color:var(--text-muted);">'+clsCount+' 个班级 · '+stuCount+' 名学生</div>';
-                        recoveryHtml += '<button class="btn btn-sm" onclick="restoreBackup(\''+t.id+'\')" style="margin-top:8px;">恢复到此版本</button>';
-                        recoveryHtml += '</div>';
-                    } else {
-                        var fbKeys = Object.keys(t.feedback||{}).filter(function(k){return k.indexOf('|')>0 && !k.startsWith('c1|');});
-                        recoveryHtml += '<div class="empty-state">该教师暂无备份数据</div>';
-                        if (fbKeys.length > 0) {
-                            recoveryHtml += '<button class="btn btn-sm" onclick="rebuildFromFeedback(\''+t.id+'\')" style="margin-top:8px;">🔧 从反馈记录重建班级</button>';
-                            recoveryHtml += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">从 '+fbKeys.length+' 条反馈记录中提取班级信息</div>';
-                        }
+                        if (!Array.isArray(backupClasses) || !backupClasses.length) continue;
+                        hasAny = true;
+                        var backupTime = backup._backupTime || '';
+                        var clsCount = backupClasses.length;
+                        var stuCount = backupClasses.reduce(function(s,c){return s+(c.students?c.students.length:0);},0);
+                        recoveryHtml += '<div style="background:#fef3c7;border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:8px;">';
+                        recoveryHtml += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+                        recoveryHtml += '<div><div style="font-size:12px;font-weight:600;">备份'+(i+1)+' — '+escapeHtml(backupTime||'未知')+'</div>';
+                        recoveryHtml += '<div style="font-size:11px;color:var(--text-muted);">'+clsCount+' 个班级 · '+stuCount+' 名学生</div></div>';
+                        recoveryHtml += '<button class="btn btn-sm" onclick="restoreBackup(\''+t.id+'\',\''+bKeys[i]+'\')">恢复</button>';
+                        recoveryHtml += '</div></div>';
                     }
-                    recoveryHtml += '<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">备份在每次班级数据写入时自动创建。30天后自动清除。</div>';
-                    document.getElementById('recoveryContent').innerHTML = recoveryHtml;
-                }).catch(function(){
-                    document.getElementById('recoveryContent').innerHTML = '<div class="empty-state">加载失败</div>';
+                }
+                if (!hasAny) {
+                    var fbKeys = Object.keys(t.feedback||{}).filter(function(k){return k.indexOf('|')>0 && !k.startsWith('c1|');});
+                    recoveryHtml += '<div class="empty-state">暂无备份数据</div>';
+                    if (fbKeys.length > 0) {
+                        recoveryHtml += '<button class="btn btn-sm" onclick="rebuildFromFeedback(\''+t.id+'\')" style="margin-top:8px;">🔧 从反馈记录重建班级</button>';
+                        recoveryHtml += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">从 '+fbKeys.length+' 条反馈记录中提取班级信息</div>';
+                    }
+                }
+                recoveryHtml += '<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">保留最近 3 份滚动备份，每次写入班级数据时自动更新。</div>';
+                document.getElementById('recoveryContent').innerHTML = recoveryHtml;
+            }).catch(function(){
+                document.getElementById('recoveryContent').innerHTML = '<div class="empty-state">加载失败</div>';
                 });
         }
         window.renderRecovery = renderRecovery;
@@ -1342,17 +1352,21 @@
             var hdrs = { 'apikey': SERVICE_ROLE_KEY, 'Authorization': 'Bearer ' + SERVICE_ROLE_KEY };
             var cleaned = 0;
             try {
-                // 1. 分页删全部备份
+                // 1. 分页删全部备份（3种key）
                 var offset = 0, pageSize = 1000;
-                while (true) {
-                    var resp = await fetch(SUPABASE_URL+'/rest/v1/data_store?select=user_id,key&key=eq.classes_backup&limit='+pageSize+'&offset='+offset, { headers: hdrs });
-                    var rows = await resp.json();
-                    if (!rows.length) break;
-                    for (var i = 0; i < rows.length; i++) {
-                        await fetch(SUPABASE_URL+'/rest/v1/data_store?user_id=eq.'+rows[i].user_id+'&key=eq.classes_backup', { method: 'DELETE', headers: hdrs });
-                        cleaned++;
+                var backupKeys = ['classes_backup_1','classes_backup_2','classes_backup_3'];
+                for (var bk = 0; bk < backupKeys.length; bk++) {
+                    offset = 0;
+                    while (true) {
+                        var resp = await fetch(SUPABASE_URL+'/rest/v1/data_store?select=user_id,key&key=eq.'+backupKeys[bk]+'&limit='+pageSize+'&offset='+offset, { headers: hdrs });
+                        var rows = await resp.json();
+                        if (!rows.length) break;
+                        for (var i = 0; i < rows.length; i++) {
+                            await fetch(SUPABASE_URL+'/rest/v1/data_store?user_id=eq.'+rows[i].user_id+'&key=eq.'+backupKeys[bk], { method: 'DELETE', headers: hdrs });
+                            cleaned++;
+                        }
+                        offset += pageSize;
                     }
-                    offset += pageSize;
                 }
                 // 2. 分页删全部孤儿 fb|
                 offset = 0;
@@ -1383,11 +1397,11 @@
             } catch(e) { await showConfirm('清理失败：'+e.message); }
         };
 
-        window.restoreBackup = async function(teacherId) {
+        window.restoreBackup = async function(teacherId, backupKey) {
             if (!await showConfirm('确定恢复该教师的备份数据？当前数据将被覆盖。')) return;
             var hdrs = { 'apikey': SERVICE_ROLE_KEY, 'Authorization': 'Bearer ' + SERVICE_ROLE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
             try {
-                var resp = await fetch(SUPABASE_URL+'/rest/v1/data_store?select=value&user_id=eq.'+teacherId+'&key=eq.classes_backup', { headers: hdrs });
+                var resp = await fetch(SUPABASE_URL+'/rest/v1/data_store?select=value&user_id=eq.'+teacherId+'&key=eq.'+(backupKey||'classes_backup_1'), { headers: hdrs });
                 var rows = await resp.json();
                 if (rows.length && rows[0].value) {
                     var backup = rows[0].value;

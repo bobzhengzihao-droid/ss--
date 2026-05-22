@@ -1821,6 +1821,7 @@
         window.renameCurrentDate=async function(){const old=currentDateLabel;const n=await showPrompt('新标签',old);if(!n||!n.trim()||n.trim()===old)return;const t=n.trim();const ok=feedbackKey(currentClassId,old),nk=feedbackKey(currentClassId,t);if(feedback[nk]&&!await showConfirm('覆盖？'))return;feedback[ok]._updatedAt=Date.now();feedback[nk]=feedback[ok];delete feedback[ok];_markDirty(currentClassId,t);dbSet(_fbStoreKey(currentClassId,old),null);saveFeedbackDebounced();currentDateLabel=t;localStorage.setItem('_fb_last_date_'+currentClassId,t);renderDateSelector();renderFeedbackTable();};
         window.goToDate=function(){const v=document.getElementById('dateLabelInput').value.trim();if(!v){showConfirm('请输入课次名称');return;}if(getDateList().includes(v)){showConfirm('该课次已存在，请直接从下拉框选择');return;}if(currentDateLabel&&getEntry(currentClassId,currentDateLabel)){pushUndo();saveCurrentDay();}currentDateLabel=v;localStorage.setItem('_fb_last_date_'+currentClassId,v);initFeedbackEntry(currentDateLabel);document.getElementById('dateLabelInput').value='';renderDateSelector();renderFeedbackTable();renderColumnEditor();activeCell=null;};
 
+        var _colDragIdx = -1;
         function renderColumnEditor(){
             const cls=getCurrentClass();if(!cls)return;
             const key=feedbackKey(cls.id,currentDateLabel);
@@ -1829,8 +1830,30 @@
                 return;
             }
             const entry=initFeedbackEntry(currentDateLabel);
-            document.getElementById('columnEditor').innerHTML=entry.dateColumns.map((c,i)=>`<div style="display:flex;align-items:center;gap:3px;background:#eff6ff;border-radius:12px;padding:4px 8px;border:1px solid #bfdbfe;"><input class="th-input" style="min-width:80px;" value="${escapeHtml(c)}" onchange="updateColumnName(${i},this.value)"><button class="btn btn-xs" style="color:var(--danger);" onclick="deleteColumn(${i})">×</button></div>`).join('')+'<button class="btn btn-xs" onclick="addColumn()">+ 添加列</button>';
+            document.getElementById('columnEditor').innerHTML=entry.dateColumns.map((c,i)=>`<div draggable="true" ondragstart="window._colDragIdx=${i};this.style.opacity='0.4'" ondragend="this.style.opacity='1'" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='#bfdbfe'" ondrop="window.moveColumn(window._colDragIdx,${i})" style="display:flex;align-items:center;gap:3px;background:#eff6ff;border-radius:12px;padding:4px 8px;border:1px solid #bfdbfe;cursor:grab;transition:border-color 0.15s;"><span style="cursor:grab;font-size:11px;color:var(--text-muted);user-select:none;">⠿</span><input class="th-input" style="min-width:80px;" value="${escapeHtml(c)}" onchange="updateColumnName(${i},this.value)"><button class="btn btn-xs" style="color:var(--danger);" onclick="deleteColumn(${i})">×</button></div>`).join('')+'<button class="btn btn-xs" onclick="addColumn()">+ 添加列</button>';
         }
+        window.moveColumn = function(from, to){
+            if (from === to) return;
+            pushUndo();
+            const entry = initFeedbackEntry(currentDateLabel);
+            var cols = entry.dateColumns;
+            var maxs = entry.maxScores;
+            // 移动列名和满分
+            var col = cols.splice(from, 1)[0];
+            cols.splice(to, 0, col);
+            var ms = maxs.splice(from, 1)[0];
+            maxs.splice(to, 0, ms);
+            // 移动每行记录的值和颜色
+            entry.records.forEach(function(r){
+                var v = r.values.splice(from, 1)[0];
+                r.values.splice(to, 0, v);
+                var cl = (r.colors||[]).splice(from, 1)[0];
+                (r.colors||[]).splice(to, 0, cl||'');
+            });
+            saveFeedbackDebounced();
+            renderColumnEditor();
+            renderFeedbackTable();
+        };
         window.updateColumnName=function(i,n){if(!n.trim()){showConfirm('列名不能为空');return;}pushUndo();const entry=initFeedbackEntry(currentDateLabel);entry.dateColumns[i]=n.trim();entry.maxScores[i]=extractMaxScore(n.trim());saveFeedbackDebounced();renderColumnEditor();renderFeedbackTable();};
         window.addColumn=async function(){const n=await showPrompt('新列名称','新项目');if(!n||!n.trim())return;pushUndo();const entry=initFeedbackEntry(currentDateLabel);entry.dateColumns.push(n.trim());entry.maxScores.push(extractMaxScore(n.trim()));entry.records.forEach(r=>{r.values.push('');r.colors.push('');});saveFeedbackDebounced();renderColumnEditor();renderFeedbackTable();};
         window.deleteColumn=async function(i){const entry=initFeedbackEntry(currentDateLabel);if(entry.dateColumns.length<=1){await showConfirm('至少保留一列');return;}if(!await showConfirm(`删除"${entry.dateColumns[i]}"？`))return;pushUndo();entry.dateColumns.splice(i,1);entry.maxScores.splice(i,1);entry.records.forEach(r=>{r.values.splice(i,1);r.colors.splice(i,1);});saveFeedbackDebounced();renderColumnEditor();renderFeedbackTable();};

@@ -1858,12 +1858,12 @@
         }
         window.enterFeedbackForClass=function(classId){if(dragSuppressClick){dragSuppressClick=false;return;}currentClassId=classId;const dates=getDateList();const savedDate=localStorage.getItem('_fb_last_date_'+classId);currentDateLabel=(savedDate&&dates.includes(savedDate))?savedDate:(dates.length?dates[0]:'Day1');switchView('feedback');};
         window.toggleStudentModal=function(classId){const modal=document.getElementById(`studentModal-${classId}`);if(!modal)return;if(activeStudentModal===classId){modal.classList.remove('open');activeStudentModal=null;}else{document.querySelectorAll('.student-modal').forEach(m=>m.classList.remove('open'));modal.classList.add('open');activeStudentModal=classId;renderStudentListInModal(classId);}};
-        function renderStudentListInModal(classId){const cls=classes.find(c=>c.id===classId);if(!cls)return;const students=cls.students||[];var campusInfo='';if(cls.campus){campusInfo='<div style="font-size:11px;color:#64748b;padding:0 0 4px 0;display:flex;align-items:center;gap:3px;">🏫 '+escapeHtml(cls.campus)+(cls.district?' <span style="color:#94a3b8;">· '+escapeHtml(cls.district)+'</span>':'')+'</div>';}document.getElementById('studentModal-'+classId).innerHTML=`
+        function renderStudentListInModal(classId){const cls=classes.find(c=>c.id===classId);if(!cls)return;const students=cls.students||[];var campusInfo='';if(cls.campus){campusInfo='<div style="font-size:11px;color:#64748b;padding:0 0 6px 0;display:flex;align-items:center;gap:3px;">📍 '+escapeHtml(cls.campus)+(cls.district?' <span style="color:#94a3b8;">· '+escapeHtml(cls.district)+'</span>':'')+'</div>';}document.getElementById('studentModal-'+classId).innerHTML=`
             ${campusInfo}
-            <div style="display:flex;gap:6px;align-items:center;">
-                <input class="input" id="studentInput-${classId}" placeholder="输入姓名" style="flex:1;min-width:100px;max-width:260px;">
+            <div style="display:flex;gap:6px;align-items:stretch;">
+                <input class="input" id="studentInput-${classId}" placeholder="输入姓名" style="flex:1;min-width:100px;">
                 <button class="btn btn-sm" onclick="addStudentInModal('${classId}')">➕ 添加</button>
-                <label class="btn btn-outline btn-sm" style="cursor:pointer;">📥 导入Excel<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importStudentsInModal('${classId}', event)"></label>
+                <label class="btn btn-outline btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;">📥 导入Excel<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importStudentsInModal('${classId}', event)"></label>
             </div>
             <div style="margin-top:8px">${students.length?students.map((s,i)=>`
                 <div class="student-list-item" data-idx="${i}"><span id="stuName-${classId}-${i}">${escapeHtml(s)}</span>

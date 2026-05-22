@@ -1252,7 +1252,7 @@
         function renderRecovery() {
             if (!window._recoveryTeacherId) {
                 var teachers = Object.values(allTeachers).filter(function(u) { return u.name; }).sort(function(a,b) { return (a.name||'').localeCompare(b.name||''); });
-                var html = '<div class="card"><div class="card-title">📦 数据恢复</div><div class="card-title" style="font-size:12px;color:var(--text-muted);">选择需要恢复数据的教师</div>';
+                var html = '<div class="card"><div class="card-title"><i class="icon-recovery"></i> 数据恢复</div><div class="card-title" style="font-size:12px;color:var(--text-muted);">选择需要恢复数据的教师</div>';
                 teachers.forEach(function(t) {
                     html += '<div class="t-item" onclick="window._recoveryTeacherId=\''+t.id+'\';renderRecovery()"><div class="t-header"><div><div class="t-name">'+escapeHtml(t.name||t.email||'')+'</div><div class="t-meta">'+(Array.isArray(t.classes)?t.classes.length:0)+' 班级 · '+Object.keys(t.feedback||{}).length+' 课次</div></div><span style="font-size:18px;color:var(--text-muted)">›</span></div></div>';
                 });
@@ -1265,7 +1265,7 @@
             var t = allTeachers[window._recoveryTeacherId];
             if (!t) { window._recoveryTeacherId = null; renderRecovery(); return; }
             var html = '<div class="breadcrumb"><span onclick="window._recoveryTeacherId=null;renderRecovery()">教师列表</span> › '+escapeHtml(t.name||'')+'</div>';
-            html += '<div class="card"><div class="card-title">📦 '+escapeHtml(t.name||'')+' — 数据恢复</div>';
+            html += '<div class="card"><div class="card-title"><i class="icon-recovery"></i> '+escapeHtml(t.name||'')+' — 数据恢复</div>';
             html += '<div id="recoveryContent" class="empty-state">加载中...</div></div>';
             document.getElementById('view-recovery').innerHTML = html;
             // Load backup
@@ -1566,7 +1566,7 @@
         }
 
         function renderCampuses() {
-            var html = '<div class="card"><div class="card-title" style="justify-content:space-between"><span>🏫 校区管理</span><button class="btn btn-sm" onclick="addDistrict()">+ 新增大区</button></div>';
+            var html = '<div class="card"><div class="card-title" style="justify-content:space-between"><span><i class="icon-campus"></i> 校区管理</span><button class="btn btn-sm" onclick="addDistrict()">+ 新增大区</button></div>';
             campusConfig.forEach(function(d, di){
                 html += '<div style="background:var(--bg);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:8px;">';
                 html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">';

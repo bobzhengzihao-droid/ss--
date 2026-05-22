@@ -1254,7 +1254,7 @@
                     html += '<div class="t-item" onclick="window._recoveryTeacherId=\''+t.id+'\';renderRecovery()"><div class="t-header"><div><div class="t-name">'+escapeHtml(t.name||t.email||'')+'</div><div class="t-meta">'+(Array.isArray(t.classes)?t.classes.length:0)+' 班级 · '+Object.keys(t.feedback||{}).length+' 课次</div></div><span style="font-size:18px;color:var(--text-muted)">›</span></div></div>';
                 });
                 if (!teachers.length) html += '<div class="empty-state">暂无教师数据</div>';
-                html += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"><div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">全局清理：删除所有超过 30 天的备份和孤儿反馈记录</div><button class="btn btn-sm btn-outline" onclick="cleanExpiredData()" style="color:var(--danger);border-color:var(--danger);">🧹 清理过期数据</button></div>';
+                html += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"><div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">一键清理：删除全部备份和孤儿反馈（不限天数）。教师端自动清理仅删超过 30 天的。</div><button class="btn btn-sm btn-outline" onclick="cleanAllOrphans()" style="color:var(--danger);border-color:var(--danger);">🗑️ 清理全部孤儿数据</button></div>';
                 html += '</div>';
                 document.getElementById('view-recovery').innerHTML = html;
                 return;
@@ -1334,31 +1334,23 @@
             } catch(e) { await showConfirm('重建失败：'+e.message); }
         };
 
-        window.cleanExpiredData = async function() {
-            if (!await showConfirm('将删除所有超过 30 天的备份和孤儿反馈记录（班级已被删除的反馈数据）。\n此操作不可撤销。')) return;
+        window.cleanAllOrphans = async function() {
+            if (!await showConfirm('⚠️ 将删除全部教师的备份数据和孤儿反馈记录。\n孤儿反馈 = 班级已删但反馈还在的 fb| 记录。\n\n教师端自动清理仅删超过 30 天的，此按钮不限天数。\n此操作不可撤销。确定？')) return;
             var hdrs = { 'apikey': SERVICE_ROLE_KEY, 'Authorization': 'Bearer ' + SERVICE_ROLE_KEY };
-            var thirtyDaysAgo = new Date(Date.now() - 30*24*60*60*1000).toISOString();
             var cleaned = 0;
             try {
-                // 1. 清理过期备份
-                var resp = await fetch(SUPABASE_URL+'/rest/v1/data_store?select=user_id,key,value&key=eq.classes_backup&limit=1000', { headers: hdrs });
+                // 1. 删全部备份
+                var resp = await fetch(SUPABASE_URL+'/rest/v1/data_store?select=user_id,key&key=eq.classes_backup&limit=1000', { headers: hdrs });
                 var rows = await resp.json();
                 for (var i = 0; i < rows.length; i++) {
-                    var backupTime = (rows[i].value && rows[i].value._backupTime) || '';
-                    if (backupTime && backupTime < thirtyDaysAgo) {
-                        await fetch(SUPABASE_URL+'/rest/v1/data_store?user_id=eq.'+rows[i].user_id+'&key=eq.classes_backup', { method: 'DELETE', headers: hdrs });
-                        cleaned++;
-                    }
+                    await fetch(SUPABASE_URL+'/rest/v1/data_store?user_id=eq.'+rows[i].user_id+'&key=eq.classes_backup', { method: 'DELETE', headers: hdrs });
+                    cleaned++;
                 }
-                // 2. 清理孤儿 fb| 记录（班级已删且超 30 天）
-                resp = await fetch(SUPABASE_URL+'/rest/v1/data_store?select=user_id,key,value&key=like.fb|*&limit=5000', { headers: hdrs });
+                // 2. 删全部孤儿 fb|（班级已删的）
+                resp = await fetch(SUPABASE_URL+'/rest/v1/data_store?select=user_id,key&key=like.fb|*&limit=5000', { headers: hdrs });
                 rows = await resp.json();
                 var perUser = {};
-                rows.forEach(function(r){
-                    var uid = r.user_id;
-                    if (!perUser[uid]) perUser[uid] = { classes: null, fbs: [] };
-                    perUser[uid].fbs.push(r);
-                });
+                rows.forEach(function(r){ var uid = r.user_id; if (!perUser[uid]) perUser[uid] = []; perUser[uid].push(r); });
                 for (var uid in perUser) {
                     var cresp = await fetch(SUPABASE_URL+'/rest/v1/data_store?select=value&user_id=eq.'+uid+'&key=eq.classes', { headers: hdrs });
                     var crows = await cresp.json();
@@ -1366,16 +1358,15 @@
                     if (crows.length && crows[0].value && Array.isArray(crows[0].value)) {
                         classIds = crows[0].value.map(function(c){return c.id;});
                     }
-                    perUser[uid].fbs.forEach(function(r){
+                    perUser[uid].forEach(function(r){
                         var cid = r.key.split('|')[1];
-                        var ts = (r.value && r.value._updatedAt) ? new Date(r.value._updatedAt).toISOString() : '';
-                        if (classIds.indexOf(cid) === -1 && ts && ts < thirtyDaysAgo) {
+                        if (classIds.indexOf(cid) === -1) {
                             fetch(SUPABASE_URL+'/rest/v1/data_store?user_id=eq.'+uid+'&key=eq.'+encodeURIComponent(r.key), { method: 'DELETE', headers: hdrs });
                             cleaned++;
                         }
                     });
                 }
-                await showConfirm('已清理 '+cleaned+' 条过期数据');
+                await showConfirm('已清理 '+cleaned+' 条数据');
             } catch(e) { await showConfirm('清理失败：'+e.message); }
         };
 

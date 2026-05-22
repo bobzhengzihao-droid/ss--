@@ -687,7 +687,7 @@
                 return;
             }
             await loadAllData();
-            await loadCampusConfig();
+            loadCampusConfig();
             // Init super admin
             var storedSuper = localStorage.getItem('_fb_super_admin_id');
             if (storedSuper) {

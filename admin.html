@@ -851,6 +851,7 @@
             sidebarHTML += '<a onclick="switchView(\'analysis\')" data-nav="analysis"><i class="iconfont icon-chart"></i><span class="nav-label">分析</span></a>';
             sidebarHTML += '<a onclick="switchView(\'query\')" data-nav="query"><i class="iconfont4 icon-chaxun"></i><span class="nav-label">查询</span></a>';
             sidebarHTML += '<a onclick="switchView(\'campuses\')" data-nav="campuses"><span class="sidebar-emoji">🏫</span><span class="nav-label">校区管理</span></a>';
+            sidebarHTML += '<a onclick="switchView(\'recovery\')" data-nav="recovery"><span class="sidebar-emoji">📦</span><span class="nav-label">数据恢复</span></a>';
 
             document.getElementById('app').innerHTML = `
                 <div class="app-layout">
@@ -880,6 +881,7 @@
                             <div id="view-query" class="subview"></div>
                             <div id="view-profile" class="subview"></div>
                             <div id="view-campuses" class="subview"></div>
+                            <div id="view-recovery" class="subview"></div>
                         </div>
                     </div>
                     <div class="mobile-nav" id="mobileNav">
@@ -924,6 +926,7 @@
             else if (view === 'query') renderQuery();
             else if (view === 'profile') renderProfile();
             else if (view === 'campuses') renderCampuses();
+            else if (view === 'recovery') renderRecovery();
             updateExportLabel();
             // Close mobile sidebar
             if (window.innerWidth <= 768) { var s = document.getElementById('sidebar'); if (s) s.classList.remove('open'); var o = document.getElementById('sidebarOverlay'); if (o) o.classList.remove('open'); }
@@ -1239,6 +1242,72 @@
             updateExportLabel();
         }
         window.renderDataBrowser = renderDataBrowser;
+
+        // ========== Data Recovery ==========
+        var recoveryTeacherId = null;
+
+        function renderRecovery() {
+            if (!recoveryTeacherId) {
+                var teachers = Object.values(allTeachers).filter(function(u) { return u.name; }).sort(function(a,b) { return (a.name||'').localeCompare(b.name||''); });
+                var html = '<div class="card"><div class="card-title">📦 数据恢复</div><div class="card-title" style="font-size:12px;color:var(--text-muted);">选择需要恢复数据的教师</div>';
+                teachers.forEach(function(t) {
+                    html += '<div class="t-item" onclick="recoveryTeacherId=\''+t.id+'\';renderRecovery()"><div class="t-header"><div><div class="t-name">'+escapeHtml(t.name||t.email||'')+'</div><div class="t-meta">'+(Array.isArray(t.classes)?t.classes.length:0)+' 班级 · '+Object.keys(t.feedback||{}).length+' 课次</div></div><span style="font-size:18px;color:var(--text-muted)">›</span></div></div>';
+                });
+                if (!teachers.length) html += '<div class="empty-state">暂无教师数据</div>';
+                html += '</div>';
+                document.getElementById('view-recovery').innerHTML = html;
+                return;
+            }
+            var t = allTeachers[recoveryTeacherId];
+            if (!t) { recoveryTeacherId = null; renderRecovery(); return; }
+            var html = '<div class="breadcrumb"><span onclick="recoveryTeacherId=null;renderRecovery()">教师列表</span> › '+escapeHtml(t.name||'')+'</div>';
+            html += '<div class="card"><div class="card-title">📦 '+escapeHtml(t.name||'')+' — 数据恢复</div>';
+            // Load backup
+            var hdrs = { 'apikey': SERVICE_ROLE_KEY, 'Authorization': 'Bearer ' + SERVICE_ROLE_KEY };
+            fetch(SUPABASE_URL+'/rest/v1/data_store?select=value&user_id=eq.'+t.id+'&key=eq.classes_backup', { headers: hdrs })
+                .then(function(r){return r.json();})
+                .then(function(rows){
+                    var recoveryHtml = '';
+                    if (rows.length && rows[0].value && Array.isArray(rows[0].value)) {
+                        var backup = rows[0].value;
+                        var backupTime = backup._backupTime || '';
+                        delete backup._backupTime;
+                        var clsCount = backup.length;
+                        var stuCount = backup.reduce(function(s,c){return s+(c.students?c.students.length:0);},0);
+                        recoveryHtml += '<div style="background:#fef3c7;border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:12px;">';
+                        recoveryHtml += '<div style="font-size:13px;font-weight:600;">备份时间：'+escapeHtml(backupTime||'未知')+'</div>';
+                        recoveryHtml += '<div style="font-size:12px;color:var(--text-muted);">'+clsCount+' 个班级 · '+stuCount+' 名学生</div>';
+                        recoveryHtml += '<button class="btn btn-sm" onclick="restoreBackup(\''+t.id+'\')" style="margin-top:8px;">恢复到此版本</button>';
+                        recoveryHtml += '</div>';
+                    } else {
+                        recoveryHtml += '<div class="empty-state">该教师暂无备份数据</div>';
+                    }
+                    recoveryHtml += '<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">备份在每次班级数据写入时自动创建。30天后自动清除。</div>';
+                    document.getElementById('view-recovery').innerHTML = html + recoveryHtml + '</div>';
+                }).catch(function(){
+                    document.getElementById('view-recovery').innerHTML = html + '<div class="empty-state">加载失败</div></div>';
+                });
+        }
+        window.renderRecovery = renderRecovery;
+
+        window.restoreBackup = async function(teacherId) {
+            if (!await showConfirm('确定恢复该教师的备份数据？当前数据将被覆盖。')) return;
+            var hdrs = { 'apikey': SERVICE_ROLE_KEY, 'Authorization': 'Bearer ' + SERVICE_ROLE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+            try {
+                var resp = await fetch(SUPABASE_URL+'/rest/v1/data_store?select=value&user_id=eq.'+teacherId+'&key=eq.classes_backup', { headers: hdrs });
+                var rows = await resp.json();
+                if (rows.length && rows[0].value) {
+                    var backup = rows[0].value;
+                    delete backup._backupTime;
+                    await fetch(SUPABASE_URL+'/rest/v1/data_store?user_id=eq.'+teacherId+'&key=eq.classes', {
+                        method: 'PATCH', headers: hdrs, body: JSON.stringify({ value: backup })
+                    });
+                    await showConfirm('已恢复');
+                    recoveryTeacherId = null;
+                    renderRecovery();
+                }
+            } catch(e) { await showConfirm('恢复失败：'+e.message); }
+        };
 
         // ========== Analysis ==========
         function getAnalysisFeedbackEntry(classId, dateLabel) {

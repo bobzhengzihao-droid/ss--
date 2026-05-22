@@ -1490,7 +1490,11 @@
                 .then(function(r){return r.json();})
                 .then(function(rows){
                     if (rows.length && rows[0].value) campusConfig = rows[0].value;
-                }).catch(function(){});
+                }).catch(function(){})
+                .then(function(){
+                    // 如果当前在校区管理页，刷新显示
+                    if (currentView === 'campuses') renderCampuses();
+                });
         }
 
         function saveCampusConfig() {

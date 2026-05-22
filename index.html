@@ -1074,6 +1074,30 @@
                 const { data: { session } } = await supabase.auth.getSession();
                 const user = session && session.user;
                 if (user) {
+                    // 锁一+锁二：classes 写入保护 + 自动备份
+                    if (key === 'classes' && Array.isArray(value)) {
+                        try {
+                            var { data: oldRow } = await supabase.from('data_store')
+                                .select('value').eq('user_id', user.id).eq('key', 'classes').maybeSingle();
+                            var oldClasses = (oldRow && oldRow.value) ? oldRow.value : [];
+                            var oldCount = Array.isArray(oldClasses) ? oldClasses.length : 0;
+                            var newCount = value.length;
+                            // 锁一：旧数据 > 3 且新数据不到旧的一半 → 异常拦截
+                            if (oldCount > 3 && newCount < oldCount / 2) {
+                                var confirmed = await showConfirm('⚠️ 数据异常\n\n云端有 '+oldCount+' 个班级，当前只有 '+newCount+' 个班级。\n可能是网络波动导致数据未加载完整。\n\n请点击「取消」并刷新页面，等网络恢复后再操作。\n如果确定要清除班级（学期结束），请点击「确认」。');
+                                if (!confirmed) { _showSyncWarning('已阻止覆盖，请刷新页面'); return false; }
+                            }
+                            // 锁二：写入前备份旧数据
+                            if (oldCount > 0) {
+                                var backupVal = JSON.parse(JSON.stringify(oldClasses));
+                                backupVal._backupTime = new Date().toISOString();
+                                await supabase.from('data_store').upsert({
+                                    user_id: user.id, key: 'classes_backup', value: backupVal,
+                                    updated_at: new Date().toISOString()
+                                }, { onConflict: 'user_id,key' }).then(function(){}, function(){});
+                            }
+                        } catch(e) {}
+                    }
                     const { error } = await supabase.from('data_store').upsert({
                         user_id: user.id, key: key, value: value,
                         updated_at: new Date().toISOString()
@@ -1537,6 +1561,40 @@
             analysisSel = cloudAnalysis || localAnalysis || {};
 
             if (!classes || !classes.length) { classes = defaultClasses(); feedback = {}; tools = [...DEFAULT_TOOLS]; analysisSel = {}; await saveAllDataNow(); }
+            // 锁三：从 fb| 记录自愈缺失班级
+            try {
+                var fbClassIds = new Set();
+                Object.keys(feedback).forEach(function(k) {
+                    var cid = k.split('|')[0];
+                    if (cid && cid !== 'c1') fbClassIds.add(cid);
+                });
+                var existingIds = new Set(classes.map(function(c) { return c.id; }));
+                var missingIds = [];
+                fbClassIds.forEach(function(cid) { if (!existingIds.has(cid)) missingIds.push(cid); });
+                if (missingIds.length > 0) {
+                    var healed = [];
+                    missingIds.forEach(function(cid) {
+                        var fbKeys = Object.keys(feedback).filter(function(k) { return k.indexOf(cid+'|') === 0; }).sort();
+                        if (!fbKeys.length) return;
+                        var entry = feedback[fbKeys[0]];
+                        var records = entry.records || (Array.isArray(entry) ? entry : []);
+                        var students = records.map(function(r) { return r.name || ''; }).filter(function(n) { return n; });
+                        if (!students.length) return;
+                        classes.push({
+                            id: cid, name: '恢复班级'+(existingIds.size + healed.length + 1),
+                            students: students,
+                            columns: entry.dateColumns || [],
+                            rowHeight: 36,
+                            tableColors: { headerBg: '#eff6ff', headerText: '#1e40af', border: '#bfdbfe', rowEven: '#f8fafc' }
+                        });
+                        healed.push(cid);
+                    });
+                    if (healed.length > 0) {
+                        console.log('[DATA] 锁三自愈：从反馈重建了 '+healed.length+' 个缺失班级');
+                        dbSet('classes', classes);
+                    }
+                }
+            } catch(e) { console.warn('[DATA] 锁三自愈失败:', e.message); }
             console.log('[DATA] 所有 feedback keys:', Object.keys(feedback).sort());
             console.log('[DATA] 所有班级:', classes.map(c => c.id + ':' + c.name));
             currentClassId = classes.length ? classes[0].id : null;

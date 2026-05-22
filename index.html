@@ -1600,30 +1600,7 @@
                     }
                 }
             } catch(e) { console.warn('[DATA] 锁三自愈失败:', e.message); }
-            // 锁四配套：清理 30 天前的孤儿 fb| 记录（对应班级已删且超过 30 天）
-            try {
-                var thirtyDaysAgo = Date.now() - 30*24*60*60*1000;
-                var classIds = new Set(classes.map(function(c){return c.id;}));
-                var orphanKeys = [];
-                Object.keys(feedback).forEach(function(k){
-                    var cid = k.split('|')[0];
-                    if (!classIds.has(cid)) {
-                        var ts = (feedback[k] && feedback[k]._updatedAt) || 0;
-                        if (ts < thirtyDaysAgo) orphanKeys.push(k);
-                    }
-                });
-                if (orphanKeys.length > 0) {
-                    orphanKeys.forEach(function(k){ delete feedback[k]; });
-                    // 异步清理云端
-                    orphanKeys.forEach(function(k){
-                        var parts = k.split('|');
-                        if (parts.length >= 2) {
-                            supabase.from('data_store').delete().eq('user_id', _userId).eq('key', _fbStoreKey(parts[0], parts.slice(1).join('|'))).then(function(){},function(){});
-                        }
-                    });
-                    console.log('[DATA] 清理了 '+orphanKeys.length+' 条过期孤儿反馈');
-                }
-            } catch(e) { console.warn('[DATA] 孤儿清理失败:', e.message); }
+            // 孤儿 fb| 不再自动清理 —— 由管理者手动在数据恢复页操作
             console.log('[DATA] 所有 feedback keys:', Object.keys(feedback).sort());
             console.log('[DATA] 所有班级:', classes.map(c => c.id + ':' + c.name));
             currentClassId = classes.length ? classes[0].id : null;

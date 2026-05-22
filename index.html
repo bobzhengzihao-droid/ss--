@@ -1059,11 +1059,6 @@
         async function _saveKey(key, value) {
             // null = 删除
             if (value === null) {
-                // fb| key 不真删云端 —— 锁四：删班时反馈数据保留，管理者可恢复
-                if (typeof key === 'string' && key.indexOf('fb|') === 0) {
-                    try { _idb.set(_cacheKey(key), null); } catch(e) {}
-                    return true;
-                }
                 try {
                     const { data: { session } } = await supabase.auth.getSession();
                     const user = session && session.user;
@@ -1964,7 +1959,7 @@
         };
         window.addClass=function(){const n=document.getElementById('newClassName').value.trim();if(!n){showConfirm('请输入班级名称');return;}var dist=document.getElementById('newClassDistrict').value;var camp=document.getElementById('newClassCampus').value;if(!dist||!camp){showConfirm('请选择大区和校区');return;}const nc={id:'c'+Date.now(),name:n,district:dist,campus:camp,students:[],columns:['听写(满分12)','小测(满分10)','自学资料','笔记','语音作业','小书童(满分100)','备注'],rowHeight:36,tableColors:{headerBg:'#eff6ff',headerText:'#1e40af',border:'#bfdbfe',rowEven:'#f8fafc'}};classes.push(nc);dbSet('classes',classes);document.getElementById('newClassName').value='';currentClassId=nc.id;renderClassList();setTimeout(function(){window.toggleStudentModal(nc.id);},80);};
         window.editClassName=async function(id){const c=classes.find(function(x){return x.id===id;});if(!c)return;const n=await showPrompt('新班级名称',c.name);if(n&&n.trim()){c.name=n.trim();};if(campusConfig.length){var curDist=c.district||'';var distList=campusConfig.map(function(d,i){return (i+1)+'. '+d.district;}).join('\n');var distChoice=await showPrompt('大区（输入序号，留空不变）：\n'+distList,'');if(distChoice&&distChoice.trim()){var di=parseInt(distChoice.trim())-1;if(di>=0&&di<campusConfig.length){c.district=campusConfig[di].district;var curCamp=c.campus||'';var campList=(campusConfig[di].campuses||[]).map(function(cp,i){return (i+1)+'. '+cp;}).join('\n');var campChoice=await showPrompt('校区（输入序号，留空不变）：\n'+campList,'');if(campChoice&&campChoice.trim()){var ci=parseInt(campChoice.trim())-1;if(ci>=0&&ci<(campusConfig[di].campuses||[]).length){c.campus=campusConfig[di].campuses[ci];}}}}}dbSet('classes',classes);renderClassList();updateCurrentClassDisplay();};
-        window.deleteClass=async function(id){if(!await showConfirm('删除班级及反馈？'))return;classes=classes.filter(x=>x.id!==id);await dbSet('classes',classes);const prefix=id+'|';for(const k in feedback)if(k.startsWith(prefix)){var parts=k.split('|');dbSet(_fbStoreKey(parts[0],parts.slice(1).join('|')),null);delete feedback[k];}currentClassId=classes.length?classes[0].id:null;renderClassList();if(currentClassId)switchView('classes');};
+        window.deleteClass=async function(id){if(!await showConfirm('删除班级及反馈？'))return;classes=classes.filter(x=>x.id!==id);await dbSet('classes',classes);const prefix=id+'|';for(const k in feedback)if(k.startsWith(prefix)){delete feedback[k];}currentClassId=classes.length?classes[0].id:null;renderClassList();if(currentClassId)switchView('classes');};
 
         // ========== 导出 ==========
         window.exportAllData=async function(){const dateStr=new Date().toLocaleDateString('zh-CN').replace(/\//g,'-');const blob=new Blob([JSON.stringify({classes,feedback,tools,analysisSel})],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`全部数据备份_${dateStr}.json`;a.click();};

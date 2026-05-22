@@ -1282,7 +1282,12 @@
                         recoveryHtml += '<button class="btn btn-sm" onclick="restoreBackup(\''+t.id+'\')" style="margin-top:8px;">恢复到此版本</button>';
                         recoveryHtml += '</div>';
                     } else {
+                        var fbKeys = Object.keys(t.feedback||{}).filter(function(k){return k.indexOf('|')>0 && !k.startsWith('c1|');});
                         recoveryHtml += '<div class="empty-state">该教师暂无备份数据</div>';
+                        if (fbKeys.length > 0) {
+                            recoveryHtml += '<button class="btn btn-sm" onclick="rebuildFromFeedback(\''+t.id+'\')" style="margin-top:8px;">🔧 从反馈记录重建班级</button>';
+                            recoveryHtml += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">从 '+fbKeys.length+' 条反馈记录中提取班级信息</div>';
+                        }
                     }
                     recoveryHtml += '<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">备份在每次班级数据写入时自动创建。30天后自动清除。</div>';
                     document.getElementById('recoveryContent').innerHTML = recoveryHtml;
@@ -1291,6 +1296,42 @@
                 });
         }
         window.renderRecovery = renderRecovery;
+
+        window.rebuildFromFeedback = async function(teacherId) {
+            if (!await showConfirm('将从该教师的反馈记录中提取班级信息并重建。\n班级名称默认为"恢复班级N"，教师可自行改名。')) return;
+            var hdrs = { 'apikey': SERVICE_ROLE_KEY, 'Authorization': 'Bearer ' + SERVICE_ROLE_KEY };
+            try {
+                var resp = await fetch(SUPABASE_URL+'/rest/v1/data_store?select=key,value&user_id=eq.'+teacherId+'&key=like.fb|*&order=key', { headers: hdrs });
+                var rows = await resp.json();
+                var classMap = {};
+                rows.forEach(function(r){
+                    var parts = r.key.split('|');
+                    var cid = parts[1];
+                    if (cid === 'c1' || classMap[cid]) return;
+                    var entry = r.value;
+                    var records = entry.records || (Array.isArray(entry) ? entry : []);
+                    var students = records.map(function(rec){return rec.name||'';}).filter(function(n){return n;});
+                    if (students.length) classMap[cid] = { students: students, columns: entry.dateColumns||[] };
+                });
+                var newClasses = [];
+                var idx = 1;
+                Object.keys(classMap).sort().forEach(function(cid){
+                    newClasses.push({
+                        id: cid, name: '恢复班级'+(idx++),
+                        students: classMap[cid].students,
+                        columns: classMap[cid].columns,
+                        rowHeight: 36,
+                        tableColors: { headerBg: '#eff6ff', headerText: '#1e40af', border: '#bfdbfe', rowEven: '#f8fafc' }
+                    });
+                });
+                await fetch(SUPABASE_URL+'/rest/v1/data_store?user_id=eq.'+teacherId+'&key=eq.classes', {
+                    method: 'PATCH', headers: hdrs, body: JSON.stringify({ value: newClasses })
+                });
+                await showConfirm('已从反馈记录重建 '+newClasses.length+' 个班级');
+                recoveryTeacherId = null;
+                renderRecovery();
+            } catch(e) { await showConfirm('重建失败：'+e.message); }
+        };
 
         window.restoreBackup = async function(teacherId) {
             if (!await showConfirm('确定恢复该教师的备份数据？当前数据将被覆盖。')) return;

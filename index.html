@@ -1087,24 +1087,25 @@
                                 var confirmed = await showConfirm('⚠️ 数据异常\n\n云端有 '+oldCount+' 个班级，当前只有 '+newCount+' 个班级。\n可能是网络波动导致数据未加载完整。\n\n请点击「取消」并刷新页面，等网络恢复后再操作。\n如果确定要清除班级（学期结束），请点击「确认」。');
                                 if (!confirmed) { _showSyncWarning('已阻止覆盖，请刷新页面'); return false; }
                             }
-                            // 锁二：写入前滚动备份旧数据（3份）
+                            // 锁二：写入前备份——只在新数据 ≥ 旧备份时才覆盖，保证永远保留班级数最多的版本
                             if (oldCount > 0) {
-                                var backupObj = { classes: JSON.parse(JSON.stringify(oldClasses)), _backupTime: new Date().toISOString() };
                                 try {
-                                    // 滚动：backup_2 → backup_3, backup_1 → backup_2, 新建 backup_1
-                                    var b2 = await supabase.from('data_store').select('value').eq('user_id', user.id).eq('key', 'classes_backup_2').maybeSingle();
-                                    if (b2 && b2.data && b2.data.value) {
-                                        await supabase.from('data_store').upsert({ user_id: user.id, key: 'classes_backup_3', value: b2.data.value, updated_at: new Date().toISOString() }, { onConflict: 'user_id,key' }).then(function(){}, function(){});
+                                    var existingBackup = await supabase.from('data_store').select('value').eq('user_id', user.id).eq('key', 'classes_backup').maybeSingle();
+                                    var existingCount = 0;
+                                    if (existingBackup && existingBackup.data && existingBackup.data.value) {
+                                        var eb = existingBackup.data.value;
+                                        var ebClasses = eb.classes || eb;
+                                        existingCount = Array.isArray(ebClasses) ? ebClasses.length : 0;
                                     }
-                                    var b1 = await supabase.from('data_store').select('value').eq('user_id', user.id).eq('key', 'classes_backup_1').maybeSingle();
-                                    if (b1 && b1.data && b1.data.value) {
-                                        await supabase.from('data_store').upsert({ user_id: user.id, key: 'classes_backup_2', value: b1.data.value, updated_at: new Date().toISOString() }, { onConflict: 'user_id,key' }).then(function(){}, function(){});
+                                    // 新数据班数 ≥ 旧备份班数 → 覆盖；否则保留旧备份不动
+                                    if (newCount >= existingCount) {
+                                        var backupObj = { classes: JSON.parse(JSON.stringify(oldClasses)), _backupTime: new Date().toISOString() };
+                                        await supabase.from('data_store').upsert({
+                                            user_id: user.id, key: 'classes_backup', value: backupObj,
+                                            updated_at: new Date().toISOString()
+                                        }, { onConflict: 'user_id,key' }).then(function(){}, function(){});
                                     }
                                 } catch(e) {}
-                                await supabase.from('data_store').upsert({
-                                    user_id: user.id, key: 'classes_backup_1', value: backupObj,
-                                    updated_at: new Date().toISOString()
-                                }, { onConflict: 'user_id,key' }).then(function(){}, function(){});
                             }
                         } catch(e) {}
                     }

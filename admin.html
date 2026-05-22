@@ -1254,7 +1254,7 @@
                     html += '<div class="t-item" onclick="window._recoveryTeacherId=\''+t.id+'\';renderRecovery()"><div class="t-header"><div><div class="t-name">'+escapeHtml(t.name||t.email||'')+'</div><div class="t-meta">'+(Array.isArray(t.classes)?t.classes.length:0)+' 班级 · '+Object.keys(t.feedback||{}).length+' 课次</div></div><span style="font-size:18px;color:var(--text-muted)">›</span></div></div>';
                 });
                 if (!teachers.length) html += '<div class="empty-state">暂无教师数据</div>';
-                html += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"><div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">一键清理：删除全部备份和孤儿反馈（不限天数）。数据不会自动清理，需要你学期末手动操作。</div><button class="btn btn-sm btn-outline" onclick="cleanAllOrphans()" style="color:var(--danger);border-color:var(--danger);">🗑️ 清理全部孤儿数据</button></div>';
+                html += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);"><div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">一键清理：删除全部备份和孤儿反馈（不限天数）。数据不会自动清理，需要你学期末手动操作。</div><button class="btn btn-sm btn-outline" onclick="cleanAllOrphans()" style="color:var(--text-muted);border-color:var(--text-muted);">🗑️ 清理数据</button></div>';
                 html += '</div>';
                 document.getElementById('view-recovery').innerHTML = html;
                 return;

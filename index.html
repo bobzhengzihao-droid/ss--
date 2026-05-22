@@ -1094,10 +1094,9 @@
                             }
                             // 锁二：写入前备份旧数据
                             if (oldCount > 0) {
-                                var backupVal = JSON.parse(JSON.stringify(oldClasses));
-                                backupVal._backupTime = new Date().toISOString();
+                                var backupObj = { classes: JSON.parse(JSON.stringify(oldClasses)), _backupTime: new Date().toISOString() };
                                 await supabase.from('data_store').upsert({
-                                    user_id: user.id, key: 'classes_backup', value: backupVal,
+                                    user_id: user.id, key: 'classes_backup', value: backupObj,
                                     updated_at: new Date().toISOString()
                                 }, { onConflict: 'user_id,key' }).then(function(){}, function(){});
                             }

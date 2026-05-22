@@ -687,7 +687,7 @@
                 return;
             }
             await loadAllData();
-            loadCampusConfig();
+            await loadCampusConfig();
             // Init super admin
             var storedSuper = localStorage.getItem('_fb_super_admin_id');
             if (storedSuper) {
@@ -1443,7 +1443,7 @@
 
         function loadCampusConfig() {
             var hdrs = { 'apikey': SERVICE_ROLE_KEY, 'Authorization': 'Bearer ' + SERVICE_ROLE_KEY };
-            fetch(SUPABASE_URL + '/rest/v1/data_store?select=value&key=eq._campuses&limit=1', { headers: hdrs })
+            return fetch(SUPABASE_URL + '/rest/v1/data_store?select=value&key=eq._campuses&limit=1', { headers: hdrs })
                 .then(function(r){return r.json();})
                 .then(function(rows){
                     if (rows.length && rows[0].value) campusConfig = rows[0].value;
@@ -1465,7 +1465,6 @@
         }
 
         function renderCampuses() {
-            if (!campusConfig.length) loadCampusConfig();
             var html = '<div class="card"><div class="card-title" style="justify-content:space-between"><span>🏫 校区管理</span><button class="btn btn-sm" onclick="addDistrict()">+ 新增大区</button></div>';
             campusConfig.forEach(function(d, di){
                 html += '<div style="background:var(--bg);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:8px;">';

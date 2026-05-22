@@ -1335,7 +1335,7 @@
         };
 
         window.cleanAllOrphans = async function() {
-            if (!await showConfirm('⚠️ 将删除全部教师的备份数据和孤儿反馈记录。\n孤儿反馈 = 班级已删但反馈还在的 fb| 记录。\n\n教师端自动清理仅删超过 30 天的，此按钮不限天数。\n此操作不可撤销。确定？')) return;
+            if (!await showConfirm('⚠️ 将删除全部教师的备份数据和孤儿反馈。\n孤儿反馈 = 班级已删但反馈还在的记录。\n\n此操作不可撤销，建议学期结束后再操作。确定？')) return;
             var hdrs = { 'apikey': SERVICE_ROLE_KEY, 'Authorization': 'Bearer ' + SERVICE_ROLE_KEY };
             var cleaned = 0;
             try {

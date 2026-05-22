@@ -1054,6 +1054,7 @@
         // ========== 数据库封装（Supabase 优先 + IndexedDB 备份）==========
         let _userId = null, _lastAccessToken = null, currentGender = '', currentDistrict = '';
         let campusConfig = [];
+        let _lastKnownClassCount = 0;
         function _cacheKey(k) { return '_fb_' + (_userId || 'anon') + '_' + k; }
 
         async function _saveKey(key, value) {
@@ -1081,6 +1082,8 @@
                                 .select('value').eq('user_id', user.id).eq('key', 'classes').maybeSingle();
                             var oldClasses = (oldRow && oldRow.value) ? oldRow.value : [];
                             var oldCount = Array.isArray(oldClasses) ? oldClasses.length : 0;
+                            // 云端读不到 → 用内存缓存兜底
+                            if (oldCount === 0 && _lastKnownClassCount > 0) oldCount = _lastKnownClassCount;
                             var newCount = value.length;
                             // 锁一：旧数据 > 3 且新数据不到旧的一半 → 异常拦截
                             if (oldCount > 3 && newCount < oldCount / 2) {
@@ -1530,6 +1533,7 @@
             // 3. 合并：云端为主，本地补漏
             if (cloudClasses && cloudClasses.length) {
                 classes = cloudClasses;
+                _lastKnownClassCount = cloudClasses.length;
                 // 云端有真数据 → 清除本地旧缓存，防止下次离线加载脏数据
                 if (cloudClasses.length > 1 || cloudClasses[0].id !== 'c1') {
                     try { _idb.set(_cacheKey('_fullBackup'), null); _idb.set(_cacheKey('classes'), cloudClasses); } catch(e) {}

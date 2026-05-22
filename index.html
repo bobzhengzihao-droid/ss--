@@ -1059,6 +1059,11 @@
         async function _saveKey(key, value) {
             // null = 删除
             if (value === null) {
+                // fb| key 不真删云端 —— 锁四：删班时反馈数据保留，管理者可恢复
+                if (typeof key === 'string' && key.indexOf('fb|') === 0) {
+                    try { _idb.set(_cacheKey(key), null); } catch(e) {}
+                    return true;
+                }
                 try {
                     const { data: { session } } = await supabase.auth.getSession();
                     const user = session && session.user;

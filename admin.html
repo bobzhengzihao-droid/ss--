@@ -1342,32 +1342,42 @@
             var hdrs = { 'apikey': SERVICE_ROLE_KEY, 'Authorization': 'Bearer ' + SERVICE_ROLE_KEY };
             var cleaned = 0;
             try {
-                // 1. 删全部备份
-                var resp = await fetch(SUPABASE_URL+'/rest/v1/data_store?select=user_id,key&key=eq.classes_backup&limit=1000', { headers: hdrs });
-                var rows = await resp.json();
-                for (var i = 0; i < rows.length; i++) {
-                    await fetch(SUPABASE_URL+'/rest/v1/data_store?user_id=eq.'+rows[i].user_id+'&key=eq.classes_backup', { method: 'DELETE', headers: hdrs });
-                    cleaned++;
-                }
-                // 2. 删全部孤儿 fb|（班级已删的）
-                resp = await fetch(SUPABASE_URL+'/rest/v1/data_store?select=user_id,key&key=like.fb|*&limit=5000', { headers: hdrs });
-                rows = await resp.json();
-                var perUser = {};
-                rows.forEach(function(r){ var uid = r.user_id; if (!perUser[uid]) perUser[uid] = []; perUser[uid].push(r); });
-                for (var uid in perUser) {
-                    var cresp = await fetch(SUPABASE_URL+'/rest/v1/data_store?select=value&user_id=eq.'+uid+'&key=eq.classes', { headers: hdrs });
-                    var crows = await cresp.json();
-                    var classIds = [];
-                    if (crows.length && crows[0].value && Array.isArray(crows[0].value)) {
-                        classIds = crows[0].value.map(function(c){return c.id;});
+                // 1. 分页删全部备份
+                var offset = 0, pageSize = 1000;
+                while (true) {
+                    var resp = await fetch(SUPABASE_URL+'/rest/v1/data_store?select=user_id,key&key=eq.classes_backup&limit='+pageSize+'&offset='+offset, { headers: hdrs });
+                    var rows = await resp.json();
+                    if (!rows.length) break;
+                    for (var i = 0; i < rows.length; i++) {
+                        await fetch(SUPABASE_URL+'/rest/v1/data_store?user_id=eq.'+rows[i].user_id+'&key=eq.classes_backup', { method: 'DELETE', headers: hdrs });
+                        cleaned++;
                     }
-                    perUser[uid].forEach(function(r){
-                        var cid = r.key.split('|')[1];
-                        if (classIds.indexOf(cid) === -1) {
-                            fetch(SUPABASE_URL+'/rest/v1/data_store?user_id=eq.'+uid+'&key=eq.'+encodeURIComponent(r.key), { method: 'DELETE', headers: hdrs });
-                            cleaned++;
+                    offset += pageSize;
+                }
+                // 2. 分页删全部孤儿 fb|
+                offset = 0;
+                while (true) {
+                    resp = await fetch(SUPABASE_URL+'/rest/v1/data_store?select=user_id,key&key=like.fb|*&limit='+pageSize+'&offset='+offset, { headers: hdrs });
+                    rows = await resp.json();
+                    if (!rows.length) break;
+                    var perUser = {};
+                    rows.forEach(function(r){ var uid = r.user_id; if (!perUser[uid]) perUser[uid] = []; perUser[uid].push(r); });
+                    for (var uid in perUser) {
+                        var cresp = await fetch(SUPABASE_URL+'/rest/v1/data_store?select=value&user_id=eq.'+uid+'&key=eq.classes', { headers: hdrs });
+                        var crows = await cresp.json();
+                        var classIds = [];
+                        if (crows.length && crows[0].value && Array.isArray(crows[0].value)) {
+                            classIds = crows[0].value.map(function(c){return c.id;});
                         }
-                    });
+                        perUser[uid].forEach(function(r){
+                            var cid = r.key.split('|')[1];
+                            if (classIds.indexOf(cid) === -1) {
+                                fetch(SUPABASE_URL+'/rest/v1/data_store?user_id=eq.'+uid+'&key=eq.'+encodeURIComponent(r.key), { method: 'DELETE', headers: hdrs });
+                                cleaned++;
+                            }
+                        });
+                    }
+                    offset += pageSize;
                 }
                 await showConfirm('已清理 '+cleaned+' 条数据');
             } catch(e) { await showConfirm('清理失败：'+e.message); }

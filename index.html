@@ -1766,7 +1766,7 @@
         function renderClassList(){
             document.getElementById('classListContainer').innerHTML=classes.length?classes.map((c,i)=>`
                 <div class="class-card-wrapper" data-index="${i}"><div class="class-card" onclick="enterFeedbackForClass('${c.id}')">
-                    <span style="display:flex;align-items:center;gap:2px;min-width:0;"><span class="drag-handle">⠿</span><span class="class-card-name">${escapeHtml(c.name)}</span>${c.campus?' <span style="font-size:9px;color:#2563eb;background:#eff6ff;padding:1px 6px;border-radius:8px;font-weight:500;">'+escapeHtml(c.campus)+'</span>':''}</span>
+                    <span style="display:flex;align-items:center;gap:2px;min-width:0;"><span class="drag-handle">⠿</span><span class="class-card-name">${escapeHtml(c.name)}</span></span>
                     <div onclick="event.stopPropagation()" style="display:flex; gap:4px; flex-wrap:wrap;">
                         <button class="btn btn-xs" onclick="toggleStudentModal('${c.id}')">👥 名单</button>
                         <button class="btn btn-xs" onclick="editClassName('${c.id}')">✏️</button>
@@ -1858,12 +1858,13 @@
         }
         window.enterFeedbackForClass=function(classId){if(dragSuppressClick){dragSuppressClick=false;return;}currentClassId=classId;const dates=getDateList();const savedDate=localStorage.getItem('_fb_last_date_'+classId);currentDateLabel=(savedDate&&dates.includes(savedDate))?savedDate:(dates.length?dates[0]:'Day1');switchView('feedback');};
         window.toggleStudentModal=function(classId){const modal=document.getElementById(`studentModal-${classId}`);if(!modal)return;if(activeStudentModal===classId){modal.classList.remove('open');activeStudentModal=null;}else{document.querySelectorAll('.student-modal').forEach(m=>m.classList.remove('open'));modal.classList.add('open');activeStudentModal=classId;renderStudentListInModal(classId);}};
-        function renderStudentListInModal(classId){const cls=classes.find(c=>c.id===classId);if(!cls)return;const students=cls.students||[];document.getElementById(`studentModal-${classId}`).innerHTML=`
+        function renderStudentListInModal(classId){const cls=classes.find(c=>c.id===classId);if(!cls)return;const students=cls.students||[];var campusInfo='';if(cls.campus){campusInfo='<div style="display:inline-flex;align-items:center;gap:4px;padding:2px 10px;background:#eff6ff;border-radius:12px;font-size:11px;color:#2563eb;font-weight:500;margin-top:8px;">🏫 '+escapeHtml(cls.campus)+(cls.district?' · '+escapeHtml(cls.district):'')+'</div>';}document.getElementById('studentModal-'+classId).innerHTML=`
             <div style="display:flex;flex-wrap:wrap;gap:6px">
                 <input class="input" id="studentInput-${classId}" placeholder="输入姓名" style="flex:1; min-width:120px;">
                 <button class="btn btn-sm" onclick="addStudentInModal('${classId}')">➕ 添加</button>
                 <label class="btn btn-outline btn-sm" style="cursor:pointer;">📥 导入Excel<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importStudentsInModal('${classId}', event)"></label>
             </div>
+            ${campusInfo}
             <div style="margin-top:8px">${students.length?students.map((s,i)=>`
                 <div class="student-list-item" data-idx="${i}"><span id="stuName-${classId}-${i}">${escapeHtml(s)}</span>
                 <div style="display:flex; gap:4px;">

@@ -1001,24 +1001,181 @@
         };
 
         // ========== Dashboard ==========
+        var _dashboardTab = 'districts'; // 默认显示大区
         function renderDashboard() {
-            const teachers = Object.values(allTeachers);
-            const totalClasses = teachers.reduce((s, t) => s + (Array.isArray(t.classes) ? t.classes.length : 0), 0);
-            const totalStudents = teachers.reduce((s, t) => s + (Array.isArray(t.classes) ? t.classes.reduce((ss, c) => ss + (c.students ? c.students.length : 0), 0) : 0), 0);
-            const totalLessons = teachers.reduce((s, t) => s + Object.keys(t.feedback || {}).length, 0);
-            const recent = teachers.filter(t => t.lastActive).sort((a,b) => b.lastActive.localeCompare(a.lastActive)).slice(0, 8);
-            let html = `
-                <div class="stat-grid">
-                    <div class="stat-card" onclick="showDetailModal('teachers')"><div class="stat-icon" style="background:#eff6ff"><i class="iconfont icon-user-group"></i></div><div><div class="stat-value">${teachers.length}</div><div class="stat-label">教师总数</div></div></div>
-                    <div class="stat-card" onclick="showDetailModal('classes')"><div class="stat-icon" style="background:#f0fdf4">🏫</div><div><div class="stat-value">${totalClasses}</div><div class="stat-label">班级总数</div></div></div>
-                    <div class="stat-card" onclick="showDetailModal('students')"><div class="stat-icon" style="background:#fef3c7">🧑‍🎓</div><div><div class="stat-value">${totalStudents}</div><div class="stat-label">学生总数</div></div></div>
-                    <div class="stat-card" onclick="showDetailModal('lessons')"><div class="stat-icon" style="background:#fce7f3"><i class="iconfont icon-table"></i></div><div><div class="stat-value">${totalLessons}</div><div class="stat-label">反馈课次</div></div></div>
-                </div>
-                <div class="card"><div class="card-title"><i class="iconfont icon-time"></i> 最近活跃</div>
-                    ${recent.length ? recent.map(t => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-light);font-size:12px"><span>${escapeHtml(t.name || t.email || '未命名')}</span><span style="color:var(--text-muted)">${t.lastActive ? new Date(t.lastActive).toLocaleString('zh-CN') : '-'}</span></div>`).join('') : '<div class="empty-state">暂无数据</div>'}
-                </div>
-            `;
+            // 销毁旧图表
+            if (window._dashChart) { window._dashChart.destroy(); window._dashChart = null; }
+            if (window._dashChart2) { window._dashChart2.destroy(); window._dashChart2 = null; }
+
+            var teachers = Object.values(allTeachers);
+            var totalClasses = teachers.reduce(function(s, t) { return s + (Array.isArray(t.classes) ? t.classes.length : 0); }, 0);
+            var totalStudents = teachers.reduce(function(s, t) { return s + (Array.isArray(t.classes) ? t.classes.reduce(function(ss, c) { return ss + (c.students ? c.students.length : 0); }, 0) : 0); }, 0);
+            // 统计大区数（从班级的 district 字段）
+            var districtSet = new Set();
+            teachers.forEach(function(t) { if (Array.isArray(t.classes)) t.classes.forEach(function(c) { if (c.district) districtSet.add(c.district); }); });
+            var totalDistricts = districtSet.size;
+
+            var activeTab = function(t) { return _dashboardTab === t ? ' style="border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,0.12);"' : ''; };
+            var html = '';
+            html += '<div class="stat-grid" style="grid-template-columns:repeat(4,1fr);">';
+            html += '<div class="stat-card" onclick="switchDashboardTab(\'districts\')"'+activeTab('districts')+'><div class="stat-icon" style="background:#e8f5e9">🗺</div><div><div class="stat-value">'+totalDistricts+'</div><div class="stat-label">大区数</div></div></div>';
+            html += '<div class="stat-card" onclick="switchDashboardTab(\'teachers\')"'+activeTab('teachers')+'><div class="stat-icon" style="background:#eff6ff"><i class="iconfont icon-user-group"></i></div><div><div class="stat-value">'+teachers.length+'</div><div class="stat-label">教师总数</div></div></div>';
+            html += '<div class="stat-card" onclick="switchDashboardTab(\'classes\')"'+activeTab('classes')+'><div class="stat-icon" style="background:#f0fdf4">🏫</div><div><div class="stat-value">'+totalClasses+'</div><div class="stat-label">班级总数</div></div></div>';
+            html += '<div class="stat-card" onclick="switchDashboardTab(\'students\')"'+activeTab('students')+'><div class="stat-icon" style="background:#fef3c7">🧑‍🎓</div><div><div class="stat-value">'+totalStudents+'</div><div class="stat-label">学生总数</div></div></div>';
+            html += '</div>';
+            html += '<div id="dashboardDetail"></div>';
+
+            var recent = teachers.filter(function(t) { return t.lastActive; }).sort(function(a,b) { return b.lastActive.localeCompare(a.lastActive); }).slice(0, 8);
+            html += '<div class="card"><div class="card-title"><i class="iconfont icon-time"></i> 最近活跃</div>';
+            html += recent.length ? recent.map(function(t) { return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-light);font-size:12px"><span>'+escapeHtml(t.name||t.email||'未命名')+'</span><span style="color:var(--text-muted)">'+(t.lastActive?new Date(t.lastActive).toLocaleString('zh-CN'):'-')+'</span></div>'; }).join('') : '<div class="empty-state">暂无数据</div>';
+            html += '</div>';
+
             document.getElementById('view-dashboard').innerHTML = html;
+            renderDashboardDetail();
+        }
+
+        window.switchDashboardTab = function(tab) {
+            _dashboardTab = tab;
+            renderDashboard();
+        };
+
+        function renderDashboardDetail() {
+            var teachers = Object.values(allTeachers);
+            var container = document.getElementById('dashboardDetail');
+            if (!container) return;
+
+            // ===== 大区数据 =====
+            var districtMap = {};
+            teachers.forEach(function(t) {
+                if (!Array.isArray(t.classes)) return;
+                t.classes.forEach(function(c) {
+                    var d = c.district || '未分配';
+                    if (!districtMap[d]) districtMap[d] = { campuses: new Set(), teachers: new Set(), classes: 0, students: 0 };
+                    districtMap[d].classes++;
+                    districtMap[d].students += (c.students ? c.students.length : 0);
+                    districtMap[d].teachers.add(t.id);
+                    if (c.campus) districtMap[d].campuses.add(c.campus);
+                });
+            });
+
+            // ===== 教师数据 =====
+            var male = 0, female = 0, unset = 0;
+            teachers.forEach(function(t) {
+                if (t.gender === 'male') male++;
+                else if (t.gender === 'female') female++;
+                else unset++;
+            });
+
+            var html = '';
+            if (_dashboardTab === 'districts') {
+                html += '<div class="card"><div class="card-title">🗺 大区总览</div>';
+                html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">';
+                var dKeys = Object.keys(districtMap).sort();
+                dKeys.forEach(function(d) {
+                    var dm = districtMap[d];
+                    html += '<div style="background:var(--bg);border-radius:var(--radius-sm);padding:10px 12px;">';
+                    html += '<div style="font-weight:700;font-size:13px;">'+escapeHtml(d)+'</div>';
+                    html += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">'+dm.campuses.size+'校区 · '+dm.classes+'班 · '+dm.students+'人</div>';
+                    html += '</div>';
+                });
+                html += '</div>';
+                if (dKeys.length >= 2) html += '<div class="chart-container"><canvas id="dashCanvas1"></canvas></div>';
+                html += '</div>';
+                // 延迟画图
+                if (dKeys.length >= 2) setTimeout(function() { drawDistrictBar(dKeys, districtMap); }, 100);
+            }
+
+            else if (_dashboardTab === 'teachers') {
+                html += '<div class="card"><div class="card-title">👥 教师性别分布</div>';
+                html += '<div style="display:flex;gap:8px;margin-bottom:10px;">';
+                html += '<div style="flex:1;background:#eff6ff;border-radius:var(--radius-sm);padding:10px;text-align:center;"><span style="font-size:20px;">♂️</span><div style="font-weight:700;">'+male+'</div><div style="font-size:11px;color:var(--text-muted);">男</div></div>';
+                html += '<div style="flex:1;background:#fce7f3;border-radius:var(--radius-sm);padding:10px;text-align:center;"><span style="font-size:20px;">♀️</span><div style="font-weight:700;">'+female+'</div><div style="font-size:11px;color:var(--text-muted);">女</div></div>';
+                html += '<div style="flex:1;background:var(--bg);border-radius:var(--radius-sm);padding:10px;text-align:center;"><span style="font-size:20px;">❓</span><div style="font-weight:700;">'+unset+'</div><div style="font-size:11px;color:var(--text-muted);">未知</div></div>';
+                html += '</div>';
+                if (male + female > 0) html += '<div class="chart-container"><canvas id="dashCanvas1"></canvas></div>';
+                html += '</div>';
+                if (male + female > 0) setTimeout(function() { drawGenderPie(male, female, unset); }, 100);
+                // 教师带班量
+                var teacherList = teachers.filter(function(t) { return Array.isArray(t.classes) && t.classes.length > 0; }).sort(function(a,b) { return (b.classes?b.classes.length:0) - (a.classes?a.classes.length:0); }).slice(0, 10);
+                if (teacherList.length) {
+                    html += '<div class="card"><div class="card-title">📊 教师带班量</div>';
+                    teacherList.forEach(function(t) {
+                        var clsCount = t.classes ? t.classes.length : 0;
+                        var stuCount = t.classes.reduce(function(s,c){return s+(c.students?c.students.length:0);},0);
+                        html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;"><span style="width:80px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml(t.name||'')+'</span><span style="flex:1;background:var(--bg);border-radius:4px;height:16px;"><span style="display:block;background:var(--accent);border-radius:4px;height:100%;width:'+Math.round(clsCount/Math.max(1,(teacherList[0].classes?teacherList[0].classes.length:1))*100)+'%;"></span></span><span style="color:var(--text-muted);width:80px;">'+clsCount+'班 '+stuCount+'人</span></div>';
+                    });
+                    html += '</div>';
+                }
+            }
+
+            else if (_dashboardTab === 'classes') {
+                html += '<div class="card"><div class="card-title">🏫 大区班级分布</div>';
+                var dKeys = Object.keys(districtMap).sort();
+                if (dKeys.length >= 2) html += '<div class="chart-container"><canvas id="dashCanvas1"></canvas></div>';
+                html += '<div style="margin-top:8px;">';
+                dKeys.forEach(function(d) {
+                    var dm = districtMap[d];
+                    html += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border-light);"><span>'+escapeHtml(d)+'</span><span style="color:var(--text-muted);">'+dm.classes+'班 · '+dm.students+'人</span></div>';
+                });
+                html += '</div></div>';
+                if (dKeys.length >= 2) setTimeout(function() { drawDistrictBar(dKeys, districtMap); }, 100);
+            }
+
+            else if (_dashboardTab === 'students') {
+                html += '<div class="card"><div class="card-title">🧑‍🎓 大区学生分布</div>';
+                var dKeys = Object.keys(districtMap).sort();
+                if (dKeys.length >= 2) html += '<div class="chart-container"><canvas id="dashCanvas1"></canvas></div>';
+                // 班级规模摘要
+                var allClassSizes = [];
+                teachers.forEach(function(t) { if (Array.isArray(t.classes)) t.classes.forEach(function(c) { allClassSizes.push(c.students ? c.students.length : 0); }); });
+                if (allClassSizes.length) {
+                    var avg = Math.round(allClassSizes.reduce(function(a,b){return a+b;},0) / allClassSizes.length);
+                    var max = Math.max.apply(null, allClassSizes);
+                    var min = Math.min.apply(null, allClassSizes.filter(function(x){return x>0;}));
+                    html += '<div style="display:flex;gap:8px;margin-bottom:10px;">';
+                    html += '<div style="flex:1;background:var(--bg);border-radius:var(--radius-sm);padding:8px;text-align:center;"><div style="font-weight:700;">'+avg+'</div><div style="font-size:10px;color:var(--text-muted);">班均学生</div></div>';
+                    html += '<div style="flex:1;background:var(--bg);border-radius:var(--radius-sm);padding:8px;text-align:center;"><div style="font-weight:700;">'+max+'</div><div style="font-size:10px;color:var(--text-muted);">最大班</div></div>';
+                    html += '<div style="flex:1;background:var(--bg);border-radius:var(--radius-sm);padding:8px;text-align:center;"><div style="font-weight:700;">'+(min||0)+'</div><div style="font-size:10px;color:var(--text-muted);">最小班</div></div>';
+                    html += '</div>';
+                }
+                html += '</div>';
+                if (dKeys.length >= 2) setTimeout(function() { drawStudentBar(dKeys, districtMap); }, 100);
+            }
+
+            container.innerHTML = html;
+        }
+
+        // ===== Chart helpers =====
+        function drawDistrictBar(keys, map) {
+            var canvas = document.getElementById('dashCanvas1'); if (!canvas) return;
+            if (window._dashChart) window._dashChart.destroy();
+            window._dashChart = new Chart(canvas, {
+                type: 'bar',
+                data: { labels: keys, datasets: [{ label: '班级数', data: keys.map(function(k){return map[k].classes;}), backgroundColor: '#93c5fd', borderRadius: 6 }, { label: '学生数 /10', data: keys.map(function(k){return Math.round(map[k].students/10);}), backgroundColor: '#f9a8d4', borderRadius: 6 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+        function drawStudentBar(keys, map) {
+            var canvas = document.getElementById('dashCanvas1'); if (!canvas) return;
+            if (window._dashChart) window._dashChart.destroy();
+            window._dashChart = new Chart(canvas, {
+                type: 'bar',
+                data: { labels: keys, datasets: [{ label: '学生数', data: keys.map(function(k){return map[k].students;}), backgroundColor: '#f9a8d4', borderRadius: 6 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+        function drawGenderPie(male, female, unset) {
+            var canvas = document.getElementById('dashCanvas1'); if (!canvas) return;
+            if (window._dashChart) window._dashChart.destroy();
+            var labels = [], data = [], bg = [];
+            if (male > 0) { labels.push('男'); data.push(male); bg.push('#93c5fd'); }
+            if (female > 0) { labels.push('女'); data.push(female); bg.push('#f9a8d4'); }
+            if (unset > 0) { labels.push('未知'); data.push(unset); bg.push('#e2e8f0'); }
+            window._dashChart = new Chart(canvas, {
+                type: 'pie',
+                data: { labels: labels, datasets: [{ data: data, backgroundColor: bg }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
         }
 
         let _modalOverlay = null;

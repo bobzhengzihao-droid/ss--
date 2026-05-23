@@ -2548,14 +2548,14 @@
             if(viewName!=='feedback')closePopup();
             if(viewName==='classes')renderClassList();
             else if(viewName==='feedback'){
-                // 静默从云端拉最新 classes，确保表格颜色等跨设备同步
-                try { var r = await supabase.from('data_store').select('value').eq('user_id',_userId).eq('key','classes').maybeSingle(); if(r&&r.data&&r.data.value){var cloud=Array.isArray(r.data.value)?r.data.value:[];classes=classes.map(function(local){var match=cloud.find(function(c){return c.id===local.id;});return match?Object.assign({},local,match):local;});}} catch(e){}
                 renderDateSelector();renderColumnEditor();renderFeedbackTable();refreshStylePanel();applyTableColors(getCurrentClass());
+                // 后台静默从云端刷新——不阻塞渲染
+                refreshClassesFromCloud();
             }
             else if(viewName==='fulltable') {
-                try { var r2 = await supabase.from('data_store').select('value').eq('user_id',_userId).eq('key','classes').maybeSingle(); if(r2&&r2.data&&r2.data.value){var cloud2=Array.isArray(r2.data.value)?r2.data.value:[];classes=classes.map(function(local){var match=cloud2.find(function(c){return c.id===local.id;});return match?Object.assign({},local,match):local;});}} catch(e){}
                 renderFullTable();
                 switchStatType();
+                refreshClassesFromCloud();
             }
             else if(viewName==='analysis')renderAnalysisOptions();
             else if(viewName==='settings')refreshSettingsUI();
@@ -2568,6 +2568,13 @@
         window.applyRowHeight=function(){const cls=getCurrentClass();if(!cls)return;const val=parseInt(document.getElementById('styleRowHeight').value);if(isNaN(val)||val<20)return;cls.rowHeight=val;updateClass(cls);renderFeedbackTable();renderFullTable();};
         function applyTableColors(cls){if(!cls||!cls.tableColors)return;const r=document.documentElement.style;r.setProperty('--table-header-bg',cls.tableColors.headerBg);r.setProperty('--table-header-text',cls.tableColors.headerText);r.setProperty('--table-border',cls.tableColors.border);r.setProperty('--table-row-even',cls.tableColors.rowEven);}
         function updateClass(cls){classes=classes.map(c=>c.id===cls.id?cls:c);dbSet('classes',classes);}
+        function refreshClassesFromCloud(){
+            if (!_userId || !supabaseReady) return;
+            supabase.from('data_store').select('value').eq('user_id',_userId).eq('key','classes').maybeSingle().then(function(resp){
+                if (resp && resp.data && resp.data.value)
+                try { var cloud=Array.isArray(resp.data.value)?resp.data.value:[]; classes=classes.map(function(local){var match=cloud.find(function(c){return c.id===local.id;});return match?Object.assign({},local,match):local;}); } catch(e){}
+            }).catch(function(){});
+        }
 
         // ========== 统计表功能 (全部挂载到window) ==========
         window.switchStatType = function() {

@@ -1259,6 +1259,10 @@
                         supabaseOk = true;
                         _hideSyncWarning();
                     }
+                    // 记录 classes 云端同步时间
+                    if (supabaseOk && key === 'classes') {
+                        try { localStorage.setItem('_fb_cls_sync_ts_' + _userId, Date.now()); } catch(e) {}
+                    }
                 } else {
                     _showSyncWarning('未登录，请刷新页面重新登录');
                 }
@@ -1268,6 +1272,10 @@
             }
             // 始终写 IndexedDB（以防云端失败数据丢失）
             try { _idb.set(_cacheKey(key), value); } catch(e) {}
+            // 记录 classes 本地保存时间（用于合并时判断本地是否更新）
+            if (key === 'classes') {
+                try { localStorage.setItem('_fb_cls_local_ts_' + _userId, Date.now()); } catch(e) {}
+            }
             // 如果是 fb key 或 classes，更新全量备份
             if (key === 'classes' || (typeof key === 'string' && key.indexOf('fb|') === 0)) {
                 try { _idb.set(_cacheKey('_fullBackup'), {classes: classes, feedback: feedback, tools: tools, analysisSel: analysisSel, time: Date.now()}); } catch(e) {}
@@ -1701,11 +1709,18 @@
                 }
             } catch(e) { console.warn('[DATA] Cloud fetch failed:', e.message); cloudFetchFailed = true; }
 
-            // 3. 合并：云端为主，本地补漏
+            // 3. 合并：比较时间戳，本地比云端新时保留本地（防止未同步的修改被覆盖）
             if (cloudClasses && cloudClasses.length) {
                 cloudFetchFailed = false; _hideDataStaleWarning();
-                classes = cloudClasses;
-                _lastKnownClassCount = cloudClasses.length;
+                var localTs = parseInt(localStorage.getItem('_fb_cls_local_ts_' + _userId) || '0');
+                var syncTs = parseInt(localStorage.getItem('_fb_cls_sync_ts_' + _userId) || '0');
+                if (localTs > syncTs && localClasses && localClasses.length > 0) {
+                    classes = localClasses;
+                    _showSyncWarning('本地班级有未同步修改，请检查网络后手动同步');
+                } else {
+                    classes = cloudClasses;
+                }
+                _lastKnownClassCount = classes.length;
                 try { localStorage.setItem('_fb_lkc_' + _userId, cloudClasses.length); } catch(e) {}
                 // 云端有真数据 → 更新本地缓存
                 if (cloudClasses.length > 1 || cloudClasses[0].id !== 'c1') {

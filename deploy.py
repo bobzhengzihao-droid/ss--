@@ -5,8 +5,10 @@ import json, base64, subprocess, sys
 REPO = 'bobzhengzihao-droid/ss--'
 FILE = 'index.html'
 
-def run(cmd):
-    r = subprocess.run(cmd, capture_output=True, text=True)
+def run(cmd, **kwargs):
+    kwargs.setdefault('capture_output', True)
+    kwargs.setdefault('text', True)
+    r = subprocess.run(cmd, **kwargs)
     if r.returncode != 0:
         print(f'Error: {r.stderr}')
         sys.exit(1)
@@ -27,6 +29,6 @@ payload = json.dumps({
     'sha': sha
 })
 
-result = run(['gh', 'api', f'repos/{REPO}/contents/{FILE}', '-X', 'PUT', '--input', '-'])
+result = run(['gh', 'api', f'repos/{REPO}/contents/{FILE}', '-X', 'PUT', '--input', '-'], input=payload)
 print(f'Deployed: {json.loads(result)["content"]["sha"][:7]}')
 print('https://www.bobo.run')

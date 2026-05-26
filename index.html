@@ -1606,8 +1606,10 @@
             let localClasses = null, localFeedback = null, localTools = null, localAnalysis = null;
             try {
                 const bk = await _idb.get(_cacheKey('_fullBackup'));
-                if (bk) { localClasses = bk.classes; localFeedback = bk.feedback; localTools = bk.tools; localAnalysis = bk.analysisSel; }
-                if (!localClasses) { const v = await _idb.get(_cacheKey('classes')); if (v) localClasses = v; }
+                // classes 优先读独立 key（最新），避免 _fullBackup 快照过期
+                { const v = await _idb.get(_cacheKey('classes')); if (v) localClasses = v; }
+                if (!localClasses && bk) { localClasses = bk.classes; }
+                if (bk) { localFeedback = bk.feedback; localTools = bk.tools; localAnalysis = bk.analysisSel; }
                 if (!localFeedback) { const v = await _idb.get(_cacheKey('feedback')); if (v) localFeedback = v; }
                 if (!localTools) { const v = await _idb.get(_cacheKey('tools')); if (v) localTools = v; }
                 if (!localAnalysis) { const v = await _idb.get(_cacheKey('analysisSel')); if (v) localAnalysis = v; }

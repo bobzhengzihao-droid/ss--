@@ -4,12 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>班级每日反馈表 · 汇总分析</title>
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://unpkg.com/mammoth@1.7.0/mammoth.browser.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <link rel="preconnect" href="https://cdn.sheetjs.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    <link rel="preconnect" href="https://html2canvas.hertzen.com" crossorigin>
+    <link rel="dns-prefetch" href="https://furpcqytmgxqkxlbselj.supabase.co">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js" defer></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+    <script src="https://unpkg.com/mammoth@1.7.0/mammoth.browser.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
         :root {
@@ -1504,6 +1510,7 @@
 
         async function onLoginSuccess(user, actualEmail) {
             _userId = user.id;
+            try { var c = localStorage.getItem('_fb_lkc_' + _userId); if (c) _lastKnownClassCount = parseInt(c) || 0; } catch(e) {}
             try { const { data: { session } } = await supabase.auth.getSession(); if (session) _lastAccessToken = session.access_token; } catch(e) {}
             const name = user.user_metadata?.name || user.email?.split('@')[0] || '';
             _userName = name;
@@ -1660,6 +1667,7 @@
                 cloudFetchFailed = false; _hideDataStaleWarning();
                 classes = cloudClasses;
                 _lastKnownClassCount = cloudClasses.length;
+                try { localStorage.setItem('_fb_lkc_' + _userId, cloudClasses.length); } catch(e) {}
                 // 云端有真数据 → 清除本地旧缓存，防止下次离线加载脏数据
                 if (cloudClasses.length > 1 || cloudClasses[0].id !== 'c1') {
                     try { _idb.set(_cacheKey('_fullBackup'), null); _idb.set(_cacheKey('classes'), cloudClasses); } catch(e) {}
@@ -4481,18 +4489,28 @@
             // 切后台 / 关页面时强制同步到云端
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden && _userId) {
+                    clearTimeout(saveFeedbackTimeout);
                     saveAllDataNow(false);
                 }
             });
             window.addEventListener('beforeunload', () => {
                 if (_userId) {
-                    try { localStorage.setItem(_cacheKey('feedback'), JSON.stringify(feedback)); } catch(e) {}
-                    try { localStorage.setItem(_cacheKey('_fullBackup'), JSON.stringify({classes, feedback, tools, analysisSel, time: Date.now()})); } catch(e) {}
+                    try {
+                        var backup = JSON.stringify({classes, feedback, tools, analysisSel, time: Date.now()});
+                        localStorage.setItem(_cacheKey('_fullBackup'), backup);
+                    } catch(e) {
+                        // quota 不够 → 只保存班级和工具（不含反馈详情）
+                        try { localStorage.setItem(_cacheKey('_fullBackup'), JSON.stringify({classes, tools, analysisSel, time: Date.now(), _partial: true})); } catch(e2) {}
+                    }
                 }
             });
             window.addEventListener('pagehide', () => {
                 if (_userId) {
-                    try { localStorage.setItem(_cacheKey('_fullBackup'), JSON.stringify({classes, feedback, tools, analysisSel, time: Date.now()})); } catch(e) {}
+                    try {
+                        localStorage.setItem(_cacheKey('_fullBackup'), JSON.stringify({classes, feedback, tools, analysisSel, time: Date.now()}));
+                    } catch(e) {
+                        try { localStorage.setItem(_cacheKey('_fullBackup'), JSON.stringify({classes, tools, analysisSel, time: Date.now(), _partial: true})); } catch(e2) {}
+                    }
                 }
             });
 

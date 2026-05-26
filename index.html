@@ -1189,8 +1189,13 @@
                                 .select('value').eq('user_id', user.id).eq('key', 'classes').maybeSingle();
                             var oldClasses = (oldRow && oldRow.value) ? oldRow.value : [];
                             var oldCount = Array.isArray(oldClasses) ? oldClasses.length : 0;
-                            // 云端读不到 → 用内存缓存兜底
+                            // 云端读不到 → 用本地持久化缓存兜底
                             if (oldCount === 0 && _lastKnownClassCount > 0) oldCount = _lastKnownClassCount;
+                            // 锁一增强：从未确认过云端状态 + 云端读不到 → 禁止保存，防空数据覆盖
+                            if (oldCount === 0 && _lastKnownClassCount === 0) {
+                                _showSyncWarning('正在同步云端数据，请稍后操作');
+                                return false;
+                            }
                             var newCount = value.length;
                             // 锁一：旧数据 > 3 且新数据不到旧的一半 → 网络未加载完整，阻止覆盖
                             if (oldCount > 3 && newCount < oldCount / 2) {

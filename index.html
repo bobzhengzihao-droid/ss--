@@ -1714,7 +1714,7 @@
                 cloudFetchFailed = false; _hideDataStaleWarning();
                 var localTs = parseInt(localStorage.getItem('_fb_cls_local_ts_' + _userId) || '0');
                 var syncTs = parseInt(localStorage.getItem('_fb_cls_sync_ts_' + _userId) || '0');
-                if (localTs > syncTs && localClasses && localClasses.length > 0) {
+                if (localTs > syncTs && localClasses !== null) {
                     classes = localClasses;
                     _showSyncWarning('本地班级有未同步修改，请检查网络后手动同步');
                 } else {

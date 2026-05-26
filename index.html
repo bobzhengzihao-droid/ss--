@@ -1747,7 +1747,7 @@
                     });
                     if (healed.length > 0) {
                         console.log('[DATA] 锁三自愈：从反馈重建了 '+healed.length+' 个缺失班级');
-                        dbSet('classes', classes);
+                        await dbSet('classes', classes);
                     }
                 }
             } catch(e) { console.warn('[DATA] 锁三自愈失败:', e.message); }
@@ -2111,7 +2111,7 @@
                 if(fromIdx !== toIdx){
                     const item = classes.splice(fromIdx, 1)[0];
                     classes.splice(toIdx, 0, item);
-                    dbSet('classes', classes);
+                    dbSet('classes', classes).catch(function(e) { console.warn('[SAVE] 班级排序保存失败:', e); });
                     renderClassList();
                 }
             }

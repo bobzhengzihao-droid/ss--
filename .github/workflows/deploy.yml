@@ -5,6 +5,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -17,6 +19,9 @@ jobs:
 
       - name: Obfuscate JS in index.html
         run: node scripts/obfuscate.js
+
+      - name: Clean build artifacts
+        run: rm -rf node_modules package.json package-lock.json scripts
 
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v3

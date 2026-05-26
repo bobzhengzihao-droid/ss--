@@ -5,3 +5,12 @@ __pycache__/
 *.db
 *.db-shm
 *.db-wal
+
+# 本地参考文件（可能含敏感配置，不要提交）
+edge-function-ai-analyze.ts
+supabase_helper.py
+server.py
+supabase-fix.sql
+admin-setup.sql
+deploy.sh
+requirements.txt

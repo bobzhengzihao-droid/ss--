@@ -4003,7 +4003,11 @@
                 });
             });
 
-            if (!great.length && !ok.length && !weak.length && !undone.length && !posTags.length && !negTags.length && !neuTags.length) {
+            // 自动识别备注内容
+            const noteIdx = columns.findIndex(col => columnContainsKeyword(col, '备注'));
+            const noteContent = (noteIdx !== -1 && rec && rec.values[noteIdx] && rec.values[noteIdx].trim()) ? rec.values[noteIdx].trim() : '';
+
+            if (!great.length && !ok.length && !weak.length && !undone.length && !posTags.length && !negTags.length && !neuTags.length && !noteContent) {
                 const nick = getNickname(student);
                 document.getElementById('commPreview').value = nick + '家长您好！今天' + nick + '在课堂上整体表现平稳，没有特别需要沟通的事项。如有任何问题随时联系我～';
                 return;
@@ -4036,6 +4040,11 @@
             // 中性期待
             if (neuTags.length) {
                 parts.push('\n\n' + neuTags.join('，') + '。');
+            }
+
+            // 备注：自动加入预览，交给AI润色时自然融合
+            if (noteContent) {
+                parts.push('\n\n' + noteContent);
             }
 
             // 结尾

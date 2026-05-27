@@ -1760,8 +1760,9 @@
             } catch(e) {}
 
             // 1. 如果有本地数据先用本地渲染（秒开），云端异步补全
+            // Array.isArray: 区分「从未保存」(null) 和「明确保存为空数组」(删除所有班级后)
             let localRendered = false;
-            if (localClasses && localClasses.length) {
+            if (Array.isArray(localClasses)) {
                 classes = localClasses;
                 feedback = localFeedback || {};
                 if (localTools) tools = localTools;
@@ -1835,6 +1836,10 @@
                 if (cloudClasses.length > 1 || cloudClasses[0].id !== 'c1') {
                     try { _idb.set(_cacheKey('classes'), cloudClasses); } catch(e) {}
                 }
+            } else if (cloudClasses !== null && Array.isArray(cloudClasses)) {
+                // 云端明确返回空数组（老师删光了所有班级）
+                // 但本地如果有数据，保留本地（可能本地有未同步的新班级）
+                if (!Array.isArray(localClasses) || !localClasses.length) classes = [];
             } else if (!classes || !classes.length) { classes = defaultClasses(); }
             // 确保 _lastKnownClassCount 始终有值，即使云端加载失败也不会阻塞后续保存
             if (classes && classes.length) _lastKnownClassCount = classes.length;

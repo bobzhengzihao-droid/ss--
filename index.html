@@ -3856,7 +3856,7 @@
             const columns = (entry && entry.dateColumns) || (cls && cls.columns) || [];
 
             const selCols = selectedDataCols[student] || {};
-            const great = [], ok = [], weak = [], undone = [];
+            const great = [], ok = [], weak = [], undone = [], notes = [];
 
             // 建议池：按列名关键词匹配类型，每种类型×每档有多条变体
             function _colCat(colName) {
@@ -3987,6 +3987,24 @@
                         const notDone = val.trim() === '❌' || val.trim() === '未完成';
                         if (done) great.push(colName + '已完成');
                         else if (notDone) undone.push(colName + '还没完成——' + _suggest(_colCat(colName), 'undone'));
+                        else if (columnContainsKeyword(col, '备注') && val.trim()) {
+                            // 智能关联：判断备注与哪个已勾选数据列相关
+                            const noteText = val.trim();
+                            let associated = '';
+                            for (let j = 0; j < columns.length; j++) {
+                                if (!selCols[j]) continue;
+                                const otherName = stripMaxScore(columns[j]);
+                                if (otherName.length >= 2 && !columnContainsKeyword(columns[j], '备注') && noteText.includes(otherName)) {
+                                    associated = otherName;
+                                    break;
+                                }
+                            }
+                            if (associated) {
+                                notes.push('关于' + associated + '：' + noteText);
+                            } else {
+                                notes.push(noteText);
+                            }
+                        }
                     }
                 });
             }
@@ -4003,11 +4021,7 @@
                 });
             });
 
-            // 自动识别备注内容
-            const noteIdx = columns.findIndex(col => columnContainsKeyword(col, '备注'));
-            const noteContent = (noteIdx !== -1 && rec && rec.values[noteIdx] && rec.values[noteIdx].trim()) ? rec.values[noteIdx].trim() : '';
-
-            if (!great.length && !ok.length && !weak.length && !undone.length && !posTags.length && !negTags.length && !neuTags.length && !noteContent) {
+            if (!great.length && !ok.length && !weak.length && !undone.length && !posTags.length && !negTags.length && !neuTags.length && !notes.length) {
                 const nick = getNickname(student);
                 document.getElementById('commPreview').value = nick + '家长您好！今天' + nick + '在课堂上整体表现平稳，没有特别需要沟通的事项。如有任何问题随时联系我～';
                 return;
@@ -4042,9 +4056,9 @@
                 parts.push('\n\n' + neuTags.join('，') + '。');
             }
 
-            // 备注：自动加入预览，交给AI润色时自然融合
-            if (noteContent) {
-                parts.push('\n\n' + noteContent);
+            // 备注：智能关联到反馈内容中
+            if (notes.length) {
+                parts.push('\n\n' + notes.join('；'));
             }
 
             // 结尾

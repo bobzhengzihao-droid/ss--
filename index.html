@@ -977,7 +977,15 @@
         // ========== Supabase 初始化 ==========
         const SUPABASE_URL = 'https://furpcqytmgxqkxlbselj.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1cnBjcXl0bWd4cWt4bGJzZWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MjYyNTYsImV4cCI6MjA5NDIwMjI1Nn0.522KmI4GJrghlteeQiRVMGJdytu3R4pf7E1NLyTByzE';
-        const REG_CODE = 'bobo is cool';
+        function _checkRegCode(input) {
+            // 优先走 Edge Function 服务端校验
+            return supabase.functions.invoke('validate-registration', { body: { code: input } })
+                .then(function(r) { return r.data && r.data.valid; })
+                .catch(function() {
+                    // Edge Function 不可用时 fallback 本地校验
+                    return input === atob('Ym9ibyBpcyBjb29s');
+                });
+        }
         const API_BASE = 'http://127.0.0.1:8765';
         const isLocal = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
         let supabase = null;
@@ -1178,6 +1186,74 @@
         let _userId = null, _lastAccessToken = null, currentGender = '', currentDistrict = '';
         let campusConfig = [];
         let _lastKnownClassCount = 0;
+        // ========== 多标签页同步（BroadcastChannel）==========
+        const _bc = (function() {
+            try {
+                var bc = new BroadcastChannel('feedback_sync');
+                bc.onmessage = async function(event) {
+                    if (!event.data || event.data.type !== 'data_changed') return;
+                    if (event.data.source === _bcTabsId) return;
+                    console.log('[BC] 收到其他标签页的数据变更通知');
+                    // 当前标签页有未保存编辑时不自动刷新，仅提示
+                    if (Object.keys(_dirtyKeys).length > 0) {
+                        _showSyncWarning('其他标签页有更新，当前页面有未保存数据，请保存后刷新');
+                        return;
+                    }
+                    // 无脏数据时静默重新加载
+                    try {
+                        await _reloadFromCloud();
+                        _hideSyncWarning();
+                        _rerenderCurrentView();
+                    } catch(e) { console.warn('[BC] 重新加载失败:', e.message); }
+                };
+                return bc;
+            } catch(e) { return null; }
+        })();
+        var _bcTabsId = 'tab_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+        function _notifyOtherTabs(changedKeys) {
+            if (!_bc) return;
+            try { _bc.postMessage({ type: 'data_changed', keys: changedKeys || [], time: Date.now(), source: _bcTabsId }); } catch(e) {}
+        }
+        async function _reloadFromCloud() {
+            var cloudClasses = null, cloudFeedback = null;
+            try {
+                var _ds = await supabase.auth.getSession();
+                var _du = _ds && _ds.data && _ds.data.session && _ds.data.session.user;
+                if (!_du) return;
+                var cRes = await supabase.from('data_store').select('value').eq('user_id', _du.id).eq('key', 'classes').maybeSingle();
+                if (cRes && cRes.data && cRes.data.value) cloudClasses = cRes.data.value;
+                var fbRes = await supabase.from('data_store').select('key,value').eq('user_id', _du.id).like('key', 'fb|%');
+                if (fbRes && fbRes.data) {
+                    cloudFeedback = {};
+                    fbRes.data.forEach(function(row) { cloudFeedback[row.key.substring(3)] = row.value; });
+                }
+            } catch(e) { console.warn('[BC] 云端查询失败:', e.message); return; }
+            if (cloudClasses && cloudClasses.length) classes = cloudClasses;
+            if (cloudFeedback) {
+                Object.keys(cloudFeedback).forEach(function(k) {
+                    var fbKey = k;
+                    var entry = cloudFeedback[k];
+                    if (feedback[fbKey]) {
+                        var localTs = feedback[fbKey]._updatedAt || 0;
+                        var cloudTs = entry._updatedAt || 0;
+                        if (cloudTs > localTs) feedback[fbKey] = entry;
+                    } else {
+                        feedback[fbKey] = entry;
+                    }
+                });
+            }
+        }
+        function _rerenderCurrentView() {
+            try {
+                if (typeof renderFeedbackTable === 'function') renderFeedbackTable();
+                if (typeof renderCommunicationView === 'function') {
+                    var cv = document.getElementById('view-communication');
+                    if (cv && cv.style.display !== 'none') renderCommunicationView();
+                }
+                if (typeof renderClassList === 'function') renderClassList();
+                if (typeof renderDateSelector === 'function') renderDateSelector();
+            } catch(e) {}
+        }
         function _cacheKey(k) { return '_fb_' + (_userId || 'anon') + '_' + k; }
 
         async function _saveKey(key, value) {
@@ -1418,6 +1494,7 @@
                     updateSaveStatus('⚠️ 未同步');
                     showManualSyncBtn();
                 }
+                _notifyOtherTabs(keys);
             }, 150);
         }
         async function saveAllDataNow(fullSync){
@@ -1437,6 +1514,7 @@
             }
             if(allOk){_hideSyncWarning();hideManualSyncBtn();updateSaveStatus('☁️ 已同步');}
             try{_idb.set(_cacheKey('_fullBackup'),{classes:classes,feedback:feedback,tools:tools,analysisSel:analysisSel,time:Date.now()});}catch(e){}
+            _notifyOtherTabs(keys);
             return allOk;
         }
 
@@ -1485,7 +1563,9 @@
             try {
                 if (isRegister) {
                     const code = document.getElementById('regCode').value.trim();
-                    if (code !== REG_CODE) { msgEl.textContent = '注册码不正确'; msgEl.className = 'login-msg error'; btn.disabled = false; btn.textContent = '注 册'; return; }
+                    btn.textContent = '验证注册码...';
+                    var codeValid = await _checkRegCode(code);
+                    if (!codeValid) { msgEl.textContent = '注册码不正确'; msgEl.className = 'login-msg error'; btn.disabled = false; btn.textContent = '注 册'; return; }
                     if (password.length < 4) { msgEl.textContent = '密码至少4位'; msgEl.className = 'login-msg error'; btn.disabled = false; btn.textContent = '注 册'; return; }
 
                     // 读取性别和大区（必填）
@@ -1635,8 +1715,13 @@
             // 加载校区配置（之后班级创建/编辑用）
             try { var { data: cc } = await supabase.from('data_store').select('value').eq('key', '_campuses').limit(1); if (cc && cc.length && cc[0].value) campusConfig = cc[0].value; } catch(e) {}
             // 0. 先读本地数据（毫秒级），马上渲染界面
+            // autoRecover: 检测 beforeunload 备份是否比 IndexedDB 更新（异常关闭恢复）
             let localClasses = null, localFeedback = null, localTools = null, localAnalysis = null;
             try {
+                var lsBackupRaw = localStorage.getItem(_cacheKey('_fullBackup'));
+                var lsBackup = null;
+                if (lsBackupRaw) { try { lsBackup = JSON.parse(lsBackupRaw); } catch(e) {} }
+                if (lsBackup) { localStorage.removeItem(_cacheKey('_fullBackup')); }
                 const bk = await _idb.get(_cacheKey('_fullBackup'));
                 // classes 优先读独立 key（最新），避免 _fullBackup 快照过期
                 { const v = await _idb.get(_cacheKey('classes')); if (v) localClasses = v; }
@@ -1658,6 +1743,20 @@
                 }
                 if (!localTools) { const v = await _idb.get(_cacheKey('tools')); if (v) localTools = v; }
                 if (!localAnalysis) { const v = await _idb.get(_cacheKey('analysisSel')); if (v) localAnalysis = v; }
+                // autoRecovery: localStorage 备份比 IndexedDB 更新 → 恢复
+                if (lsBackup && lsBackup.classes && lsBackup.time) {
+                    var idbTime = (bk && bk.time) ? bk.time : 0;
+                    if (lsBackup.time > idbTime && !lsBackup._partial) {
+                        console.log('[RECOVERY] 从 beforeunload 备份恢复数据 (lsTime=' + lsBackup.time + ' > idbTime=' + idbTime + ')');
+                        localClasses = lsBackup.classes;
+                        localFeedback = lsBackup.feedback || {};
+                        if (lsBackup.tools) localTools = lsBackup.tools;
+                        if (lsBackup.analysisSel) localAnalysis = lsBackup.analysisSel;
+                        // 立即写回 IndexedDB
+                        try { _idb.set(_cacheKey('_fullBackup'), lsBackup); } catch(e) {}
+                        try { if (lsBackup.classes) _idb.set(_cacheKey('classes'), lsBackup.classes); } catch(e) {}
+                    }
+                }
             } catch(e) {}
 
             // 1. 如果有本地数据先用本地渲染（秒开），云端异步补全
@@ -1764,41 +1863,14 @@
             analysisSel = cloudAnalysis || localAnalysis || {};
 
             if (!classes || !classes.length) { classes = defaultClasses(); feedback = {}; tools = [...DEFAULT_TOOLS]; analysisSel = {}; await saveAllDataNow(true); }
-            // 锁三：从 fb| 记录自愈缺失班级
-            try {
-                var fbClassIds = new Set();
-                Object.keys(feedback).forEach(function(k) {
-                    var cid = k.split('|')[0];
-                    if (cid && cid !== 'c1') fbClassIds.add(cid);
-                });
-                var existingIds = new Set(classes.map(function(c) { return c.id; }));
-                var missingIds = [];
-                fbClassIds.forEach(function(cid) { if (!existingIds.has(cid)) missingIds.push(cid); });
-                if (missingIds.length > 0) {
-                    var healed = [];
-                    missingIds.forEach(function(cid) {
-                        var fbKeys = Object.keys(feedback).filter(function(k) { return k.indexOf(cid+'|') === 0; }).sort();
-                        if (!fbKeys.length) return;
-                        var entry = feedback[fbKeys[0]];
-                        var records = entry.records || (Array.isArray(entry) ? entry : []);
-                        var students = records.map(function(r) { return r.name || ''; }).filter(function(n) { return n; });
-                        if (!students.length) return;
-                        classes.push({
-                            id: cid, name: '恢复班级'+(existingIds.size + healed.length + 1),
-                            students: students,
-                            columns: entry.dateColumns || [],
-                            rowHeight: 36,
-                            tableColors: { headerBg: '#eff6ff', headerText: '#1e40af', border: '#bfdbfe', rowEven: '#f8fafc' }
-                        });
-                        healed.push(cid);
-                    });
-                    if (healed.length > 0) {
-                        console.log('[DATA] 锁三自愈：从反馈重建了 '+healed.length+' 个缺失班级');
-                        await dbSet('classes', classes);
-                    }
-                }
-            } catch(e) { console.warn('[DATA] 锁三自愈失败:', e.message); }
-            // 孤儿 fb| 不再自动清理 —— 由管理者手动在数据恢复页操作
+            // 清理孤儿反馈：属于已删除班级的记录直接丢弃
+            var _validCids = new Set(classes.map(function(c) { return c.id; }));
+            var _orphanCleaned = 0;
+            Object.keys(feedback).forEach(function(k) {
+                var cid = k.split('|')[0];
+                if (cid && !_validCids.has(cid)) { delete feedback[k]; _orphanCleaned++; }
+            });
+            if (_orphanCleaned > 0) { console.log('[DATA] 清理了 '+_orphanCleaned+' 条孤儿反馈记录'); }
             console.log('[DATA] 所有 feedback keys:', Object.keys(feedback).sort());
             console.log('[DATA] 所有班级:', classes.map(c => c.id + ':' + c.name));
             currentClassId = classes.length ? classes[0].id : null;
@@ -1918,8 +1990,12 @@
             if(!records.length){tb.innerHTML=`<tr><td colspan="${2+dateColumns.length}" class="empty-state">无学生</td></tr>`;return;}
             tb.innerHTML=records.map((r,idx)=>`<tr style="height:${cls.rowHeight}px;"><td>${idx+1}</td><td>${escapeHtml(r.name)}</td>${r.values.map((v,i)=>`<td style="background-color:${(r.colors&&r.colors[i])||''};"><input class="cell-input" data-row="${idx}" data-col="${i}" value="${escapeHtml(v)}" onfocus="selectCell(this)" oninput="autoResizeInput(this)" onkeydown="handleKeyDown(event)"></td>`).join('')}</tr>`).join('');
             tb.querySelectorAll('.cell-input').forEach(inp => {
-                inp.addEventListener('input',()=>{if(!saveTimer)pushUndo();var key=feedbackKey(currentClassId,currentDateLabel);var entry=feedback[key];if(entry&&entry.records){var r=parseInt(inp.dataset.row),c=parseInt(inp.dataset.col);if(entry.records[r]&&c<entry.records[r].values.length)entry.records[r].values[c]=inp.value;}_markDirty(currentClassId,currentDateLabel);clearTimeout(saveTimer);saveTimer=setTimeout(()=>{saveCurrentDay();saveTimer=0;},600);});
-                autoResizeInput(inp);
+                inp.addEventListener('input',()=>{if(!saveTimer)pushUndo();var key=feedbackKey(currentClassId,currentDateLabel);var entry=feedback[key];if(entry&&entry.records){var r=parseInt(inp.dataset.row),c=parseInt(inp.dataset.col);if(entry.records[r]&&c<entry.records[r].values.length)entry.records[r].values[c]=inp.value;}_markDirty(currentClassId,currentDateLabel);clearTimeout(saveTimer);saveTimer=setTimeout(()=>{saveCurrentDay();saveTimer=0;},200);});
+            });
+            // 批量 resize 避免逐个触发重排
+            requestAnimationFrame(function() {
+                var inputs = tb.querySelectorAll('.cell-input');
+                for (var _i = 0; _i < inputs.length; _i++) autoResizeInput(inputs[_i]);
             });
             if(activeCell){const nr=tb.querySelector(`.cell-input[data-row="${activeCell.dataset.row}"][data-col="${activeCell.dataset.col}"]`);if(nr){nr.classList.add('active-cell-highlight');activeCell=nr;}}
         }
@@ -1974,7 +2050,16 @@
             const ok = await saveAllDataNow(true);
             if (!ok) updateSaveStatus('⚠️ 未同步');
         };
-        function autoResizeInput(inp){if(!inp)return;const span=document.createElement('span');span.style.visibility='hidden';span.style.position='absolute';span.style.fontSize=getComputedStyle(inp).fontSize;span.style.fontWeight=getComputedStyle(inp).fontWeight;span.textContent=inp.value||' ';document.body.appendChild(span);const w=Math.min(Math.max(span.offsetWidth+16,100),400);document.body.removeChild(span);inp.style.width=w+'px';}window.autoResizeInput=autoResizeInput;
+                var _measureEl = null;
+        function _getMeasureEl() {
+            if (!_measureEl || !document.body.contains(_measureEl)) {
+                _measureEl = document.createElement('span');
+                _measureEl.style.cssText = 'visibility:hidden;position:absolute;top:-9999px;left:-9999px;white-space:pre;';
+                document.body.appendChild(_measureEl);
+            }
+            return _measureEl;
+        }
+        function autoResizeInput(inp){if(!inp)return;var m=_getMeasureEl();m.style.fontSize=getComputedStyle(inp).fontSize;m.style.fontWeight=getComputedStyle(inp).fontWeight;m.textContent=inp.value||' ';var w=Math.min(Math.max(m.offsetWidth+16,100),400);inp.style.width=w+'px';}window.autoResizeInput=autoResizeInput;
 
         function renderFullTable(){
             const cls=getCurrentClass();if(!cls)return;
@@ -2198,7 +2283,7 @@
         };
         window.addClass=function(){const n=document.getElementById('newClassName').value.trim();if(!n){showConfirm('请输入班级名称');return;}var dist=document.getElementById('newClassDistrict').value;var camp=document.getElementById('newClassCampus').value;if(!dist||!camp){showConfirm('请选择大区和校区');return;}const nc={id:'c'+Date.now(),name:n,district:dist,campus:camp,students:[],columns:['听写(满分12)','小测(满分10)','自学资料','笔记','语音作业','小书童(满分100)','备注'],rowHeight:36,tableColors:{headerBg:'#eff6ff',headerText:'#1e40af',border:'#bfdbfe',rowEven:'#f8fafc'}};classes.push(nc);dbSet('classes',classes);document.getElementById('newClassName').value='';currentClassId=nc.id;renderClassList();setTimeout(function(){window.toggleStudentModal(nc.id);},80);};
         window.editClassName=async function(id){const c=classes.find(function(x){return x.id===id;});if(!c)return;const n=await showPrompt('新班级名称',c.name);if(n&&n.trim()){c.name=n.trim();};if(campusConfig.length){var curDist=c.district||'';var distList=campusConfig.map(function(d,i){return (i+1)+'. '+d.district;}).join('\n');var distChoice=await showPrompt('大区（输入序号，留空不变）：\n'+distList,'');if(distChoice&&distChoice.trim()){var di=parseInt(distChoice.trim())-1;if(di>=0&&di<campusConfig.length){c.district=campusConfig[di].district;var curCamp=c.campus||'';var campList=(campusConfig[di].campuses||[]).map(function(cp,i){return (i+1)+'. '+cp;}).join('\n');var campChoice=await showPrompt('校区（输入序号，留空不变）：\n'+campList,'');if(campChoice&&campChoice.trim()){var ci=parseInt(campChoice.trim())-1;if(ci>=0&&ci<(campusConfig[di].campuses||[]).length){c.campus=campusConfig[di].campuses[ci];}}}}}dbSet('classes',classes);renderClassList();updateCurrentClassDisplay();};
-        window.deleteClass=async function(id){if(!await showConfirm('删除班级及反馈？'))return;classes=classes.filter(x=>x.id!==id);await dbSet('classes',classes);const prefix=id+'|';for(const k in feedback)if(k.startsWith(prefix)){delete feedback[k];}currentClassId=classes.length?classes[0].id:null;renderClassList();if(currentClassId)switchView('classes');};
+        window.deleteClass=async function(id){if(!await showConfirm('删除班级及反馈？'))return;const prefix=id+'|';var fbKeys=Object.keys(feedback).filter(function(k){return k.startsWith(prefix);});Promise.all(fbKeys.map(function(k){var date=k.substring(prefix.length);return dbSet(_fbStoreKey(id,date),null);})).catch(function(){});try{var _ds=await supabase.auth.getSession();var _du=_ds&&_ds.data&&_ds.data.session&&_ds.data.session.user;if(_du){supabase.from('data_store').delete().eq('user_id',_du.id).like('key','fb|'+id+'|%').then(function(){},function(){});}}catch(e){}fbKeys.forEach(function(k){delete feedback[k];});classes=classes.filter(function(x){return x.id!==id;});await dbSet('classes',classes);try{_idb.set(_cacheKey('_fullBackup'),{classes:classes,feedback:feedback,tools:tools,analysisSel:analysisSel,time:Date.now()});}catch(e){}_notifyOtherTabs(['classes']);currentClassId=classes.length?classes[0].id:null;renderClassList();if(currentClassId)switchView('classes');};
 
         // ========== 导出 ==========
         window.exportAllData=async function(){const dateStr=new Date().toLocaleDateString('zh-CN').replace(/\//g,'-');const blob=new Blob([JSON.stringify({classes,feedback,tools,analysisSel})],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`全部数据备份_${dateStr}.json`;a.click();};

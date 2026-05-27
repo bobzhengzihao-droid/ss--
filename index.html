@@ -1815,7 +1815,17 @@
                 var syncTs = parseInt(localStorage.getItem('_fb_cls_sync_ts_' + _userId) || '0');
                 if (localTs > syncTs && localClasses !== null) {
                     classes = localClasses;
-                    _showSyncWarning('本地班级有未同步修改，请检查网络后手动同步');
+                    // 本地有未同步修改 → 自动后台同步，不打扰老师
+                    updateSaveStatus('⏳ 同步本地修改...');
+                    saveAllDataNow(true).then(function(ok) {
+                        if (ok) {
+                            updateSaveStatus('☁️ 已同步');
+                            try { localStorage.setItem('_fb_cls_sync_ts_' + _userId, Date.now()); } catch(e) {}
+                        } else {
+                            updateSaveStatus('⚠️ 未同步');
+                            showManualSyncBtn();
+                        }
+                    });
                 } else {
                     classes = cloudClasses;
                 }
@@ -1825,7 +1835,9 @@
                 if (cloudClasses.length > 1 || cloudClasses[0].id !== 'c1') {
                     try { _idb.set(_cacheKey('classes'), cloudClasses); } catch(e) {}
                 }
-            } else if (!classes || !classes.length) classes = defaultClasses();
+            } else if (!classes || !classes.length) { classes = defaultClasses(); }
+            // 确保 _lastKnownClassCount 始终有值，即使云端加载失败也不会阻塞后续保存
+            if (classes && classes.length) _lastKnownClassCount = classes.length;
 
             // 合并 feedback：云端为基础，本地逐 key 比较时间戳决定取舍
             const mergedFb = Object.assign({}, cloudFeedback || {});

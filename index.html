@@ -2468,47 +2468,100 @@
             container.innerHTML=''; Object.values(lineChartInstances).forEach(inst=>inst.destroy()); for(const k in lineChartInstances)delete lineChartInstances[k];
             if(!studentName||!selDates.length||!selCols.length)return;
             const allDates=getDateList().filter(d=>selDates.includes(d)).sort(naturalSort);
+
+            // 预扫描：判定每列是「得分列」还是「完成列」
+            var colTypes={};
+            selCols.forEach(function(colKeyword){
+                var binC=0,numC=0;
+                allDates.forEach(function(dateLabel){
+                    var entry=getEntry(cls.id,dateLabel);
+                    var ci=entry?findColumnIndexAndMax(entry,colKeyword):{idx:-1};
+                    if(ci.idx===-1)return;
+                    var records=(Array.isArray(entry)?entry:entry.records)||[];
+                    records.forEach(function(r){
+                        var v=(r.values[ci.idx]||'').trim();
+                        if(!v)return;
+                        if(isBinaryMarker(v))binC++;else if(isGradedValue(v)||/^\d+(\.\d+)?$/.test(v))numC++;
+                    });
+                });
+                colTypes[colKeyword]=binC>=numC?'completion':'score';
+            });
+
             selCols.forEach((colKeyword,idx)=>{
+                var isComp=colTypes[colKeyword]==='completion';
                 const studentData=[],avgData=[];
                 allDates.forEach(dateLabel=>{
                     const entry=getEntry(cls.id,dateLabel);
                     const { idx:colIdx, maxScore } = entry ? findColumnIndexAndMax(entry, colKeyword) : { idx:-1, maxScore:0 };
                     if(colIdx===-1){studentData.push(null);avgData.push(null);return;}
                     const records=(Array.isArray(entry)?entry:entry.records)||[];
-                    let stuVal=null,sum=0,cnt=0;
-                    records.forEach(r=>{
-                        const v=r.values[colIdx];
-                        if(v!==''&&v!==null&&v!==undefined){
-                            const score=convertToNumber(v, maxScore);
-                            const pct=maxScore?Math.round((score/maxScore)*100):score;
-                            sum+=pct;cnt++; if(r.name===studentName)stuVal=pct;
-                        }
-                    });
-                    studentData.push(stuVal);avgData.push(cnt>0?Math.round(sum/cnt):null);
+                    if(isComp){
+                        var stuVal=null,doneC=0,totalC=0;
+                        records.forEach(function(r){
+                            var v=(r.values[colIdx]||'').trim();
+                            if(!v||!isBinaryMarker(v))return;
+                            totalC++;if(isBinaryDone(v))doneC++;
+                            if(r.name===studentName)stuVal=isBinaryDone(v)?100:0;
+                        });
+                        studentData.push(stuVal);
+                        avgData.push(totalC>0?Math.round(doneC/totalC*100):null);
+                    }else{
+                        var stuVal=null,sum=0,cnt=0;
+                        records.forEach(function(r){
+                            var v=r.values[colIdx];
+                            if(v!==''&&v!==null&&v!==undefined){
+                                var score=convertToNumber(v,maxScore);
+                                if(score===null)return;
+                                var pct=maxScore?Math.round((score/maxScore)*100):score;
+                                sum+=pct;cnt++;if(r.name===studentName)stuVal=pct;
+                            }
+                        });
+                        studentData.push(stuVal);avgData.push(cnt>0?Math.round(sum/cnt):null);
+                    }
                 });
-                const card=document.createElement('div');card.className='card';
-                card.innerHTML=`<div class="card-title">${escapeHtml(colKeyword)}</div><div style="height:200px;"><canvas id="lineCanvas${idx}" height="200"></canvas></div><div class="chart-desc" id="desc${idx}"></div>`;
+                var card=document.createElement('div');card.className='card';
+                card.innerHTML='<div class="card-title">'+(isComp?'📋 ':'')+escapeHtml(colKeyword)+'</div><div style="height:200px;"><canvas id="lineCanvas'+idx+'" height="200"></canvas></div><div class="chart-desc" id="desc'+idx+'"></div>';
                 container.appendChild(card);
-                const canvas=document.getElementById(`lineCanvas${idx}`); const descDiv=document.getElementById(`desc${idx}`);
-                const valid=studentData.filter(v=>v!==null); let desc='';
-                if(valid.length>=2){
-                    const first=valid[0],last=valid[valid.length-1];
-                    const diff=last-first; const recent=valid.slice(-3);
-                    const avg=Math.round(recent.reduce((a,b)=>a+b,0)/recent.length);
-                    let bestVal=-1,bestDate='',worstVal=101,worstDate='';
-                    studentData.forEach(function(v,i){if(v!==null){if(v>bestVal){bestVal=v;bestDate=allDates[i];}if(v<worstVal){worstVal=v;worstDate=allDates[i];}}});
-                    var classSum=0,classCnt=0;avgData.forEach(function(v){if(v!==null){classSum+=v;classCnt++;}});
-                    var classAvg=classCnt>0?Math.round(classSum/classCnt):0;
-                    var vsAvg=classAvg>0?(avg>classAvg?'，高于班级平均（'+classAvg+'分）':(avg<classAvg?'，低于班级平均（'+classAvg+'分）':'，与班级平均持平（'+classAvg+'分）')):'';
-                    let trend='';if(diff>10)trend='📈 进步明显';else if(diff<-10)trend='📉 有所下滑';else trend='📊 保持稳定';
-                    desc=trend+'，从'+first+'分→'+last+'分，最高'+bestDate+'（'+bestVal+'分），近3次平均'+avg+'分'+vsAvg;
-                }else desc='数据不足';
+                var canvas=document.getElementById('lineCanvas'+idx);var descDiv=document.getElementById('desc'+idx);
+                var valid=studentData.filter(function(v){return v!==null;});var desc='';
+                if(isComp){
+                    if(valid.length>=1){
+                        var doneCount=valid.filter(function(v){return v===100;}).length;
+                        var total=valid.length;var stuPct=Math.round(doneCount/total*100);
+                        var recent3=valid.slice(-3);var recentDone=recent3.filter(function(v){return v===100;}).length;
+                        var half=Math.floor(valid.length/2)||1;
+                        var firstHalf=valid.slice(0,half);var secondHalf=valid.slice(-half);
+                        var fRate=firstHalf.filter(function(v){return v===100;}).length/firstHalf.length;
+                        var sRate=secondHalf.filter(function(v){return v===100;}).length/secondHalf.length;
+                        var diff=(sRate-fRate)*100;
+                        var trend='';if(diff>20)trend='📈 进步明显';else if(diff<-20)trend='📉 有所下滑';else trend='📊 保持稳定';
+                        var clsSum=0,clsCnt=0;avgData.forEach(function(v){if(v!==null){clsSum+=v;clsCnt++;}});
+                        var clsAvg=clsCnt>0?Math.round(clsSum/clsCnt):0;
+                        var vsAvg=clsAvg>0?(stuPct>clsAvg?'，高于班级平均（'+clsAvg+'%）':(stuPct<clsAvg?'，低于班级平均（'+clsAvg+'%）':'，与班级平均持平（'+clsAvg+'%）')):'';
+                        desc=trend+'，'+total+'次课中完成'+doneCount+'次（'+stuPct+'%），近3次完成'+recentDone+'次'+vsAvg;
+                    }else desc='数据不足';
+                }else{
+                    if(valid.length>=2){
+                        var first=valid[0],last=valid[valid.length-1];
+                        var diff=last-first;var recent=valid.slice(-3);
+                        var avg=Math.round(recent.reduce(function(a,b){return a+b;},0)/recent.length);
+                        var bestVal=-1,bestDate='',worstVal=101,worstDate='';
+                        studentData.forEach(function(v,i){if(v!==null){if(v>bestVal){bestVal=v;bestDate=allDates[i];}if(v<worstVal){worstVal=v;worstDate=allDates[i];}}});
+                        var clsSum=0,clsCnt=0;avgData.forEach(function(v){if(v!==null){clsSum+=v;clsCnt++;}});
+                        var clsAvg=clsCnt>0?Math.round(clsSum/clsCnt):0;
+                        var vsAvg=clsAvg>0?(avg>clsAvg?'，高于班级平均（'+clsAvg+'分）':(avg<clsAvg?'，低于班级平均（'+clsAvg+'分）':'，与班级平均持平（'+clsAvg+'分）')):'';
+                        var trend='';if(diff>10)trend='📈 进步明显';else if(diff<-10)trend='📉 有所下滑';else trend='📊 保持稳定';
+                        desc=trend+'，从'+first+'分→'+last+'分，最高'+bestDate+'（'+bestVal+'分），近3次平均'+avg+'分'+vsAvg;
+                    }else desc='数据不足';
+                }
                 descDiv.textContent=desc;
                 var studentColor=COLORS[idx%COLORS.length];
+                var yTitle=isComp?'完成率（%）':'百分制得分';
+                var dataLabelPlugin={id:'ptLabel',afterDraw:function(chart){var ctx=chart.ctx;ctx.save();ctx.font='bold 10px Arial';ctx.textAlign='center';ctx.textBaseline='bottom';chart.data.datasets.forEach(function(ds,dsi){if(ds.label!==studentName)return;var meta=chart.getDatasetMeta(dsi);meta.data.forEach(function(pt,i){var v=ds.data[i];if(v===null||v===undefined)return;ctx.fillStyle='#1e293b';if(isComp)ctx.fillText(v===100?'✓':'✗',pt.x,pt.y-6);else ctx.fillText(String(v),pt.x,pt.y-6);});});ctx.restore();}};
                 lineChartInstances[idx]=new Chart(canvas,{
                     type:'line',data:{labels:allDates,datasets:[{label:studentName,data:studentData,borderColor:studentColor,backgroundColor:studentColor,borderWidth:2.5,tension:0.2,pointRadius:4,pointStyle:'circle'},{label:'班级平均',data:avgData,borderColor:'#94a3b8',backgroundColor:'#94a3b8',borderWidth:2,borderDash:[5,5],tension:0.2,pointRadius:3,pointStyle:'triangle'}]},
-                    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,max:100,title:{display:true,text:'百分制得分'}}}},
-                    plugins:[{id:'ptLabel',afterDraw:function(chart){var ctx=chart.ctx;ctx.save();ctx.font='bold 10px Arial';ctx.textAlign='center';ctx.textBaseline='bottom';chart.data.datasets.forEach(function(ds,dsi){if(ds.label!==studentName)return;var meta=chart.getDatasetMeta(dsi);meta.data.forEach(function(pt,i){var v=ds.data[i];if(v===null||v===undefined)return;ctx.fillStyle='#1e293b';ctx.fillText(String(v),pt.x,pt.y-6);});});ctx.restore();}}]
+                    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,max:100,title:{display:true,text:yTitle}}}},
+                    plugins:[dataLabelPlugin]
                 });
             });
         }

@@ -2433,7 +2433,8 @@
             const radarDate=document.getElementById('radarDateSelect').value;
             const entry=getEntry(cls.id,radarDate);
             const columns=entry?entry.dateColumns:[];
-            const selRadarCols=analysisSel[cls.id]?.radarColumns||[];
+            var selRadarCols=analysisSel[cls.id]?.radarColumns;
+            if(!selRadarCols||!selRadarCols.length)selRadarCols=columns.map(stripMaxScore);
             document.getElementById('radarColumnCheckGroup').innerHTML='<span>题型：</span>'+columns.map(c=>{const pure=stripMaxScore(c);const checked=selRadarCols.some(k=>columnContainsKeyword(c,k));return `<label><input type="checkbox" value="${escapeHtml(pure)}" ${checked?'checked':''} onchange="saveRadarCols()"> ${escapeHtml(pure)}</label>`;}).join('');
         }
         window.saveRadarCols=function(){
@@ -2490,11 +2491,21 @@
                 container.appendChild(card);
                 const canvas=document.getElementById(`lineCanvas${idx}`); const descDiv=document.getElementById(`desc${idx}`);
                 const valid=studentData.filter(v=>v!==null); let desc='';
-                if(valid.length>=2){const recent=valid.slice(-3);const avg=Math.round(recent.reduce((a,b)=>a+b,0)/recent.length);const diff=recent[recent.length-1]-recent[0];if(diff>10)desc=`📈 进步明显，近3次平均${avg}分`;else if(diff<-10)desc=`📉 有所下滑，近3次平均${avg}分`;else desc=`📊 保持稳定，近3次平均${avg}分`;}else desc='数据不足';
+                if(valid.length>=2){
+                    const first=valid[0],last=valid[valid.length-1];
+                    const diff=last-first; const recent=valid.slice(-3);
+                    const avg=Math.round(recent.reduce((a,b)=>a+b,0)/recent.length);
+                    let bestVal=-1,bestDate='',worstVal=101,worstDate='';
+                    studentData.forEach(function(v,i){if(v!==null){if(v>bestVal){bestVal=v;bestDate=allDates[i];}if(v<worstVal){worstVal=v;worstDate=allDates[i];}}});
+                    let trend='';if(diff>10)trend='📈 进步明显';else if(diff<-10)trend='📉 有所下滑';else trend='📊 保持稳定';
+                    desc=trend+'，从'+first+'分→'+last+'分，最高'+bestDate+'（'+bestVal+'分），近'+Math.min(3,valid.length)+'次平均'+avg+'分';
+                }else desc='数据不足';
                 descDiv.textContent=desc;
+                var studentColor=COLORS[idx%COLORS.length];
                 lineChartInstances[idx]=new Chart(canvas,{
-                    type:'line',data:{labels:allDates,datasets:[{label:studentName,data:studentData,borderColor:COLORS[idx%COLORS.length],borderWidth:2,tension:0.2,pointRadius:3},{label:'班级平均',data:avgData,borderColor:COLORS[idx%COLORS.length],borderWidth:2,borderDash:[5,5],tension:0.2,pointStyle:'triangle'}]},
-                    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,max:100,title:{display:true,text:'百分制得分'}}}}
+                    type:'line',data:{labels:allDates,datasets:[{label:studentName,data:studentData,borderColor:studentColor,backgroundColor:studentColor,borderWidth:2.5,tension:0.2,pointRadius:4,pointStyle:'circle'},{label:'班级平均',data:avgData,borderColor:'#94a3b8',backgroundColor:'#94a3b8',borderWidth:2,borderDash:[5,5],tension:0.2,pointRadius:3,pointStyle:'triangle'}]},
+                    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,max:100,title:{display:true,text:'百分制得分'}}}},
+                    plugins:[{id:'ptLabel',afterDraw:function(chart){var ctx=chart.ctx;ctx.save();ctx.font='bold 10px Arial';ctx.textAlign='center';ctx.textBaseline='bottom';chart.data.datasets.forEach(function(ds,dsi){if(ds.label!==studentName)return;var meta=chart.getDatasetMeta(dsi);meta.data.forEach(function(pt,i){var v=ds.data[i];if(v===null||v===undefined)return;ctx.fillStyle='#1e293b';ctx.fillText(String(v),pt.x,pt.y-6);});});ctx.restore();}}]
                 });
             });
         }
@@ -2542,7 +2553,7 @@
             const radarCols = Array.from(document.querySelectorAll('#radarColumnCheckGroup input:checked')).map(cb => cb.value);
             if (!radarCols.length) { await showConfirm('请勾选至少一个题型'); return; }
 
-            let scoreDesc = `学生 ${studentName} 在 ${radarDate} 的考试中，各题型得分如下：\n`;
+            let scoreDesc = `学生 ${studentName} 在 ${radarDate} 各题型表现如下：\n`;
             radarCols.forEach(keyword => {
                 const { idx, maxScore } = findColumnIndexAndMax(entry, keyword);
                 const val = idx !== -1 ? (studentRec.values[idx] || '') : '';
@@ -2626,7 +2637,7 @@
             });
         }
 
-        // ========== PDF 导出（智能分页） ==========
+        // ========== PDF 导出（智能分页 + 信息头 + 页码） ==========
         window.downloadPDFReport = async function() {
             if (!window.jspdf || !window.html2canvas) { showConfirm('PDF库未加载，请刷新'); return; }
             const titleEl = document.getElementById('analysisReportTitle');
@@ -2636,44 +2647,76 @@
             const pageWidth = pdf.internal.pageSize.getWidth();
             const pageHeight = pdf.internal.pageSize.getHeight();
             const margin = 10, imgWidth = pageWidth - margin*2;
+            const SCALE = 3;
             let currentY = margin;
 
+            // 构建信息头（中文用 html2canvas 截图）
+            const cls = getCurrentClass();
+            const selDates = Array.from(document.querySelectorAll('#analysisDateCheckGroup input:checked')).map(function(cb){return cb.value;}).sort(naturalSort);
+            const stuName = document.getElementById('analysisStudentSelect')?.value || '';
+            const today = new Date().toLocaleDateString('zh-CN');
+            const clsName = cls ? cls.name : '';
+            const dateRange = selDates.length ? (selDates[0] + (selDates.length>1 ? ' ~ '+selDates[selDates.length-1] : '')) : '';
+            var infoHTML = '<div style="display:inline-block;background:#f1f5f9;padding:6px 14px;border-radius:6px;font-size:11px;font-family:Arial;color:#475569;line-height:1.6;">';
+            infoHTML += '<b>'+escapeHtml(clsName)+'</b> &nbsp;|&nbsp; 学生：'+escapeHtml(stuName)+' &nbsp;|&nbsp; 课次：'+escapeHtml(dateRange)+' &nbsp;|&nbsp; '+escapeHtml(today);
+            infoHTML += '</div>';
+            var infoDiv = document.createElement('div'); infoDiv.innerHTML = infoHTML; infoDiv.style.cssText = 'position:absolute;left:-9999px;top:0;';
+            document.body.appendChild(infoDiv);
+            var infoCanvas = await html2canvas(infoDiv.firstElementChild, { scale: SCALE, backgroundColor: '#f1f5f9' });
+            document.body.removeChild(infoDiv);
+            var infoImg = infoCanvas.toDataURL('image/png');
+            var infoHeight = (infoCanvas.height * imgWidth) / infoCanvas.width;
+
             if (titleEl) {
-                const titleCanvas = await html2canvas(titleEl, { scale: 2, backgroundColor: '#ffffff' });
-                const titleImg = titleCanvas.toDataURL('image/png');
-                const titleHeight = (titleCanvas.height * imgWidth) / titleCanvas.width;
-                if (currentY + titleHeight > pageHeight - margin) { pdf.addPage(); currentY = margin; }
+                var titleCanvas = await html2canvas(titleEl, { scale: SCALE, backgroundColor: '#ffffff' });
+                var titleImg = titleCanvas.toDataURL('image/png');
+                var titleHeight = (titleCanvas.height * imgWidth) / titleCanvas.width;
+                if (currentY + titleHeight + infoHeight > pageHeight - margin - 8) { pdf.addPage(); currentY = margin; }
                 pdf.addImage(titleImg, 'PNG', margin, currentY, imgWidth, titleHeight);
-                currentY += titleHeight + 4;
+                currentY += titleHeight + 2;
+                pdf.addImage(infoImg, 'PNG', margin, currentY, imgWidth, infoHeight);
+                currentY += infoHeight + 6;
+            } else {
+                pdf.addImage(infoImg, 'PNG', margin, currentY, imgWidth, infoHeight);
+                currentY += infoHeight + 6;
             }
 
-            const lineCards = document.querySelectorAll('#lineChartsContainer > .card');
-            for (const card of lineCards) {
-                const canvas = await html2canvas(card, { scale: 2, backgroundColor: '#ffffff' });
-                const imgData = canvas.toDataURL('image/png');
-                const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                if (currentY + imgHeight > pageHeight - margin) { pdf.addPage(); currentY = margin; }
-                pdf.addImage(imgData, 'PNG', margin, currentY, imgWidth, imgHeight);
-                currentY += imgHeight + 4;
+            var lineCards = document.querySelectorAll('#lineChartsContainer > .card');
+            for (var i = 0; i < lineCards.length; i++) {
+                var cardCanvas = await html2canvas(lineCards[i], { scale: SCALE, backgroundColor: '#ffffff' });
+                var cardImg = cardCanvas.toDataURL('image/png');
+                var cardHeight = (cardCanvas.height * imgWidth) / cardCanvas.width;
+                if (currentY + cardHeight > pageHeight - margin - 8) { pdf.addPage(); currentY = margin; }
+                pdf.addImage(cardImg, 'PNG', margin, currentY, imgWidth, cardHeight);
+                currentY += cardHeight + 4;
             }
 
-            const radarSection = document.getElementById('radarSection');
+            var radarSection = document.getElementById('radarSection');
             if (radarSection) {
-                const canvas = await html2canvas(radarSection, { scale: 2, backgroundColor: '#ffffff' });
-                const imgData = canvas.toDataURL('image/png');
-                const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                if (currentY + imgHeight > pageHeight - margin) { pdf.addPage(); currentY = margin; }
-                pdf.addImage(imgData, 'PNG', margin, currentY, imgWidth, imgHeight);
-                currentY += imgHeight + 4;
+                var radarCanvas = await html2canvas(radarSection, { scale: SCALE, backgroundColor: '#ffffff' });
+                var radarImg = radarCanvas.toDataURL('image/png');
+                var radarHeight = (radarCanvas.height * imgWidth) / radarCanvas.width;
+                if (currentY + radarHeight > pageHeight - margin - 8) { pdf.addPage(); currentY = margin; }
+                pdf.addImage(radarImg, 'PNG', margin, currentY, imgWidth, radarHeight);
+                currentY += radarHeight + 4;
             }
 
-            const aiEl = document.getElementById('aiResult');
+            var aiEl = document.getElementById('aiResult');
             if (aiEl && aiEl.innerText.trim() && aiEl.innerText.trim() !== '分析中...') {
-                const canvas = await html2canvas(aiEl, { scale: 2, backgroundColor: '#ffffff' });
-                const imgData = canvas.toDataURL('image/png');
-                const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                if (currentY + imgHeight > pageHeight - margin) { pdf.addPage(); currentY = margin; }
-                pdf.addImage(imgData, 'PNG', margin, currentY, imgWidth, imgHeight);
+                var aiCanvas = await html2canvas(aiEl, { scale: SCALE, backgroundColor: '#ffffff' });
+                var aiImg = aiCanvas.toDataURL('image/png');
+                var aiHeight = (aiCanvas.height * imgWidth) / aiCanvas.width;
+                if (currentY + aiHeight > pageHeight - margin - 8) { pdf.addPage(); currentY = margin; }
+                pdf.addImage(aiImg, 'PNG', margin, currentY, imgWidth, aiHeight);
+            }
+
+            // 给所有页加页码
+            var totalPages = pdf.getNumberOfPages();
+            for (var p = 1; p <= totalPages; p++) {
+                pdf.setPage(p);
+                pdf.setFontSize(8);
+                pdf.setTextColor(160, 160, 160);
+                pdf.text(p + '/' + totalPages, pageWidth / 2, pageHeight - 6, { align: 'center' });
             }
 
             pdf.save(fileName);

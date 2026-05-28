@@ -3146,8 +3146,12 @@
             commMode = mode;
             localStorage.setItem('_fb_comm_mode', mode);
             dbSet('commMode', mode);
-            if (mode === 'periodic' && !commPeriodDates.length) {
-                commPeriodDates = getDateList().slice();
+            if (mode === 'periodic') {
+                const validDates = getDateList();
+                commPeriodDates = commPeriodDates.filter(function(d) { return validDates.includes(d); });
+                if (!commPeriodDates.length) {
+                    commPeriodDates = validDates.slice();
+                }
                 localStorage.setItem('_fb_comm_period_dates', JSON.stringify(commPeriodDates));
                 dbSet('commPeriodDates', commPeriodDates);
             }
@@ -3215,7 +3219,7 @@
             html += '<div style="overflow-x:auto;max-height:300px;font-size:11px;-webkit-overflow-scrolling:touch;max-width:100%;">';
             html += '<table style="border-collapse:collapse;width:auto;min-width:100%;">';
             // 表头
-            html += '<thead><tr><th style="position:sticky;top:0;z-index:2;background:var(--table-header-bg);padding:4px 6px;text-align:center;border:1px solid var(--table-border);white-space:nowrap;font-size:11px;">日期</th>';
+            html += '<thead><tr><th style="position:sticky;top:0;left:0;z-index:3;background:var(--table-header-bg);padding:4px 6px;text-align:center;border:1px solid var(--table-border);white-space:nowrap;font-size:11px;">日期</th>';
             cols.forEach(function(pure) {
                 const checked = selectedDataCols[periodKey][pure] === true ? ' checked' : '';
                 html += '<th style="position:sticky;top:0;z-index:2;background:var(--table-header-bg);padding:4px 6px;text-align:center;border:1px solid var(--table-border);white-space:nowrap;font-size:11px;"><label style="cursor:pointer;display:flex;align-items:center;gap:3px;justify-content:center;"><input type="checkbox" ' + checked + ' onchange="togglePeriodCol(\'' + escapeHtml(pure) + '\')" style="transform:scale(0.85);">' + escapeHtml(pure) + '</label></th>';
@@ -3312,7 +3316,9 @@
 
             if (commMode === 'periodic') {
                 el.style.display = ''; el.style.gridTemplateColumns = ''; el.style.gap = '';
-                const dates = commPeriodDates.length ? commPeriodDates.slice().sort(naturalSort) : getDateList().slice().sort(naturalSort);
+                const allDates = getDateList();
+                var dates = commPeriodDates.length ? commPeriodDates.filter(function(d) { return allDates.includes(d); }).sort(naturalSort) : allDates.slice().sort(naturalSort);
+                if (!dates.length) dates = allDates.slice().sort(naturalSort);
                 const pd = collectPhaseData(student, dates);
                 if (!pd || Object.keys(pd.colStats).length === 0) {
                     el.innerHTML = '<span style="color:var(--text-muted);">所选课次暂无该学生的数据</span>';
@@ -3939,7 +3945,9 @@
             if (!cls) return;
 
             if (commMode === 'periodic') {
-                const dates = commPeriodDates.length ? commPeriodDates.slice().sort(naturalSort) : getDateList().slice().sort(naturalSort);
+                const allDates = getDateList();
+                var dates = commPeriodDates.length ? commPeriodDates.filter(function(d) { return allDates.includes(d); }).sort(naturalSort) : allDates.slice().sort(naturalSort);
+                if (!dates.length) dates = allDates.slice().sort(naturalSort);
                 const pd = collectPhaseData(student, dates);
                 const nick = getNickname(student);
                 if (pd && Object.keys(pd.colStats).length > 0) {
@@ -4394,18 +4402,22 @@
 
             let optionsHTML = '';
             if (type === 'byColumn') {
-                // 优先使用第一次课的实际列作为板块选项
-                let columns = cls.columns;
                 const dates = getDateList();
-                if (dates.length) {
-                    const firstEntry = getEntry(cls.id, dates[0]);
-                    if (firstEntry && firstEntry.dateColumns && firstEntry.dateColumns.length) {
-                        columns = firstEntry.dateColumns;
+                const seen = new Set();
+                const columns = [];
+                dates.forEach(function(d) {
+                    const entry = getEntry(cls.id, d);
+                    if (entry && entry.dateColumns) {
+                        entry.dateColumns.forEach(function(col) {
+                            const pure = stripMaxScore(col);
+                            if (!seen.has(pure)) { seen.add(pure); columns.push(col); }
+                        });
                     }
-                }
-                optionsHTML = columns.map(col => {
+                });
+                if (!columns.length) columns.push.apply(columns, cls.columns || []);
+                optionsHTML = columns.map(function(col) {
                     const pure = stripMaxScore(col);
-                    return `<option value="${escapeHtml(pure)}">${escapeHtml(pure)}</option>`;
+                    return '<option value="' + escapeHtml(pure) + '">' + escapeHtml(pure) + '</option>';
                 }).join('');
             } else {
                 optionsHTML = cls.students.map(s =>
@@ -4515,22 +4527,16 @@
             if (!cls) return;
             const dates = getDateList();
 
-            let columns = [];
-            const firstDate = dates[0];
-            if (firstDate) {
-                const firstEntry = getEntry(cls.id, firstDate);
-                if (firstEntry) {
-                    columns = [...firstEntry.dateColumns];
-                }
-            }
-            if (!columns.length) {
-                const allCols = new Set();
-                dates.forEach(d => {
-                    const entry = getEntry(cls.id, d);
-                    if (entry) entry.dateColumns.forEach(c => allCols.add(c));
+            const allCols = new Set();
+            const colOrder = [];
+            dates.forEach(d => {
+                const entry = getEntry(cls.id, d);
+                if (entry) entry.dateColumns.forEach(c => {
+                    const key = stripMaxScore(c);
+                    if (!allCols.has(key)) { allCols.add(key); colOrder.push(c); }
                 });
-                columns = Array.from(allCols).sort(naturalSort);
-            }
+            });
+            var columns = colOrder;
 
             let html = `<h3 style="text-align:center;margin-bottom:8px;">${escapeHtml(studentName)} 学情统计</h3>`;
             html += '<div class="stat-table-wrap"><table class="stat-table"><thead><tr><th style="width:70px">日期</th>';

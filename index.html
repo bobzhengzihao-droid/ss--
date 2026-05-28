@@ -2497,8 +2497,11 @@
                     const avg=Math.round(recent.reduce((a,b)=>a+b,0)/recent.length);
                     let bestVal=-1,bestDate='',worstVal=101,worstDate='';
                     studentData.forEach(function(v,i){if(v!==null){if(v>bestVal){bestVal=v;bestDate=allDates[i];}if(v<worstVal){worstVal=v;worstDate=allDates[i];}}});
+                    var classSum=0,classCnt=0;avgData.forEach(function(v){if(v!==null){classSum+=v;classCnt++;}});
+                    var classAvg=classCnt>0?Math.round(classSum/classCnt):0;
+                    var vsAvg=classAvg>0?(avg>classAvg?'，高于班级平均（'+classAvg+'分）':(avg<classAvg?'，低于班级平均（'+classAvg+'分）':'，与班级平均持平（'+classAvg+'分）')):'';
                     let trend='';if(diff>10)trend='📈 进步明显';else if(diff<-10)trend='📉 有所下滑';else trend='📊 保持稳定';
-                    desc=trend+'，从'+first+'分→'+last+'分，最高'+bestDate+'（'+bestVal+'分），近'+Math.min(3,valid.length)+'次平均'+avg+'分';
+                    desc=trend+'，从'+first+'分→'+last+'分，最高'+bestDate+'（'+bestVal+'分），近3次平均'+avg+'分'+vsAvg;
                 }else desc='数据不足';
                 descDiv.textContent=desc;
                 var studentColor=COLORS[idx%COLORS.length];
@@ -2637,7 +2640,7 @@
             });
         }
 
-        // ========== PDF 导出（智能分页 + 信息头 + 页码） ==========
+        // ========== PDF 导出（智能分页 + 页码） ==========
         window.downloadPDFReport = async function() {
             if (!window.jspdf || !window.html2canvas) { showConfirm('PDF库未加载，请刷新'); return; }
             const titleEl = document.getElementById('analysisReportTitle');
@@ -2647,43 +2650,20 @@
             const pageWidth = pdf.internal.pageSize.getWidth();
             const pageHeight = pdf.internal.pageSize.getHeight();
             const margin = 10, imgWidth = pageWidth - margin*2;
-            const SCALE = 3;
             let currentY = margin;
 
-            // 构建信息头（中文用 html2canvas 截图）
-            const cls = getCurrentClass();
-            const selDates = Array.from(document.querySelectorAll('#analysisDateCheckGroup input:checked')).map(function(cb){return cb.value;}).sort(naturalSort);
-            const stuName = document.getElementById('analysisStudentSelect')?.value || '';
-            const today = new Date().toLocaleDateString('zh-CN');
-            const clsName = cls ? cls.name : '';
-            const dateRange = selDates.length ? (selDates[0] + (selDates.length>1 ? ' ~ '+selDates[selDates.length-1] : '')) : '';
-            var infoHTML = '<div style="display:inline-block;background:#f1f5f9;padding:6px 14px;border-radius:6px;font-size:11px;font-family:Arial;color:#475569;line-height:1.6;">';
-            infoHTML += '<b>'+escapeHtml(clsName)+'</b> &nbsp;|&nbsp; 学生：'+escapeHtml(stuName)+' &nbsp;|&nbsp; 课次：'+escapeHtml(dateRange)+' &nbsp;|&nbsp; '+escapeHtml(today);
-            infoHTML += '</div>';
-            var infoDiv = document.createElement('div'); infoDiv.innerHTML = infoHTML; infoDiv.style.cssText = 'position:absolute;left:-9999px;top:0;';
-            document.body.appendChild(infoDiv);
-            var infoCanvas = await html2canvas(infoDiv.firstElementChild, { scale: SCALE, backgroundColor: '#f1f5f9' });
-            document.body.removeChild(infoDiv);
-            var infoImg = infoCanvas.toDataURL('image/png');
-            var infoHeight = (infoCanvas.height * imgWidth) / infoCanvas.width;
-
             if (titleEl) {
-                var titleCanvas = await html2canvas(titleEl, { scale: SCALE, backgroundColor: '#ffffff' });
+                var titleCanvas = await html2canvas(titleEl, { scale: 2, backgroundColor: '#ffffff' });
                 var titleImg = titleCanvas.toDataURL('image/png');
                 var titleHeight = (titleCanvas.height * imgWidth) / titleCanvas.width;
-                if (currentY + titleHeight + infoHeight > pageHeight - margin - 8) { pdf.addPage(); currentY = margin; }
+                if (currentY + titleHeight > pageHeight - margin - 8) { pdf.addPage(); currentY = margin; }
                 pdf.addImage(titleImg, 'PNG', margin, currentY, imgWidth, titleHeight);
-                currentY += titleHeight + 2;
-                pdf.addImage(infoImg, 'PNG', margin, currentY, imgWidth, infoHeight);
-                currentY += infoHeight + 6;
-            } else {
-                pdf.addImage(infoImg, 'PNG', margin, currentY, imgWidth, infoHeight);
-                currentY += infoHeight + 6;
+                currentY += titleHeight + 6;
             }
 
             var lineCards = document.querySelectorAll('#lineChartsContainer > .card');
             for (var i = 0; i < lineCards.length; i++) {
-                var cardCanvas = await html2canvas(lineCards[i], { scale: SCALE, backgroundColor: '#ffffff' });
+                var cardCanvas = await html2canvas(lineCards[i], { scale: 2, backgroundColor: '#ffffff' });
                 var cardImg = cardCanvas.toDataURL('image/png');
                 var cardHeight = (cardCanvas.height * imgWidth) / cardCanvas.width;
                 if (currentY + cardHeight > pageHeight - margin - 8) { pdf.addPage(); currentY = margin; }
@@ -2693,7 +2673,7 @@
 
             var radarSection = document.getElementById('radarSection');
             if (radarSection) {
-                var radarCanvas = await html2canvas(radarSection, { scale: SCALE, backgroundColor: '#ffffff' });
+                var radarCanvas = await html2canvas(radarSection, { scale: 2, backgroundColor: '#ffffff' });
                 var radarImg = radarCanvas.toDataURL('image/png');
                 var radarHeight = (radarCanvas.height * imgWidth) / radarCanvas.width;
                 if (currentY + radarHeight > pageHeight - margin - 8) { pdf.addPage(); currentY = margin; }
@@ -2703,7 +2683,7 @@
 
             var aiEl = document.getElementById('aiResult');
             if (aiEl && aiEl.innerText.trim() && aiEl.innerText.trim() !== '分析中...') {
-                var aiCanvas = await html2canvas(aiEl, { scale: SCALE, backgroundColor: '#ffffff' });
+                var aiCanvas = await html2canvas(aiEl, { scale: 2, backgroundColor: '#ffffff' });
                 var aiImg = aiCanvas.toDataURL('image/png');
                 var aiHeight = (aiCanvas.height * imgWidth) / aiCanvas.width;
                 if (currentY + aiHeight > pageHeight - margin - 8) { pdf.addPage(); currentY = margin; }

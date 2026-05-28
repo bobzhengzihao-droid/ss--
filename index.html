@@ -2368,6 +2368,24 @@
             if (['🏆','🥇','🥈','🥉','优秀','良好','及格','需努力','待提高'].includes(s)) return true;
             return false;
         }
+        function isGradeValue(val) {
+            var s = String(val).trim();
+            if (!s) return false;
+            if (/^[A-C][+-]{0,2}$/.test(s)) return true;
+            if (['优秀','良好','及格','需努力','待提高','优','良','中','差','🏆','🥇','🥈','🥉'].indexOf(s) !== -1) return true;
+            return false;
+        }
+        function gradeToNumber(val) {
+            var s = String(val).trim();
+            if (s === 'A++' || s === '优秀' || s === '优' || s === '🏆' || s === '🥇') return 4;
+            if (s === 'A+') return 3.5;
+            if (s === 'A' || s === '良好' || s === '良' || s === '🥈') return 3;
+            if (s === 'A-') return 2.5;
+            if (s === 'B++' || s === 'B+' || s === 'B' || s === 'B-' || s === '及格' || s === '中' || s === '🥉') return 2;
+            if (s === 'C+' || s === 'C' || s === 'C-' || s === '需努力' || s === '待提高' || s === '差') return 1;
+            if (s === '❌' || isBinaryUndone(s)) return 0;
+            return null;
+        }
         function convertToNumber(value, maxScore){
             if(value===''||value===null||value===undefined) return null;
             const str = String(value).trim();
@@ -2469,10 +2487,11 @@
             if(!studentName||!selDates.length||!selCols.length)return;
             const allDates=getDateList().filter(d=>selDates.includes(d)).sort(naturalSort);
 
-            // 预扫描：判定每列是「得分列」还是「完成列」
-            var colTypes={};
+            // 预扫描：判定每列类型 — 完成列 / 等级列 / 得分列
+            var colTypes={}; var colGradeMap={}; // gradeMap: {4:'优秀', 3:'良好', ...}
             selCols.forEach(function(colKeyword){
-                var binC=0,numC=0;
+                var binC=0,gradeC=0,numC=0;
+                var lvls={};
                 allDates.forEach(function(dateLabel){
                     var entry=getEntry(cls.id,dateLabel);
                     var ci=entry?findColumnIndexAndMax(entry,colKeyword):{idx:-1};
@@ -2481,19 +2500,33 @@
                     records.forEach(function(r){
                         var v=(r.values[ci.idx]||'').trim();
                         if(!v)return;
-                        if(isBinaryMarker(v))binC++;else if(isGradedValue(v)||/^\d+(\.\d+)?$/.test(v))numC++;
+                        if(isBinaryMarker(v)){binC++;}
+                        else if(isGradeValue(v)){
+                            gradeC++;var lvl=gradeToNumber(v);
+                            if(lvl!==null&&!(lvl in lvls))lvls[lvl]=v;
+                        }else if(isGradedValue(v)||/^\d+(\.\d+)?$/.test(v)){numC++;}
                     });
                 });
-                colTypes[colKeyword]=binC>=numC?'completion':'score';
+                if(binC>=gradeC&&binC>=numC)colTypes[colKeyword]='completion';
+                else if(gradeC>=binC&&gradeC>=numC){colTypes[colKeyword]='grade';colGradeMap[colKeyword]=lvls;}
+                else colTypes[colKeyword]='score';
             });
 
+            function _closestGrade(val,gradeMap){
+                var best=null,bestD=Infinity;
+                for(var lv in gradeMap){var d=Math.abs(val-Number(lv));if(d<bestD){bestD=d;best=gradeMap[lv];}}
+                return best||'';
+            }
+
             selCols.forEach((colKeyword,idx)=>{
-                var isComp=colTypes[colKeyword]==='completion';
-                const studentData=[],avgData=[];
+                var type=colTypes[colKeyword];
+                var isComp=type==='completion',isGrade=type==='grade';
+                var gradeMap=colGradeMap[colKeyword]||{};
+                const studentData=[],avgData=[],studentRaw=[];
                 allDates.forEach(dateLabel=>{
                     const entry=getEntry(cls.id,dateLabel);
                     const { idx:colIdx, maxScore } = entry ? findColumnIndexAndMax(entry, colKeyword) : { idx:-1, maxScore:0 };
-                    if(colIdx===-1){studentData.push(null);avgData.push(null);return;}
+                    if(colIdx===-1){studentData.push(null);avgData.push(null);studentRaw.push(null);return;}
                     const records=(Array.isArray(entry)?entry:entry.records)||[];
                     if(isComp){
                         var stuVal=null,doneC=0,totalC=0;
@@ -2503,8 +2536,19 @@
                             totalC++;if(isBinaryDone(v))doneC++;
                             if(r.name===studentName)stuVal=isBinaryDone(v)?100:0;
                         });
-                        studentData.push(stuVal);
+                        studentData.push(stuVal);studentRaw.push(null);
                         avgData.push(totalC>0?Math.round(doneC/totalC*100):null);
+                    }else if(isGrade){
+                        var stuVal=null,rawLabel=null,sum=0,cnt=0;
+                        records.forEach(function(r){
+                            var v=(r.values[colIdx]||'').trim();
+                            if(!v)return;var mapped=gradeToNumber(v);
+                            if(mapped===null)return;
+                            sum+=mapped;cnt++;
+                            if(r.name===studentName){stuVal=mapped;rawLabel=v;}
+                        });
+                        studentData.push(stuVal);studentRaw.push(rawLabel);
+                        avgData.push(cnt>0?Math.round(sum/cnt*100)/100:null);
                     }else{
                         var stuVal=null,sum=0,cnt=0;
                         records.forEach(function(r){
@@ -2516,14 +2560,17 @@
                                 sum+=pct;cnt++;if(r.name===studentName)stuVal=pct;
                             }
                         });
-                        studentData.push(stuVal);avgData.push(cnt>0?Math.round(sum/cnt):null);
+                        studentData.push(stuVal);studentRaw.push(null);
+                        avgData.push(cnt>0?Math.round(sum/cnt):null);
                     }
                 });
+                var titleIcon=isComp?'📋 ':(isGrade?'🏷 ':'');
                 var card=document.createElement('div');card.className='card';
-                card.innerHTML='<div class="card-title">'+(isComp?'📋 ':'')+escapeHtml(colKeyword)+'</div><div style="height:200px;"><canvas id="lineCanvas'+idx+'" height="200"></canvas></div><div class="chart-desc" id="desc'+idx+'"></div>';
+                card.innerHTML='<div class="card-title">'+titleIcon+escapeHtml(colKeyword)+'</div><div style="height:200px;"><canvas id="lineCanvas'+idx+'" height="200"></canvas></div><div class="chart-desc" id="desc'+idx+'"></div>';
                 container.appendChild(card);
                 var canvas=document.getElementById('lineCanvas'+idx);var descDiv=document.getElementById('desc'+idx);
                 var valid=studentData.filter(function(v){return v!==null;});var desc='';
+
                 if(isComp){
                     if(valid.length>=1){
                         var doneCount=valid.filter(function(v){return v===100;}).length;
@@ -2539,6 +2586,24 @@
                         var clsAvg=clsCnt>0?Math.round(clsSum/clsCnt):0;
                         var vsAvg=clsAvg>0?(stuPct>clsAvg?'，高于班级平均（'+clsAvg+'%）':(stuPct<clsAvg?'，低于班级平均（'+clsAvg+'%）':'，与班级平均持平（'+clsAvg+'%）')):'';
                         desc=trend+'，'+total+'次课中完成'+doneCount+'次（'+stuPct+'%），近3次完成'+recentDone+'次'+vsAvg;
+                    }else desc='数据不足';
+                }else if(isGrade){
+                    var rawVals=studentRaw.filter(function(v){return v!==null;});
+                    if(rawVals.length>=2){
+                        var firstRaw=rawVals[0],lastRaw=rawVals[rawVals.length-1];
+                        var half=Math.floor(valid.length/2)||1;
+                        var fAvg=valid.slice(0,half).reduce(function(a,b){return a+b;},0)/half;
+                        var sAvg=valid.slice(-half).reduce(function(a,b){return a+b;},0)/(half||1);
+                        var diff=sAvg-fAvg;
+                        var trend='';if(diff>0.5)trend='📈 进步明显';else if(diff<-0.5)trend='📉 有所下滑';else trend='📊 保持稳定';
+                        var recentRaw=rawVals.slice(-3);var recentSet={};recentRaw.forEach(function(v){recentSet[v]=true;});recentSet=Object.keys(recentSet);
+                        var recentDesc=recentSet.length===1?'稳定在'+recentSet[0]:'在'+recentSet.join('到')+'之间波动';
+                        var stuAvg=valid.reduce(function(a,b){return a+b;},0)/valid.length;
+                        var clsSum=0,clsCnt=0;avgData.forEach(function(v){if(v!==null){clsSum+=v;clsCnt++;}});
+                        var clsAvgVal=clsCnt>0?clsSum/clsCnt:0;
+                        var clsAvgGrade=_closestGrade(clsAvgVal,gradeMap);
+                        var vsAvg=clsAvgGrade?(stuAvg>clsAvgVal+0.3?'，高于班级平均（'+clsAvgGrade+'）':(stuAvg<clsAvgVal-0.3?'，低于班级平均（'+clsAvgGrade+'）':'，与班级平均持平（'+clsAvgGrade+'）')):'';
+                        desc=trend+'，从'+firstRaw+'提升到'+lastRaw+'，近3次'+recentDesc+vsAvg;
                     }else desc='数据不足';
                 }else{
                     if(valid.length>=2){
@@ -2556,11 +2621,19 @@
                 }
                 descDiv.textContent=desc;
                 var studentColor=COLORS[idx%COLORS.length];
-                var yTitle=isComp?'完成率（%）':'百分制得分';
-                var dataLabelPlugin={id:'ptLabel',afterDraw:function(chart){var ctx=chart.ctx;ctx.save();ctx.font='bold 10px Arial';ctx.textAlign='center';ctx.textBaseline='bottom';chart.data.datasets.forEach(function(ds,dsi){if(ds.label!==studentName)return;var meta=chart.getDatasetMeta(dsi);meta.data.forEach(function(pt,i){var v=ds.data[i];if(v===null||v===undefined)return;ctx.fillStyle='#1e293b';if(isComp)ctx.fillText(v===100?'✓':'✗',pt.x,pt.y-6);else ctx.fillText(String(v),pt.x,pt.y-6);});});ctx.restore();}};
+
+                // Y轴配置
+                var yTitle, yMin, yMax, yTicks;
+                if(isComp){yTitle='完成率（%）';yMin=0;yMax=100;yTicks={};}
+                else if(isGrade){
+                    yTitle='等级趋势';yMin=0;yMax=4;
+                    yTicks={stepSize:1,callback:function(v){return gradeMap[v]||'';}};
+                }else{yTitle='百分制得分';yMin=0;yMax=100;yTicks={};}
+
+                var dataLabelPlugin={id:'ptLabel',afterDraw:function(chart){var ctx=chart.ctx;ctx.save();ctx.font='bold 10px Arial';ctx.textAlign='center';ctx.textBaseline='bottom';chart.data.datasets.forEach(function(ds,dsi){if(ds.label!==studentName)return;var meta=chart.getDatasetMeta(dsi);meta.data.forEach(function(pt,i){var v=ds.data[i];if(v===null||v===undefined)return;ctx.fillStyle='#1e293b';if(isComp)ctx.fillText(v===100?'✓':'✗',pt.x,pt.y-6);else if(isGrade)ctx.fillText(studentRaw[i]||'',pt.x,pt.y-6);else ctx.fillText(String(v),pt.x,pt.y-6);});});ctx.restore();}};
                 lineChartInstances[idx]=new Chart(canvas,{
                     type:'line',data:{labels:allDates,datasets:[{label:studentName,data:studentData,borderColor:studentColor,backgroundColor:studentColor,borderWidth:2.5,tension:0.2,pointRadius:4,pointStyle:'circle'},{label:'班级平均',data:avgData,borderColor:'#94a3b8',backgroundColor:'#94a3b8',borderWidth:2,borderDash:[5,5],tension:0.2,pointRadius:3,pointStyle:'triangle'}]},
-                    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,max:100,title:{display:true,text:yTitle}}}},
+                    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{y:{min:yMin,max:yMax,title:{display:true,text:yTitle},ticks:yTicks}}},
                     plugins:[dataLabelPlugin]
                 });
             });

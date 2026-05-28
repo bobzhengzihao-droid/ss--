@@ -2346,14 +2346,16 @@
             return { idx: -1, maxScore: 0 };
         }
         function isBinaryDone(val) {
-            const s = String(val).trim();
-            if (s === '✅' || s === '✓') return true;
+            var s = String(val).trim();
+            if (!s) return false;
+            if (s.indexOf('✅') !== -1 || s.indexOf('✓') !== -1) return true;
             if (/^(已|交|完)/.test(s)) return true;
             return false;
         }
         function isBinaryUndone(val) {
-            const s = String(val).trim();
-            if (s === '❌' || s === '✗') return true;
+            var s = String(val).trim();
+            if (!s) return false;
+            if (s.indexOf('❌') !== -1 || s.indexOf('✗') !== -1) return true;
             if (/^(未|没|缺|忘|不)/.test(s)) return true;
             return false;
         }
@@ -2371,19 +2373,42 @@
         function isGradeValue(val) {
             var s = String(val).trim();
             if (!s) return false;
-            if (/^[A-C][+-]{0,2}$/.test(s)) return true;
-            if (['优秀','良好','及格','需努力','待提高','优','良','中','差','🏆','🥇','🥈','🥉'].indexOf(s) !== -1) return true;
+            // 字母等级：去内空格后检查是否以 A/B/C 开头（A + → A+ → 匹配；A+成绩 → 匹配）
+            var norm = s.replace(/\s+/g, '');
+            if (/^[A-C][+-]{0,2}/.test(norm)) return true;
+            // 中文等级：包含匹配（优秀作品 → 匹配）
+            var words = ['优秀','良好','及格','需努力','待提高','优','良','中','差'];
+            for (var i = 0; i < words.length; i++) { if (s.indexOf(words[i]) !== -1) return true; }
+            // 奖牌符号：包含匹配（🏆1 → 匹配）
+            var emoji = ['🏆','🥇','🥈','🥉'];
+            for (var j = 0; j < emoji.length; j++) { if (s.indexOf(emoji[j]) !== -1) return true; }
             return false;
         }
         function gradeToNumber(val) {
             var s = String(val).trim();
-            if (s === 'A++' || s === '优秀' || s === '优' || s === '🏆' || s === '🥇') return 4;
-            if (s === 'A+') return 3.5;
-            if (s === 'A' || s === '良好' || s === '良' || s === '🥈') return 3;
-            if (s === 'A-') return 2.5;
-            if (s === 'B++' || s === 'B+' || s === 'B' || s === 'B-' || s === '及格' || s === '中' || s === '🥉') return 2;
-            if (s === 'C+' || s === 'C' || s === 'C-' || s === '需努力' || s === '待提高' || s === '差') return 1;
-            if (s === '❌' || isBinaryUndone(s)) return 0;
+            var norm = s.replace(/\s+/g, '');
+            var ltr = (norm.match(/^[A-C][+-]{0,2}/) || [''])[0];
+            // 字母等级优先（更精准，不易误判）
+            if (ltr) {
+                if (ltr === 'A++') return 4;
+                if (ltr === 'A+') return 3.5;
+                if (ltr === 'A') return 3;
+                if (ltr === 'A-') return 2.5;
+                if (ltr === 'B++' || ltr === 'B+' || ltr === 'B' || ltr === 'B-') return 2;
+                if (ltr === 'C++' || ltr === 'C+' || ltr === 'C' || ltr === 'C-') return 1;
+            }
+            // 中文等级 / 奖牌（包含匹配）
+            if (s.indexOf('优秀') !== -1 || s.indexOf('🏆') !== -1 || s.indexOf('🥇') !== -1) return 4;
+            if (s.indexOf('良好') !== -1 || s.indexOf('🥈') !== -1) return 3;
+            if (s.indexOf('及格') !== -1 || s.indexOf('🥉') !== -1) return 2;
+            if (s.indexOf('需努力') !== -1 || s.indexOf('待提高') !== -1) return 1;
+            // 简写形式（仅开头或独立出现，避免「优」在句中被误判）
+            if (s.indexOf('优') === 0 || s === '优') return 4;
+            if (s.indexOf('良') === 0 || s === '良') return 3;
+            if (s.indexOf('中') === 0 || s === '中') return 2;
+            if (s.indexOf('差') === 0 || s === '差') return 1;
+            // 未完成标记
+            if (s.indexOf('❌') !== -1 || isBinaryUndone(s)) return 0;
             return null;
         }
         function convertToNumber(value, maxScore){

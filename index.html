@@ -2455,12 +2455,12 @@
             });
             if (!allColumns.length) allColumns.push.apply(allColumns, cls.columns || []);
             let selDates=analysisSel[cls.id]?.dates||allDates;
-            let selCols=analysisSel[cls.id]?.columns||allColumns.slice(0,3).map(stripMaxScore);
+            let selCols=analysisSel[cls.id]?.columns||[];
             let selStudent=analysisSel[cls.id]?.student||'';
             let radarDate=analysisSel[cls.id]?.radarDate||(allDates.length?allDates[allDates.length-1]:'');
             let radarCols=analysisSel[cls.id]?.radarColumns||[];
             selDates=selDates.filter(d=>allDates.includes(d));if(!selDates.length)selDates=allDates;
-            selCols=selCols.filter(c=>allColumns.some(col=>columnContainsKeyword(col,c)));if(!selCols.length)selCols=allColumns.slice(0,3).map(stripMaxScore);
+            selCols=selCols.filter(c=>allColumns.some(col=>columnContainsKeyword(col,c)));
             if(!radarDate&&allDates.length)radarDate=allDates[allDates.length-1];
             document.getElementById('analysisStudentSelect').innerHTML='<option value="">-- 请选择 --</option>'+cls.students.map(s=>`<option value="${escapeHtml(s)}" ${s===selStudent?'selected':''}>${escapeHtml(s)}</option>`).join('');
             document.getElementById('analysisDateCheckGroup').innerHTML='<span>课次：</span>'+(allDates.length?allDates.map(d=>`<label><input type="checkbox" value="${escapeHtml(d)}" ${selDates.includes(d)?'checked':''} onchange="refreshAnalysis()"> ${escapeHtml(d)}</label>`).join(''):'<span class="empty-state">暂无</span>');
@@ -2476,8 +2476,7 @@
             const radarDate=document.getElementById('radarDateSelect').value;
             const entry=getEntry(cls.id,radarDate);
             const columns=entry?entry.dateColumns:[];
-            var selRadarCols=analysisSel[cls.id]?.radarColumns;
-            if(!selRadarCols||!selRadarCols.length)selRadarCols=columns.map(stripMaxScore);
+            var selRadarCols=analysisSel[cls.id]?.radarColumns||[];
             document.getElementById('radarColumnCheckGroup').innerHTML='<span>题型：</span>'+columns.map(c=>{const pure=stripMaxScore(c);const checked=selRadarCols.some(k=>columnContainsKeyword(c,k));return `<label><input type="checkbox" value="${escapeHtml(pure)}" ${checked?'checked':''} onchange="saveRadarCols()"> ${escapeHtml(pure)}</label>`;}).join('');
         }
         window.saveRadarCols=function(){

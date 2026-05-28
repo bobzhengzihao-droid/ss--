@@ -2398,17 +2398,30 @@
         function renderAnalysisOptions(){
             const cls=getCurrentClass();if(!cls)return;
             const allDates=getDateList();
+            // 从所有课次收集板块列（而非只取 cls.columns 模板）
+            const seenCols = new Set();
+            const allColumns = [];
+            allDates.forEach(function(d) {
+                const entry = getEntry(cls.id, d);
+                if (entry && entry.dateColumns) {
+                    entry.dateColumns.forEach(function(col) {
+                        const pure = stripMaxScore(col);
+                        if (!seenCols.has(pure)) { seenCols.add(pure); allColumns.push(col); }
+                    });
+                }
+            });
+            if (!allColumns.length) allColumns.push.apply(allColumns, cls.columns || []);
             let selDates=analysisSel[cls.id]?.dates||allDates;
-            let selCols=analysisSel[cls.id]?.columns||cls.columns.slice(0,3).map(stripMaxScore);
+            let selCols=analysisSel[cls.id]?.columns||allColumns.slice(0,3).map(stripMaxScore);
             let selStudent=analysisSel[cls.id]?.student||'';
             let radarDate=analysisSel[cls.id]?.radarDate||(allDates.length?allDates[allDates.length-1]:'');
             let radarCols=analysisSel[cls.id]?.radarColumns||[];
             selDates=selDates.filter(d=>allDates.includes(d));if(!selDates.length)selDates=allDates;
-            selCols=selCols.filter(c=>cls.columns.some(col=>columnContainsKeyword(col,c)));if(!selCols.length)selCols=cls.columns.slice(0,3).map(stripMaxScore);
+            selCols=selCols.filter(c=>allColumns.some(col=>columnContainsKeyword(col,c)));if(!selCols.length)selCols=allColumns.slice(0,3).map(stripMaxScore);
             if(!radarDate&&allDates.length)radarDate=allDates[allDates.length-1];
             document.getElementById('analysisStudentSelect').innerHTML='<option value="">-- 请选择 --</option>'+cls.students.map(s=>`<option value="${escapeHtml(s)}" ${s===selStudent?'selected':''}>${escapeHtml(s)}</option>`).join('');
             document.getElementById('analysisDateCheckGroup').innerHTML='<span>课次：</span>'+(allDates.length?allDates.map(d=>`<label><input type="checkbox" value="${escapeHtml(d)}" ${selDates.includes(d)?'checked':''} onchange="refreshAnalysis()"> ${escapeHtml(d)}</label>`).join(''):'<span class="empty-state">暂无</span>');
-            document.getElementById('analysisColumnCheckGroup').innerHTML='<span>板块：</span>'+cls.columns.map(col=>{const pure=stripMaxScore(col);const checked=selCols.some(c=>columnContainsKeyword(col,c));return `<label><input type="checkbox" value="${escapeHtml(pure)}" ${checked?'checked':''} onchange="refreshAnalysis()"> ${escapeHtml(pure)}</label>`;}).join('');
+            document.getElementById('analysisColumnCheckGroup').innerHTML='<span>板块：</span>'+allColumns.map(col=>{const pure=stripMaxScore(col);const checked=selCols.some(c=>columnContainsKeyword(col,c));return `<label><input type="checkbox" value="${escapeHtml(pure)}" ${checked?'checked':''} onchange="refreshAnalysis()"> ${escapeHtml(pure)}</label>`;}).join('');
             const radarDateSelect=document.getElementById('radarDateSelect');
             radarDateSelect.innerHTML=allDates.map(d=>`<option value="${escapeHtml(d)}" ${d===radarDate?'selected':''}>${escapeHtml(d)}</option>`).join('');
             radarDateSelect.value=radarDate;

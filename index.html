@@ -2738,8 +2738,10 @@
                 }
             });
 
-            // maxFull 保底 100：完成列/等级列归一化到 0~100 需要完整刻度
-            var maxFull=Math.max.apply(null,fullMarks.concat([100]));
+            // 有非得分列时坐标轴扩到 100；纯得分列按实际满分自适应
+            var hasNonScore=false;
+            radarCols.forEach(function(k){if(colTypes[k]!=='score')hasNonScore=true;});
+            var maxFull=hasNonScore?Math.max.apply(null,fullMarks.concat([100])):Math.max.apply(null,fullMarks.concat([1]));
             const canvas=document.getElementById('radarChartCanvas');
             if(radarChartInstance)radarChartInstance.destroy();
 

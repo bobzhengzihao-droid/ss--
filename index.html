@@ -2673,83 +2673,22 @@
             const entry=getEntry(cls.id,radarDate);if(!entry)return;
             const records=(Array.isArray(entry)?entry:entry.records)||[];
             const studentRec=records.find(r=>r.name===studentName)||{values:entry.dateColumns.map(()=>'')};
-
-            // 判定每列类型（仅当前雷达课次）
-            var colTypes={};
-            radarCols.forEach(function(keyword){
-                var binC=0,gradeC=0,numC=0;
-                var ci=findColumnIndexAndMax(entry,keyword);
-                if(ci.idx===-1){colTypes[keyword]='score';return;}
-                records.forEach(function(r){
-                    var v=(r.values[ci.idx]||'').trim();
-                    if(!v)return;
-                    if(isBinaryMarker(v))binC++;
-                    else if(isGradeValue(v))gradeC++;
-                    else if(isGradedValue(v)||/^\d+(\.\d+)?$/.test(v))numC++;
-                });
-                if(binC>=gradeC&&binC>=numC)colTypes[keyword]='completion';
-                else if(gradeC>=binC&&gradeC>=numC)colTypes[keyword]='grade';
-                else colTypes[keyword]='score';
-            });
-
-            var hasScore=false;
-            radarCols.forEach(function(k){if(colTypes[k]==='score')hasScore=true;});
-
-            const labels=[],studentVals=[],fullMarks=[],avgVals=[];
-            radarCols.forEach(function(keyword){
+            const labels=[],studentScores=[],fullMarks=[],avgScores=[];
+            radarCols.forEach(keyword=>{
                 labels.push(keyword);
-                var type=colTypes[keyword];
-                var ci=findColumnIndexAndMax(entry,keyword);
-                var colIdx=ci.idx,maxScore=ci.maxScore;
-
-                if(type==='score'){
-                    fullMarks.push(maxScore||0);
-                    var stuVal=colIdx!==-1?studentRec.values[colIdx]||'':'';
-                    studentVals.push(convertToNumber(stuVal,maxScore)||0);
-                    var sum=0,cnt=0;
-                    records.forEach(function(r){
-                        var v=colIdx!==-1?r.values[colIdx]||'':'';
-                        if(v!==''&&v!==null){var s=convertToNumber(v,maxScore);if(s!==null){sum+=s;cnt++;}}
-                    });
-                    avgVals.push(cnt>0?Math.round(sum/cnt):0);
-                }else if(type==='completion'){
-                    fullMarks.push(0);
-                    var stuVal=0,doneC=0,totalC=0;
-                    records.forEach(function(r){
-                        var v=(r.values[colIdx]||'').trim();
-                        if(!v||!isBinaryMarker(v))return;
-                        totalC++;if(isBinaryDone(v))doneC++;
-                        if(r.name===studentName)stuVal=isBinaryDone(v)?100:0;
-                    });
-                    studentVals.push(stuVal);
-                    avgVals.push(totalC>0?Math.round(doneC/totalC*100):0);
-                }else{ // grade — 归一化到 0~100
-                    fullMarks.push(0);
-                    var stuVal=0,sum=0,cnt=0;
-                    records.forEach(function(r){
-                        var v=(r.values[colIdx]||'').trim();
-                        if(!v)return;var mapped=gradeToNumber(v);
-                        if(mapped===null)return;
-                        sum+=mapped;cnt++;
-                        if(r.name===studentName)stuVal=mapped;
-                    });
-                    studentVals.push(Math.round(stuVal*25));
-                    avgVals.push(cnt>0?Math.round(sum/cnt*25):0);
-                }
+                const { idx:colIdx, maxScore } = findColumnIndexAndMax(entry, keyword);
+                fullMarks.push(maxScore||0);
+                const stuVal=colIdx!==-1?studentRec.values[colIdx]||'':'';
+                studentScores.push(convertToNumber(stuVal,maxScore)||0);
+                let sum=0,cnt=0;
+                records.forEach(r=>{const v=colIdx!==-1?r.values[colIdx]||'':'';if(v!==''&&v!==null){const s=convertToNumber(v,maxScore);sum+=s;cnt++;}});
+                avgScores.push(cnt>0?Math.round(sum/cnt):0);
             });
-
-            // 有非得分列时坐标轴扩到 100；纯得分列按实际满分自适应
-            var hasNonScore=false;
-            radarCols.forEach(function(k){if(colTypes[k]!=='score')hasNonScore=true;});
-            var maxFull=hasNonScore?Math.max.apply(null,fullMarks.concat([100])):Math.max.apply(null,fullMarks.concat([1]));
+            const maxFull=Math.max(...fullMarks,1);
             const canvas=document.getElementById('radarChartCanvas');
             if(radarChartInstance)radarChartInstance.destroy();
-
-            var datasets=[{label:'班级平均',data:avgVals,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,0.08)',borderWidth:2,pointRadius:3},{label:studentName,data:studentVals,borderColor:'#f87171',backgroundColor:'rgba(248,113,113,0.12)',borderWidth:3,pointRadius:4}];
-            if(hasScore)datasets.unshift({label:'满分',data:fullMarks,borderColor:'#93c5fd',backgroundColor:'rgba(147,197,253,0.06)',borderWidth:2,borderDash:[5,5],pointRadius:0});
-
             radarChartInstance=new Chart(canvas,{
-                type:'radar',data:{labels,datasets:datasets},
+                type:'radar',data:{labels,datasets:[{label:'满分',data:fullMarks,borderColor:'#93c5fd',backgroundColor:'rgba(147,197,253,0.06)',borderWidth:2,borderDash:[5,5],pointRadius:0},{label:'班级平均',data:avgScores,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,0.08)',borderWidth:2,pointRadius:3},{label:studentName,data:studentScores,borderColor:'#f87171',backgroundColor:'rgba(248,113,113,0.12)',borderWidth:3,pointRadius:4}]},
                 options:{responsive:true,maintainAspectRatio:false,scales:{r:{beginAtZero:true,max:maxFull,ticks:{stepSize:Math.ceil(maxFull/5)}}},plugins:{legend:{position:'bottom'}}}
             });
         }

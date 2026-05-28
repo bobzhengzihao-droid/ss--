@@ -2738,7 +2738,8 @@
                 }
             });
 
-            var maxFull=hasScore?Math.max.apply(null,fullMarks.concat([1])):100;
+            // maxFull 保底 100：完成列/等级列归一化到 0~100 需要完整刻度
+            var maxFull=Math.max.apply(null,fullMarks.concat([100]));
             const canvas=document.getElementById('radarChartCanvas');
             if(radarChartInstance)radarChartInstance.destroy();
 

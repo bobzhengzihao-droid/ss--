@@ -2094,7 +2094,7 @@
             else tb.innerHTML=records.map((r,idx)=>`<tr style="height:${cls.rowHeight}px;"><td>${idx+1}</td><td>${escapeHtml(r.name)}</td>${r.values.map((v,i)=>`<td style="background-color:${(r.colors&&r.colors[i])||''};">${escapeHtml(v)}</td>`).join('')}</tr>`).join('');
         }
 
-        function getDateList(){const prefix=currentClassId+'|';return Object.keys(feedback).filter(k=>k.startsWith(prefix)).map(k=>k.split('|')[1]).sort(naturalSort);}
+        function getDateList(cid){const prefix=(cid||currentClassId)+'|';return Object.keys(feedback).filter(k=>k.startsWith(prefix)).map(k=>k.split('|')[1]).sort(naturalSort);}
         function renderDateSelector(){
             const dates=getDateList();
             const container = document.getElementById('dateSelector');
@@ -2437,10 +2437,17 @@
             return null;
         }
         const COLORS=['#2563eb','#3b82f6','#60a5fa','#818cf8','#6366f1','#93c5fd','#a5b4fc'];
+        let analysisClassId = null;
+        function getAnalysisClass() { return classes.find(c => c.id === analysisClassId) || getCurrentClass(); }
+        window.onAnalysisClassChange = function(classId) {
+            analysisClassId = classId;
+            renderAnalysisOptions();
+        };
 
         function renderAnalysisOptions(){
-            const cls=getCurrentClass();if(!cls)return;
-            const allDates=getDateList();
+            if (!analysisClassId) analysisClassId = currentClassId;
+            const cls=getAnalysisClass();if(!cls)return;
+            const allDates=getDateList(cls.id);
             // 从所有课次收集板块列（而非只取 cls.columns 模板）
             const seenCols = new Set();
             const allColumns = [];
@@ -2462,6 +2469,7 @@
             selDates=selDates.filter(d=>allDates.includes(d));if(!selDates.length)selDates=allDates;
             selCols=selCols.filter(c=>allColumns.some(col=>columnContainsKeyword(col,c)));
             if(!radarDate&&allDates.length)radarDate=allDates[allDates.length-1];
+            document.getElementById('analysisClassSelect').innerHTML=classes.map(c=>`<option value="${escapeHtml(c.id)}" ${c.id===cls.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('');
             document.getElementById('analysisStudentSelect').innerHTML='<option value="">-- 请选择 --</option>'+cls.students.map(s=>`<option value="${escapeHtml(s)}" ${s===selStudent?'selected':''}>${escapeHtml(s)}</option>`).join('');
             document.getElementById('analysisDateCheckGroup').innerHTML='<span>课次：</span>'+(allDates.length?allDates.map(d=>`<label><input type="checkbox" value="${escapeHtml(d)}" ${selDates.includes(d)?'checked':''} onchange="refreshAnalysis()"> ${escapeHtml(d)}</label>`).join(''):'<span class="empty-state">暂无</span>');
             document.getElementById('analysisColumnCheckGroup').innerHTML='<span>板块：</span>'+allColumns.map(col=>{const pure=stripMaxScore(col);const checked=selCols.some(c=>columnContainsKeyword(col,c));return `<label><input type="checkbox" value="${escapeHtml(pure)}" ${checked?'checked':''} onchange="refreshAnalysis()"> ${escapeHtml(pure)}</label>`;}).join('');
@@ -2472,7 +2480,7 @@
             refreshAnalysis();
         }
         function refreshRadarColumns(){
-            const cls=getCurrentClass();if(!cls)return;
+            const cls=getAnalysisClass();if(!cls)return;
             const radarDate=document.getElementById('radarDateSelect').value;
             const entry=getEntry(cls.id,radarDate);
             const columns=entry?entry.dateColumns:[];
@@ -2480,7 +2488,7 @@
             document.getElementById('radarColumnCheckGroup').innerHTML='<span>题型：</span>'+columns.map(c=>{const pure=stripMaxScore(c);const checked=selRadarCols.some(k=>columnContainsKeyword(c,k));return `<label><input type="checkbox" value="${escapeHtml(pure)}" ${checked?'checked':''} onchange="saveRadarCols()"> ${escapeHtml(pure)}</label>`;}).join('');
         }
         window.saveRadarCols=function(){
-            const cls=getCurrentClass();if(!cls)return;
+            const cls=getAnalysisClass();if(!cls)return;
             const checks=document.querySelectorAll('#radarColumnCheckGroup input[type="checkbox"]');
             const sel=Array.from(checks).filter(cb=>cb.checked).map(cb=>cb.value);
             analysisSel={...analysisSel,[cls.id]:{...analysisSel[cls.id],radarColumns:sel}};
@@ -2488,7 +2496,7 @@
         };
         window.refreshRadarColumns=refreshRadarColumns;
         window.refreshAnalysis=function(){
-            const cls=getCurrentClass();if(!cls)return;
+            const cls=getAnalysisClass();if(!cls)return;
             const selDates=Array.from(document.querySelectorAll('#analysisDateCheckGroup input:checked')).map(cb=>cb.value);
             const selCols=Array.from(document.querySelectorAll('#analysisColumnCheckGroup input:checked')).map(cb=>cb.value);
             const selStudent=document.getElementById('analysisStudentSelect').value;
@@ -2502,14 +2510,14 @@
         };
 
         function updateLineCharts(){
-            const cls=getCurrentClass();if(!cls)return;
+            const cls=getAnalysisClass();if(!cls)return;
             const selDates=Array.from(document.querySelectorAll('#analysisDateCheckGroup input:checked')).map(cb=>cb.value);
             const selCols=Array.from(document.querySelectorAll('#analysisColumnCheckGroup input:checked')).map(cb=>cb.value);
             const studentName=document.getElementById('analysisStudentSelect').value;
             const container=document.getElementById('lineChartsContainer');
             container.innerHTML=''; Object.values(lineChartInstances).forEach(inst=>inst.destroy()); for(const k in lineChartInstances)delete lineChartInstances[k];
             if(!studentName||!selDates.length||!selCols.length)return;
-            const allDates=getDateList().filter(d=>selDates.includes(d)).sort(naturalSort);
+            const allDates=getDateList(cls.id).filter(d=>selDates.includes(d)).sort(naturalSort);
 
             // 预扫描：判定每列类型 — 完成列 / 等级列 / 得分列
             var colTypes={}; var colGradeMap={}; // gradeMap: {4:'优秀', 3:'良好', ...}
@@ -2664,7 +2672,7 @@
         }
 
         function updateRadarChart(){
-            const cls=getCurrentClass();if(!cls)return;
+            const cls=getAnalysisClass();if(!cls)return;
             const radarDate=document.getElementById('radarDateSelect')?.value;
             const radarCols=Array.from(document.querySelectorAll('#radarColumnCheckGroup input:checked')).map(cb=>cb.value);
             const studentName=document.getElementById('analysisStudentSelect').value;
@@ -2694,7 +2702,7 @@
 
         // ========== AI 分析 ==========
         window.runAIAnalysis = async function() {
-            const cls = getCurrentClass(); if (!cls) return;
+            const cls = getAnalysisClass(); if (!cls) return;
             const studentName = document.getElementById('analysisStudentSelect').value;
             if (!studentName) { await showConfirm('请选择学生'); return; }
             const radarDate = document.getElementById('radarDateSelect')?.value;
@@ -2945,7 +2953,7 @@
                 </div>
                 <div class="table-wrapper" id="statTableWrapper"></div>
             </div>`;
-            document.getElementById('view-analysis').innerHTML=`<div class="card"><div class="card-title">📈 汇总分析</div><div style="display:flex;gap:8px"><span>学生：</span><select id="analysisStudentSelect" class="input" style="padding:8px;border-radius:12px;flex:1" onchange="refreshAnalysis()"><option value="">-- 请选择 --</option></select></div><div class="check-group" id="analysisDateCheckGroup"></div><div class="check-group" id="analysisColumnCheckGroup"></div></div><div class="card" id="analysisChartsArea"><div id="analysisReportTitle" style="text-align:center;font-size:1.1rem;font-weight:700;margin-bottom:12px">学习分析报告</div><div id="lineChartsContainer"></div><div id="radarSection" style="margin-top:16px;"><div class="check-group" style="margin-bottom:8px"><span>雷达图课次：</span><select id="radarDateSelect" class="input" style="width:120px;padding:6px;border-radius:12px" onchange="refreshRadarColumns();saveRadarCols()"></select></div><div class="check-group" id="radarColumnCheckGroup" style="margin:8px 0"></div><div style="height:320px"><canvas id="radarChartCanvas" height="320"></canvas></div></div><div style="margin-top:16px"><input type="password" id="apiKeyInput" class="input" placeholder="DeepSeek API Key" style="width:100%;padding:6px;margin-bottom:6px;font-size:11px"><textarea id="examDescTextarea" class="ai-textarea" placeholder="手动输入试卷描述或题型知识点（可选）" rows="3"></textarea><div style="display:flex; gap:6px; align-items: center; margin:8px 0;"><label class="btn btn-outline btn-sm" style="cursor:pointer;">📎 上传试卷文件<input type="file" id="examFileInput" accept=".txt,.docx,.pdf" style="display:none" onchange="document.getElementById('fileNameDisplay').textContent = this.files[0]?.name || ''"></label><span id="fileNameDisplay" style="font-size:12px; color:var(--text-light);"></span></div><button class="btn btn-sm" onclick="runAIAnalysis()">🤖 测试分析</button></div><div id="aiResult" style="margin-top:12px;padding:12px;background:var(--input-bg);border-radius:12px;font-size:14px;white-space:pre-wrap;"></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-sm" onclick="downloadPDFReport()">📥 下载PDF报告</button></div></div><div id="analysisTablesContainer"></div>`;
+            document.getElementById('view-analysis').innerHTML=`<div class="card"><div class="card-title">📈 汇总分析</div><div style="display:flex;gap:8px;flex-wrap:wrap"><select id="analysisClassSelect" class="input" style="padding:8px;border-radius:12px;flex:1;min-width:120px" onchange="onAnalysisClassChange(this.value)"></select><select id="analysisStudentSelect" class="input" style="padding:8px;border-radius:12px;flex:1;min-width:120px" onchange="refreshAnalysis()"><option value="">-- 请选择 --</option></select></div><div class="check-group" id="analysisDateCheckGroup"></div><div class="check-group" id="analysisColumnCheckGroup"></div></div><div class="card" id="analysisChartsArea"><div id="analysisReportTitle" style="text-align:center;font-size:1.1rem;font-weight:700;margin-bottom:12px">学习分析报告</div><div id="lineChartsContainer"></div><div id="radarSection" style="margin-top:16px;"><div class="check-group" style="margin-bottom:8px"><span>雷达图课次：</span><select id="radarDateSelect" class="input" style="width:120px;padding:6px;border-radius:12px" onchange="refreshRadarColumns();saveRadarCols()"></select></div><div class="check-group" id="radarColumnCheckGroup" style="margin:8px 0"></div><div style="height:320px"><canvas id="radarChartCanvas" height="320"></canvas></div></div><div style="margin-top:16px"><input type="password" id="apiKeyInput" class="input" placeholder="DeepSeek API Key" style="width:100%;padding:6px;margin-bottom:6px;font-size:11px"><textarea id="examDescTextarea" class="ai-textarea" placeholder="手动输入试卷描述或题型知识点（可选）" rows="3"></textarea><div style="display:flex; gap:6px; align-items: center; margin:8px 0;"><label class="btn btn-outline btn-sm" style="cursor:pointer;">📎 上传试卷文件<input type="file" id="examFileInput" accept=".txt,.docx,.pdf" style="display:none" onchange="document.getElementById('fileNameDisplay').textContent = this.files[0]?.name || ''"></label><span id="fileNameDisplay" style="font-size:12px; color:var(--text-light);"></span></div><button class="btn btn-sm" onclick="runAIAnalysis()">🤖 测试分析</button></div><div id="aiResult" style="margin-top:12px;padding:12px;background:var(--input-bg);border-radius:12px;font-size:14px;white-space:pre-wrap;"></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-sm" onclick="downloadPDFReport()">📥 下载PDF报告</button></div></div><div id="analysisTablesContainer"></div>`;
             document.getElementById('view-settings').innerHTML='<div class="card settings-card"><div class="settings-header"><button class="settings-back" onclick="switchView(\'classes\')">← 返回</button><span class="settings-title">个人设置</span><span style="width:40px;"></span></div><div class="settings-avatar"><div class="settings-avatar-circle avatar-unset" id="settingsAvatarCircle"><span id="settingsAvatarEmoji">👤</span></div></div><div class="settings-name-row" id="settingsNameRow"><span id="settingsNameDisplay"></span></div><div class="settings-section"><div class="settings-label">性别</div><div id="settingsGenderView" class="settings-value"></div><div id="settingsGenderEdit" class="settings-gender-row" style="display:none;"><div class="settings-gender-card" id="genderCardMale" onclick="settingsPickGender(\'male\')"><span class="gender-icon">♂️</span><span>男</span></div><div class="settings-gender-card" id="genderCardFemale" onclick="settingsPickGender(\'female\')"><span class="gender-icon">♀️</span><span>女</span></div></div></div><div class="settings-section"><div class="settings-label">所属大区</div><span id="settingsDistrictView" class="settings-value"></span><select class="input settings-select" id="settingsDistrict" style="display:none;"><option value="">请选择大区</option><option value="东一区">东一区</option><option value="东二区">东二区</option><option value="西一区">西一区</option><option value="西二区">西二区</option><option value="南一区">南一区</option><option value="南二区">南二区</option><option value="武侯区">武侯区</option></select></div><div class="settings-actions" id="settingsActionsView"><button class="btn btn-outline btn-sm" onclick="settingsEnterEdit()">✏️ 编辑资料</button><button class="btn btn-outline btn-sm" onclick="changeMyPassword()">🔒 修改密码</button></div><div class="settings-actions" id="settingsActionsEdit" style="display:none;"><button class="btn btn-sm" onclick="settingsSave()">✅ 保存</button><button class="btn btn-outline btn-sm" onclick="settingsCancel()">取消</button></div><div class="settings-actions"><button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger);" onclick="handleLogout()">🚪 退出登录</button></div></div>';
         }
 

@@ -2441,6 +2441,8 @@
         function getAnalysisClass() { return classes.find(c => c.id === analysisClassId) || getCurrentClass(); }
         window.onAnalysisClassChange = function(classId) {
             analysisClassId = classId;
+            currentClassId = classId;
+            updateCurrentClassDisplay();
             renderAnalysisOptions();
         };
 

@@ -924,8 +924,8 @@
                 <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
                     <span style="font-size:12px;color:var(--text-muted);">性别：</span>
                     <input type="hidden" id="regGenderValue" value="">
-                    <div id="regGenderMale" onclick="regPickGender('male')" style="display:flex;align-items:center;gap:4px;padding:6px 12px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:13px;user-select:none;"><span>♂️</span>男</div>
-                    <div id="regGenderFemale" onclick="regPickGender('female')" style="display:flex;align-items:center;gap:4px;padding:6px 12px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:13px;user-select:none;"><span>♀️</span>女</div>
+                    <div id="regGenderMale" onclick="regPickGender('male')" style="display:flex;align-items:center;gap:4px;padding:6px 12px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:13px;user-select:none;"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.125em;flex-shrink:0"><circle cx="9" cy="9" r="5"/><path d="M12.5 12.5L22 3"/><polyline points="18 3 22 3 22 7"/></svg>男</div>
+                    <div id="regGenderFemale" onclick="regPickGender('female')" style="display:flex;align-items:center;gap:4px;padding:6px 12px;border:1.5px solid var(--border);border-radius:20px;cursor:pointer;font-size:13px;user-select:none;"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.125em;flex-shrink:0"><circle cx="12" cy="9" r="5"/><line x1="12" y1="14" x2="12" y2="20"/><line x1="9" y1="17" x2="15" y2="17"/></svg>女</div>
                 </div>
                 <select class="login-input" id="regDistrict" style="margin-bottom:8px;"><option value="">请选择大区</option><option value="东一区">东一区</option><option value="东二区">东二区</option><option value="西一区">西一区</option><option value="西二区">西二区</option><option value="南一区">南一区</option><option value="南二区">南二区</option><option value="武侯区">武侯区</option></select>
             </div>
@@ -982,6 +982,8 @@
                 .then(function(r) { return !!(r.data && r.data.valid); })
                 .catch(function() { return false; });
         }
+        const GENDER_ICON_MALE = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.125em;flex-shrink:0"><circle cx="9" cy="9" r="5"/><path d="M12.5 12.5L22 3"/><polyline points="18 3 22 3 22 7"/></svg>';
+        const GENDER_ICON_FEMALE = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.125em;flex-shrink:0"><circle cx="12" cy="9" r="5"/><line x1="12" y1="14" x2="12" y2="20"/><line x1="9" y1="17" x2="15" y2="17"/></svg>';
         const API_BASE = 'http://127.0.0.1:8765';
         const isLocal = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
         let supabase = null;
@@ -1635,8 +1637,8 @@
             } catch(e) {}
             document.body.classList.add('logged-in');
             document.getElementById('loginOverlay').style.display = 'none';
-            var prefix = (currentGender==='male'?'♂️ ':'')+(currentGender==='female'?'♀️ ':'');
-            document.getElementById('headerUserName').textContent = prefix + name;
+            var prefix = (currentGender==='male'?GENDER_ICON_MALE+' ':'')+(currentGender==='female'?GENDER_ICON_FEMALE+' ':'');
+            document.getElementById('headerUserName').innerHTML = prefix + name;
             await loadUserData();
             // 确保 gender + district 写入 teacher_profiles（用 REST API 直接写，绕开 JS 客户端可能的问题）
             if (currentGender || currentDistrict) {
@@ -2952,7 +2954,7 @@
                 <div class="table-wrapper" id="statTableWrapper"></div>
             </div>`;
             document.getElementById('view-analysis').innerHTML=`<div class="card"><div class="card-title">📈 汇总分析</div><div style="display:flex;gap:8px;flex-wrap:wrap"><select id="analysisClassSelect" class="input" style="padding:8px;border-radius:12px;flex:1;min-width:120px" onchange="onAnalysisClassChange(this.value)"></select><select id="analysisStudentSelect" class="input" style="padding:8px;border-radius:12px;flex:1;min-width:120px" onchange="refreshAnalysis()"><option value="">-- 请选择 --</option></select></div><div class="check-group" id="analysisDateCheckGroup"></div><div class="check-group" id="analysisColumnCheckGroup"></div></div><div class="card" id="analysisChartsArea"><div id="analysisReportTitle" style="text-align:center;font-size:1.1rem;font-weight:700;margin-bottom:12px">学习分析报告</div><div id="lineChartsContainer"></div><div id="radarSection" style="margin-top:16px;"><div class="check-group" style="margin-bottom:8px"><span>雷达图课次：</span><select id="radarDateSelect" class="input" style="width:120px;padding:6px;border-radius:12px" onchange="refreshRadarColumns();saveRadarCols()"></select></div><div class="check-group" id="radarColumnCheckGroup" style="margin:8px 0"></div><div style="height:320px"><canvas id="radarChartCanvas" height="320"></canvas></div></div><div style="margin-top:16px"><input type="password" id="apiKeyInput" class="input" placeholder="DeepSeek API Key" style="width:100%;padding:6px;margin-bottom:6px;font-size:11px"><textarea id="examDescTextarea" class="ai-textarea" placeholder="手动输入试卷描述或题型知识点（可选）" rows="3"></textarea><div style="display:flex; gap:6px; align-items: center; margin:8px 0;"><label class="btn btn-outline btn-sm" style="cursor:pointer;">📎 上传试卷文件<input type="file" id="examFileInput" accept=".txt,.docx,.pdf" style="display:none" onchange="document.getElementById('fileNameDisplay').textContent = this.files[0]?.name || ''"></label><span id="fileNameDisplay" style="font-size:12px; color:var(--text-light);"></span></div><button class="btn btn-sm" onclick="runAIAnalysis()">🤖 测试分析</button></div><div id="aiResult" style="margin-top:12px;padding:12px;background:var(--input-bg);border-radius:12px;font-size:14px;white-space:pre-wrap;"></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-sm" onclick="downloadPDFReport()">📥 下载PDF报告</button></div></div><div id="analysisTablesContainer"></div>`;
-            document.getElementById('view-settings').innerHTML='<div class="card settings-card"><div class="settings-header"><button class="settings-back" onclick="switchView(\'classes\')">← 返回</button><span class="settings-title">个人设置</span><span style="width:40px;"></span></div><div class="settings-avatar"><div class="settings-avatar-circle avatar-unset" id="settingsAvatarCircle"><span id="settingsAvatarEmoji">👤</span></div></div><div class="settings-name-row" id="settingsNameRow"><span id="settingsNameDisplay"></span></div><div class="settings-section"><div class="settings-label">性别</div><div id="settingsGenderView" class="settings-value"></div><div id="settingsGenderEdit" class="settings-gender-row" style="display:none;"><div class="settings-gender-card" id="genderCardMale" onclick="settingsPickGender(\'male\')"><span class="gender-icon">♂️</span><span>男</span></div><div class="settings-gender-card" id="genderCardFemale" onclick="settingsPickGender(\'female\')"><span class="gender-icon">♀️</span><span>女</span></div></div></div><div class="settings-section"><div class="settings-label">所属大区</div><span id="settingsDistrictView" class="settings-value"></span><select class="input settings-select" id="settingsDistrict" style="display:none;"><option value="">请选择大区</option><option value="东一区">东一区</option><option value="东二区">东二区</option><option value="西一区">西一区</option><option value="西二区">西二区</option><option value="南一区">南一区</option><option value="南二区">南二区</option><option value="武侯区">武侯区</option></select></div><div class="settings-actions" id="settingsActionsView"><button class="btn btn-outline btn-sm" onclick="settingsEnterEdit()">✏️ 编辑资料</button><button class="btn btn-outline btn-sm" onclick="changeMyPassword()">🔒 修改密码</button></div><div class="settings-actions" id="settingsActionsEdit" style="display:none;"><button class="btn btn-sm" onclick="settingsSave()">✅ 保存</button><button class="btn btn-outline btn-sm" onclick="settingsCancel()">取消</button></div><div class="settings-actions"><button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger);" onclick="handleLogout()">🚪 退出登录</button></div></div>';
+            document.getElementById('view-settings').innerHTML='<div class="card settings-card"><div class="settings-header"><button class="settings-back" onclick="switchView(\'classes\')">← 返回</button><span class="settings-title">个人设置</span><span style="width:40px;"></span></div><div class="settings-avatar"><div class="settings-avatar-circle avatar-unset" id="settingsAvatarCircle"><span id="settingsAvatarEmoji">👤</span></div></div><div class="settings-name-row" id="settingsNameRow"><span id="settingsNameDisplay"></span></div><div class="settings-section"><div class="settings-label">性别</div><div id="settingsGenderView" class="settings-value"></div><div id="settingsGenderEdit" class="settings-gender-row" style="display:none;"><div class="settings-gender-card" id="genderCardMale" onclick="settingsPickGender(\'male\')"><span class="gender-icon">'+GENDER_ICON_MALE+'</span><span>男</span></div><div class="settings-gender-card" id="genderCardFemale" onclick="settingsPickGender(\'female\')"><span class="gender-icon">'+GENDER_ICON_FEMALE+'</span><span>女</span></div></div></div><div class="settings-section"><div class="settings-label">所属大区</div><span id="settingsDistrictView" class="settings-value"></span><select class="input settings-select" id="settingsDistrict" style="display:none;"><option value="">请选择大区</option><option value="东一区">东一区</option><option value="东二区">东二区</option><option value="西一区">西一区</option><option value="西二区">西二区</option><option value="南一区">南一区</option><option value="南二区">南二区</option><option value="武侯区">武侯区</option></select></div><div class="settings-actions" id="settingsActionsView"><button class="btn btn-outline btn-sm" onclick="settingsEnterEdit()">✏️ 编辑资料</button><button class="btn btn-outline btn-sm" onclick="changeMyPassword()">🔒 修改密码</button></div><div class="settings-actions" id="settingsActionsEdit" style="display:none;"><button class="btn btn-sm" onclick="settingsSave()">✅ 保存</button><button class="btn btn-outline btn-sm" onclick="settingsCancel()">取消</button></div><div class="settings-actions"><button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger);" onclick="handleLogout()">🚪 退出登录</button></div></div>';
         }
 
         var _settingsEditGender = '', _settingsEditDistrict = '', _settingsEditName = '';
@@ -2960,7 +2962,7 @@
         function _updateAvatar(g){
             var avatar=document.getElementById('settingsAvatarEmoji');
             var circle=document.getElementById('settingsAvatarCircle');
-            if(avatar) avatar.textContent = g==='male'?'♂️':(g==='female'?'♀️':'👤');
+            if(avatar) avatar.innerHTML = g==='male'?GENDER_ICON_MALE:(g==='female'?GENDER_ICON_FEMALE:'👤');
             if(circle){circle.className='settings-avatar-circle '+(g==='male'?'avatar-male':(g==='female'?'avatar-female':'avatar-unset'));}
         }
         window.refreshSettingsUI = function(){
@@ -2970,7 +2972,7 @@
             if(nameDisplay) nameDisplay.textContent=_userName||'未设置';
             // 性别查看模式
             var gv=document.getElementById('settingsGenderView');
-            if(gv) gv.textContent = (currentGender==='male'?'♂️ 男':(currentGender==='female'?'♀️ 女':'未设置'));
+            if(gv) gv.innerHTML = (currentGender==='male'?GENDER_ICON_MALE+' 男':(currentGender==='female'?GENDER_ICON_FEMALE+' 女':'未设置'));
             // 大区查看模式
             var dv=document.getElementById('settingsDistrictView');
             if(dv) dv.textContent = currentDistrict||'未设置';
@@ -3050,8 +3052,8 @@
             }
 
             // 更新头部
-            var prefix = (currentGender==='male'?'♂️ ':'')+(currentGender==='female'?'♀️ ':'');
-            document.getElementById('headerUserName').textContent = prefix + (_userName||'');
+            var prefix = (currentGender==='male'?GENDER_ICON_MALE+' ':'')+(currentGender==='female'?GENDER_ICON_FEMALE+' ':'');
+            document.getElementById('headerUserName').innerHTML = prefix + (_userName||'');
 
             // 还原 UI
             document.getElementById('settingsGenderView').style.display='';

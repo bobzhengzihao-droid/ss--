@@ -978,20 +978,12 @@
         const SUPABASE_URL = 'https://furpcqytmgxqkxlbselj.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1cnBjcXl0bWd4cWt4bGJzZWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2MjYyNTYsImV4cCI6MjA5NDIwMjI1Nn0.522KmI4GJrghlteeQiRVMGJdytu3R4pf7E1NLyTByzE';
         function _checkRegCode(input) {
-            // 优先走 Edge Function 服务端校验
+            // 本地快速校验，避免依赖网络和 Edge Function
+            if (input === atob('Ym9ibyBpcyBjb29s')) return true;
+            // 本地不匹配时，走 Edge Function 服务端校验（支持多注册码扩展）
             return supabase.functions.invoke('validate-registration', { body: { code: input } })
-                .then(function(r) {
-                    if (r.data && r.data.valid) return true;
-                    // 服务器未配置注册码时，回退到本地校验
-                    if (r.data && r.data.error === '服务器未配置注册码') {
-                        return input === atob('Ym9ibyBpcyBjb29s');
-                    }
-                    return false;
-                })
-                .catch(function() {
-                    // Edge Function 不可用时 fallback 本地校验
-                    return input === atob('Ym9ibyBpcyBjb29s');
-                });
+                .then(function(r) { return !!(r.data && r.data.valid); })
+                .catch(function() { return false; });
         }
         const API_BASE = 'http://127.0.0.1:8765';
         const isLocal = ['127.0.0.1', 'localhost'].includes(window.location.hostname);

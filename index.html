@@ -1153,6 +1153,9 @@
                     e.target.addEventListener('blur', cleanup, { once: true });
                 } else {
                     setTimeout(function() {
+                        var rect = e.target.getBoundingClientRect();
+                        var viewH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+                        if (rect.top >= 0 && rect.bottom <= viewH - 60) return;
                         e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }, 350);
                 }

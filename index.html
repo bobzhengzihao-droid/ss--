@@ -980,7 +980,14 @@
         function _checkRegCode(input) {
             // 优先走 Edge Function 服务端校验
             return supabase.functions.invoke('validate-registration', { body: { code: input } })
-                .then(function(r) { return r.data && r.data.valid; })
+                .then(function(r) {
+                    if (r.data && r.data.valid) return true;
+                    // 服务器未配置注册码时，回退到本地校验
+                    if (r.data && r.data.error === '服务器未配置注册码') {
+                        return input === atob('Ym9ibyBpcyBjb29s');
+                    }
+                    return false;
+                })
                 .catch(function() {
                     // Edge Function 不可用时 fallback 本地校验
                     return input === atob('Ym9ibyBpcyBjb29s');

@@ -244,8 +244,6 @@
             .date-select { padding: 7px 10px; font-size: 12px; }
             .date-action-btn { width: 28px; height: 28px; font-size: 12px; }
             .class-name-display { max-width: 130px; font-size: 11px; padding: 4px 8px; }
-            .login-overlay { padding: 5vh 0 55vh; align-items: flex-start; }
-            .login-card { margin-top: 0; }
         }
         /* ===== TABLE ===== */
         .table-wrapper {
@@ -1126,9 +1124,35 @@
         document.addEventListener('focusin', function(e) {
             var tag = e.target.tagName;
             if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
-                setTimeout(function() {
-                    e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 350);
+                var overlay = document.querySelector('.login-overlay');
+                var inLogin = overlay && overlay.style.display !== 'none' && overlay.contains(e.target);
+                if (inLogin && window.visualViewport) {
+                    var card = overlay.querySelector('.login-card');
+                    var onResize = function() {
+                        var kh = window.innerHeight - window.visualViewport.height;
+                        if (kh > 100) {
+                            var rect = e.target.getBoundingClientRect();
+                            var visBottom = window.visualViewport.height;
+                            if (rect.bottom > visBottom - 20) {
+                                card.style.transform = 'translateY(' + (visBottom - rect.bottom - 20) + 'px)';
+                                card.style.transition = 'transform 0.2s ease';
+                            }
+                        }
+                    };
+                    onResize();
+                    window.visualViewport.addEventListener('resize', onResize);
+                    var cleanup = function() {
+                        window.visualViewport.removeEventListener('resize', onResize);
+                        card.style.transform = '';
+                        card.style.transition = '';
+                        e.target.removeEventListener('blur', cleanup);
+                    };
+                    e.target.addEventListener('blur', cleanup, { once: true });
+                } else {
+                    setTimeout(function() {
+                        e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 350);
+                }
             }
         });
 

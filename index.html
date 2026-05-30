@@ -1637,8 +1637,7 @@
             } catch(e) {}
             document.body.classList.add('logged-in');
             document.getElementById('loginOverlay').style.display = 'none';
-            var prefix = (currentGender==='male'?GENDER_ICON_MALE+' ':'')+(currentGender==='female'?GENDER_ICON_FEMALE+' ':'');
-            document.getElementById('headerUserName').innerHTML = prefix + name;
+            document.getElementById('headerUserName').textContent = name;
             await loadUserData();
             // 确保 gender + district 写入 teacher_profiles（用 REST API 直接写，绕开 JS 客户端可能的问题）
             if (currentGender || currentDistrict) {
@@ -3052,8 +3051,7 @@
             }
 
             // 更新头部
-            var prefix = (currentGender==='male'?GENDER_ICON_MALE+' ':'')+(currentGender==='female'?GENDER_ICON_FEMALE+' ':'');
-            document.getElementById('headerUserName').innerHTML = prefix + (_userName||'');
+            document.getElementById('headerUserName').textContent = (_userName||'');
 
             // 还原 UI
             document.getElementById('settingsGenderView').style.display='';

@@ -1402,7 +1402,7 @@
                 try { localStorage.setItem('_fb_cls_local_ts_' + _userId, Date.now()); } catch(e) {}
             }
             // 如果是 fb key 或 classes，更新全量备份
-            if (key === 'classes' || (typeof key === 'string' && key.indexOf('fb|') === 0)) {
+            if (key === 'classes' || key === 'tools' || key === 'analysisSel' || (typeof key === 'string' && key.indexOf('fb|') === 0)) {
                 try { _idb.set(_cacheKey('_fullBackup'), {classes: classes, feedback: feedback, tools: tools, analysisSel: analysisSel, time: Date.now()}); } catch(e) {}
             }
             return supabaseOk;
@@ -1787,8 +1787,8 @@
                         }
                     }
                 }
-                if (!localTools) { const v = await _idb.get(_cacheKey('tools')); if (v) localTools = v; }
-                if (!localAnalysis) { const v = await _idb.get(_cacheKey('analysisSel')); if (v) localAnalysis = v; }
+                { const v = await _idb.get(_cacheKey('tools')); if (v) localTools = v; }
+                { const v = await _idb.get(_cacheKey('analysisSel')); if (v) localAnalysis = v; }
                 // autoRecovery: localStorage 备份比 IndexedDB 更新 → 恢复
                 if (lsBackup && lsBackup.classes && lsBackup.time) {
                     var idbTime = (bk && bk.time) ? bk.time : 0;

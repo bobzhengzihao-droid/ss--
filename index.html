@@ -1305,6 +1305,31 @@
         }
         function _cacheKey(k) { return '_fb_' + (_userId || 'anon') + '_' + k; }
 
+        // ===== 逐 key 同步状态追踪 =====
+        // 记录哪些 feedback key 已成功写入 Supabase
+        // 用于合并时区分「从未同步过的新 key」和「已被另一端删除的旧 key」
+        function _syncedKeyStoreKey() { return '_fb_synced_keys_' + (_userId || 'anon'); }
+        function _loadSyncedKeys() {
+            try {
+                var raw = localStorage.getItem(_syncedKeyStoreKey());
+                if (raw) { var arr = JSON.parse(raw); return new Set(Array.isArray(arr) ? arr : []); }
+            } catch(e) {}
+            return new Set();
+        }
+        function _saveSyncedKeys(s) {
+            try { localStorage.setItem(_syncedKeyStoreKey(), JSON.stringify(Array.from(s))); } catch(e) {}
+        }
+        function _markKeySynced(fbShortKey) {
+            var s = _loadSyncedKeys();
+            s.add(fbShortKey);
+            _saveSyncedKeys(s);
+        }
+        function _markKeyUnsynced(fbShortKey) {
+            var s = _loadSyncedKeys();
+            s.delete(fbShortKey);
+            _saveSyncedKeys(s);
+        }
+
         async function _saveKey(key, value) {
             // null = 删除
             if (value === null) {
@@ -1318,6 +1343,10 @@
                     }
                 } catch(e) { console.error('[SAVE] 云端删除异常:', key, e.message); cloudOk = false; }
                 if (cloudOk) { try { _idb.set(_cacheKey(key), null); } catch(e) {} }
+                // 云端删除成功 → 从同步集移除（不再视为 synced）
+                if (cloudOk && typeof key === 'string' && key.indexOf('fb|') === 0) {
+                    _markKeyUnsynced(key.substring(3));
+                }
                 return cloudOk;
             }
             let supabaseOk = false;
@@ -1387,6 +1416,10 @@
                     // 记录 classes 云端同步时间
                     if (supabaseOk && key === 'classes') {
                         try { localStorage.setItem('_fb_cls_sync_ts_' + _userId, Date.now()); } catch(e) {}
+                    }
+                    // 反馈 key 写入成功 → 标记已同步
+                    if (supabaseOk && typeof key === 'string' && key.indexOf('fb|') === 0) {
+                        _markKeySynced(key.substring(3));
                     }
                 } else {
                     _showSyncWarning('未登录，请刷新页面重新登录');
@@ -1892,17 +1925,29 @@
 
             // 合并 feedback：云端为基础，本地逐 key 比较时间戳决定取舍
             const mergedFb = Object.assign({}, cloudFeedback || {});
-            // 云端是否有数据——有说明不是首次同步，以云端为准判断 key 存在性（删除不会被复活）
+            // 云端是否有数据——有说明不是首次同步
             const cloudHasData = cloudFeedback && Object.keys(cloudFeedback).length > 0;
+            // 加载逐 key 同步状态：区分「从未成功同步过」和「已被另一端删除」
+            const syncedKeys = _loadSyncedKeys();
+            // 预填充：云端已有 key 视为已同步（避免修复首次加载时误判）
+            if (cloudFeedback) {
+                var _syncedDirty = false;
+                Object.keys(cloudFeedback).forEach(function(k) {
+                    if (!syncedKeys.has(k)) { syncedKeys.add(k); _syncedDirty = true; }
+                });
+                if (_syncedDirty) _saveSyncedKeys(syncedKeys);
+            }
             if (localFeedback) {
                 let localWin = 0, cloudWin = 0, gapFill = 0;
                 Object.keys(localFeedback).forEach(k => {
                     const localEntry = localFeedback[k];
                     const cloudEntry = mergedFb[k];
                     if (!cloudEntry) {
-                        // 云端没有这个 key。如果云端完全为空（首次同步），从本地补漏；
-                        // 如果云端已有数据，说明这个 key 是被有意删除的，不复生。
-                        if (!cloudHasData) {
+                        // 云端没有这个 key：
+                        // 1) 云端完全为空（首次同步）→ 从本地补漏
+                        // 2) key 从未成功同步过（本地新建但上次云保存失败）→ 保留
+                        // 3) key 曾经同步过但现在云端不存在（被另一端删除）→ 不复生
+                        if (!cloudHasData || !syncedKeys.has(k)) {
                             mergedFb[k] = localEntry; gapFill++;
                         }
                     } else {

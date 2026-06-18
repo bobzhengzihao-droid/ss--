@@ -751,18 +751,21 @@
                 document.getElementById('app').innerHTML = `<div class="login-gate"><div class="msg">❌ 仅管理员可访问<br><br>当前账号：${escapeHtml(name)}<br><br><button class="btn btn-sm btn-outline" onclick="logout()"><i class="iconfont icon-logout"></i> 退出登录</button>   <a href="/"><i class="iconfont icon-arrow-left"></i> 返回主站</a></div></div>`;
                 return;
             }
-            await loadAllData();
-            loadCampusConfig();
-            // Init super admin
-            var storedSuper = localStorage.getItem('_fb_super_admin_id');
-            if (storedSuper) {
-                var superStillAdmin = Object.values(allTeachers).some(function(u) { return u.id === storedSuper && u.isAdmin; });
-                if (!superStillAdmin) { localStorage.removeItem('_fb_super_admin_id'); storedSuper = null; }
-            }
-            if (!storedSuper) { localStorage.setItem('_fb_super_admin_id', currentUser.id); storedSuper = currentUser.id; }
-            isSuperAdmin = (storedSuper === currentUser.id);
+            // 先渲染界面骨架，后台加载数据
             renderApp();
             switchView('dashboard');
+            loadAllData().then(function(){
+                loadCampusConfig();
+                var storedSuper = localStorage.getItem('_fb_super_admin_id');
+                if (storedSuper) {
+                    var superStillAdmin = Object.values(allTeachers).some(function(u) { return u.id === storedSuper && u.isAdmin; });
+                    if (!superStillAdmin) { localStorage.removeItem('_fb_super_admin_id'); storedSuper = null; }
+                }
+                if (!storedSuper) { localStorage.setItem('_fb_super_admin_id', currentUser.id); storedSuper = currentUser.id; }
+                isSuperAdmin = (storedSuper === currentUser.id);
+                renderApp(); // 数据到齐后刷新视图
+                switchView('dashboard');
+            });
         }
 
         // ========== Login Form ==========
@@ -814,7 +817,7 @@
             const hdrs = { 'apikey': SERVICE_ROLE_KEY, 'Authorization': 'Bearer ' + SERVICE_ROLE_KEY };
 
             // 1. Load data_store (bypasses RLS via service_role)
-            const dsResp = await fetch(SUPABASE_URL + '/rest/v1/data_store?select=*', { headers: hdrs });
+            const dsResp = await fetch(SUPABASE_URL + '/rest/v1/data_store?select=key,value,user_id', { headers: hdrs });
             if (!dsResp.ok) { console.error('data_store load error:', dsResp.status); return; }
             const allRows = await dsResp.json();
 

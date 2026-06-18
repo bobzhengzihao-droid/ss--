@@ -247,17 +247,17 @@
             .date-select { padding: 7px 10px; font-size: 12px; }
             .date-action-btn { width: 28px; height: 28px; font-size: 12px; }
             .class-name-display { max-width: 130px; font-size: 11px; padding: 4px 8px; }
-            .style-modal-overlay { padding-top: 40px; }
-            .style-modal { width: auto; margin: 0 12px; padding: 14px; gap: 12px; }
-            .style-modal-header { font-size: 14px; }
+            .style-modal-overlay { align-items: flex-start; padding-top: 16px; }
+            .style-modal { width: auto; margin: 0 20px; padding: 18px; gap: 14px; max-height: calc(100vh - 32px); overflow-y: auto; }
+            .style-modal-header { font-size: 15px; }
             .style-section-label { font-size: 11px; }
             .preset-grid { gap: 6px; }
-            .preset-card { padding: 5px 10px; font-size: 11px; }
-            .style-color-grid { gap: 6px 10px; }
-            .style-color-item > span { font-size: 12px; min-width: 48px; }
-            .style-color-item input[type="color"] { width: 28px; height: 24px; }
-            .style-row-height-row > span { font-size: 11px; }
-            .style-save-btn { padding: 8px; font-size: 12px; }
+            .preset-card { padding: 6px 12px; font-size: 12px; }
+            .style-color-grid { gap: 8px 12px; }
+            .style-color-item > span { font-size: 13px; min-width: 48px; }
+            .style-color-item input[type="color"] { width: 30px; height: 26px; }
+            .style-row-height-row > span { font-size: 12px; }
+            .style-save-btn { padding: 10px; font-size: 13px; }
         }
         /* ===== TABLE ===== */
         .table-wrapper {
@@ -428,28 +428,27 @@
         .style-modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.35); z-index: 10000;
-            display: flex; align-items: flex-start; justify-content: center;
-            padding-top: 60px; overflow-y: auto;
-            overscroll-behavior: contain;
+            display: flex; align-items: center; justify-content: center;
+            overflow-y: auto; overscroll-behavior: contain;
             animation: fadeIn 0.2s ease;
         }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .style-modal {
             background: var(--card-bg); border-radius: 16px;
             box-shadow: 0 8px 40px rgba(0,0,0,0.18);
-            width: 420px; max-width: calc(100vw - 24px);
-            padding: 20px; display: flex; flex-direction: column; gap: 16px;
+            width: 480px; max-width: calc(100vw - 48px);
+            padding: 24px; display: flex; flex-direction: column; gap: 18px;
             animation: slideUp 0.25s ease;
         }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .style-modal-header {
             display: flex; align-items: center; justify-content: space-between;
-            font-weight: 700; font-size: 15px; color: var(--text);
+            font-weight: 700; font-size: 16px; color: var(--text);
         }
         .style-modal-close {
-            width: 28px; height: 28px; border-radius: 50%;
+            width: 30px; height: 30px; border-radius: 50%;
             background: #f1f5f9; border: none; cursor: pointer;
-            font-size: 16px; display: flex; align-items: center;
+            font-size: 18px; display: flex; align-items: center;
             justify-content: center; color: var(--text-light);
             -webkit-tap-highlight-color: transparent;
         }
